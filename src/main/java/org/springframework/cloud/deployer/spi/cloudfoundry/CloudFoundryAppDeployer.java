@@ -161,7 +161,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	 * See if appName exists by trying to fetch it.
 	 *
 	 * @param appName
-	 * @return
+	 * @return boolean state of whether or not the app exists in Cloud Foundry
 	 */
 	private boolean appExists(String appName) {
 

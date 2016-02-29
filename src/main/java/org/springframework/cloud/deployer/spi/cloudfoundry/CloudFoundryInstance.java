@@ -57,7 +57,7 @@ public class CloudFoundryInstance implements AppInstanceStatus {
 	/**
 	 * Parse the current state of an app deployed to Cloud Foundry
 	 *
-	 * @return
+	 * @return {@link DeploymentState} containing list of Cloud Foundry instances
 	 */
 	@Override
 	public DeploymentState getState() {
@@ -81,7 +81,7 @@ public class CloudFoundryInstance implements AppInstanceStatus {
 	 * Convert from Cloud Foundry {@link InstanceState} to Spring Cloud Deployer {@link DeploymentState}.
 	 *
 	 * @param instanceState
-	 * @return
+	 * @return {@link DeploymentState} for a single Cloud Foundry instance
 	 */
 	private DeploymentState getDeploymentState(InstanceState instanceState) {
 
@@ -105,7 +105,7 @@ public class CloudFoundryInstance implements AppInstanceStatus {
 	/**
 	 * Grab the application's environment variables from Cloud Foundry
 	 *
-	 * @return
+	 * @return {@link Map} of environment variables read from Cloud Foundry app
 	 */
 	@Override
 	public Map<String, String> getAttributes() {
