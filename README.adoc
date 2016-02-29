@@ -1,0 +1,3 @@
+= Spring Cloud - Cloud Foundry Deployer
+
+This project provide a common means to deploy applications to Cloud Foundry based on the Spring Cloud Deployer SPI.
