@@ -76,7 +76,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		0 * resource._
 	}
 
-	def "should handle deploying an already-existing app"() {
+	def "should fail when deploying an already-existing app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
 		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
@@ -84,28 +84,20 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		def appName = 'my-cool-app'
 
 		when:
-		def results = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition(appName, 'my-cool-group', Collections.EMPTY_MAP),
-				resource))
+		deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition(appName, 'my-cool-group', Collections.EMPTY_MAP),
+			resource))
 
 		then:
-		results.name == appName
-		results.group == 'my-cool-group'
-		results.properties == [:]
+		IllegalStateException e = thrown()
+		e.message == "${appName} is already deployed."
 
 		1 * client.login()
 		1 * client.getApplication(appName) >> {
 			new CloudApplication(null, appName)
 		}
-		1 * client.getDefaultDomain() >> { new CloudDomain(null, 'example.com', null) }
-		1 * client.createApplication(appName, _, 1024, 1024, [appName + '.example.com'], [])
-		1 * client.updateApplicationEnv(appName, [:])
-		1 * client.uploadApplication(appName, _, _)
-		1 * client.updateApplicationInstances(appName, 1)
-		1 * client.startApplication(appName)
 		0 * client._
 
-		1 * resource.getInputStream() >> { IOUtils.toInputStream("my app's bits") }
 		0 * resource._
 	}
 
@@ -130,7 +122,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 
 		1 * client.login()
 		1 * client.getApplication(appName) >> {
-			new CloudApplication(null, appName)
+			throw new CloudFoundryException(HttpStatus.NOT_FOUND, "Not Found", "Application not found");
 		}
 		1 * client.getDefaultDomain() >> { new CloudDomain(null, 'example.com', null) }
 		1 * client.createApplication(appName, _, 1024, 1024, [appName + '.example.com'], [])
@@ -165,7 +157,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 
 		1 * client.login()
 		1 * client.getApplication(appName) >> {
-			new CloudApplication(null, appName)
+			throw new CloudFoundryException(HttpStatus.NOT_FOUND, "Not Found", "Application not found");
 		}
 		1 * client.getDefaultDomain() >> { new CloudDomain(null, 'example.com', null) }
 		1 * client.createApplication(appName, _, 1024, 1024, [appName + '.example.com'], [])
@@ -193,6 +185,29 @@ class CloudFoundryAppDeployerSpec extends Specification {
 			new CloudApplication(null, appName)
 		}
 		1 * client.deleteApplication(appName)
+		0 * client._
+
+		0 * resource._
+	}
+
+	def "should fail to un-deploy a non-existent app"() {
+		given:
+		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+
+		def appName = 'my-cool-app'
+		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
+
+		when:
+		deployer.undeploy(appDeploymentId)
+
+		then:
+		IllegalStateException e = thrown()
+		e.message == "${appName} is not deployed."
+
+		1 * client.getApplication(appName) >> {
+			throw new CloudFoundryException(HttpStatus.BAD_REQUEST, "my-cool-app doesn't exist")
+		}
 		0 * client._
 
 		0 * resource._

@@ -36,6 +36,8 @@ import org.springframework.cloud.deployer.spi.status.AppStatus;
 import org.springframework.web.client.HttpStatusCodeException;
 
 /**
+ * A deployer that targets Cloud Foundry using the public API.
+ *
  * @author Greg Turnquist
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
@@ -58,6 +60,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	 *
 	 * @param request the app deployment request
 	 * @return
+	 * @throws {@link IllegalStateException} is the app is already deployed
 	 */
 	@Override
 	public AppDeploymentId deploy(AppDeploymentRequest request) {
@@ -90,7 +93,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	/**
 	 * Create/Update a Cloud Foundry application using various settings.
 	 *
-	 * TODO: Distinguish between create new and updating existing or simplify.
 	 * TODO: Better handle URLs. Right now, it just creates a URL out of thin air based on app name
 	 *
 	 * @param appName
@@ -111,17 +113,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					Collections.singletonList(url),
 					new ArrayList<>(properties.getServices()));
 		} else {
-			Staging staging = new Staging(null, properties.getBuildpack());
-			String url = appName + "." + client.getDefaultDomain().getName();
-
-			logger.info("Updating existing application " + appName + " at " + url);
-
-			client.createApplication(appName,
-					staging,
-					properties.getDisk(),
-					properties.getMemory(),
-					Collections.singletonList(url),
-					new ArrayList<>(properties.getServices()));
+			throw new IllegalStateException(appName + " is already deployed.");
 		}
 	}
 
@@ -185,11 +177,18 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		}
 	}
 
+	/**
+	 *
+	 * @param id
+	 * @throws {@link IllegalStateException} if the app does NOT exist.
+	 */
 	@Override
 	public void undeploy(AppDeploymentId id) {
 
 		if (appExists(id.getName())) {
 			client.deleteApplication(id.getName());
+		} else {
+			throw new IllegalStateException(id.getName() + " is not deployed.");
 		}
 	}
 
