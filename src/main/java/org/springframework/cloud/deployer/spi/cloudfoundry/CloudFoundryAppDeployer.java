@@ -65,9 +65,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	@Override
 	public AppDeploymentId deploy(AppDeploymentRequest request) {
 
-		logger.info("Logging into " + properties.getOrganization() + "/" + properties.getSpace());
-		this.client.login();
-
 		// Pick app name
 		String appName = request.getDefinition().getName();
 

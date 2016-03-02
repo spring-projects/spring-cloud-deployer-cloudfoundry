@@ -60,7 +60,6 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		results.group == 'my-cool-group'
 		results.properties == [:]
 
-		1 * client.login()
 		1 * client.getApplication(appName) >> {
 			throw new CloudFoundryException(HttpStatus.BAD_REQUEST, "my-cool-app doesn't exist")
 		}
@@ -92,7 +91,6 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		IllegalStateException e = thrown()
 		e.message == "${appName} is already deployed."
 
-		1 * client.login()
 		1 * client.getApplication(appName) >> {
 			new CloudApplication(null, appName)
 		}
@@ -120,7 +118,6 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		results.group == 'my-cool-group'
 		results.properties == [:]
 
-		1 * client.login()
 		1 * client.getApplication(appName) >> {
 			throw new CloudFoundryException(HttpStatus.NOT_FOUND, "Not Found", "Application not found");
 		}
@@ -155,7 +152,6 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		e.message.contains('Exception trying to deploy ' + AppDeploymentRequest.canonicalName)
 		e.cause.message == 'Your bits do not exist'
 
-		1 * client.login()
 		1 * client.getApplication(appName) >> {
 			throw new CloudFoundryException(HttpStatus.NOT_FOUND, "Not Found", "Application not found");
 		}
