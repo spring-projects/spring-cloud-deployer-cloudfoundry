@@ -15,9 +15,13 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static java.util.stream.Collectors.joining;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -48,11 +52,18 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private CloudFoundryOperations client;
 
+	private List<Logger> loggers = new ArrayList<>();
+
 	@Autowired
 	public CloudFoundryAppDeployer(CloudFoundryAppDeployProperties properties,
 								   CloudFoundryOperations client) {
 		this.properties = properties;
 		this.client = client;
+		this.registerCustomerLogger(logger);
+	}
+
+	public void registerCustomerLogger(Logger logger) {
+		this.loggers.add(logger);
 	}
 
 	/**
@@ -65,25 +76,20 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	@Override
 	public AppDeploymentId deploy(AppDeploymentRequest request) {
 
-		// Pick app name
 		String appName = request.getDefinition().getName();
 
-		// Create application
-		createApplication(appName, request);
+		createApplication(appName);
 
-		// Add env variables
 		addEnvVariables(appName, request);
 
-		// Upload application
 		uploadApplication(appName, request);
 
-		// Set number of instances
+		loggers.parallelStream().forEach(logger -> logger.info("Scaling " + appName + " to " + properties.getInstances() + " instance" + (properties.getInstances() == 1 ? "" : "s")));
 		client.updateApplicationInstances(appName, properties.getInstances());
 
-		// Start application
+		loggers.parallelStream().forEach(logger -> logger.info("Starting " + appName));
 		client.startApplication(appName);
 
-		// Formulate the record of this deployment
 		return new AppDeploymentId(request.getDefinition().getGroup(), appName);
 	}
 
@@ -93,15 +99,21 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	 * TODO: Better handle URLs. Right now, it just creates a URL out of thin air based on app name
 	 *
 	 * @param appName
-	 * @param request
 	 */
-	private void createApplication(String appName, AppDeploymentRequest request) {
+	private void createApplication(String appName) {
 
 		if (!appExists(appName)) {
 			Staging staging = new Staging(null, properties.getBuildpack());
 			String url = appName + "." + client.getDefaultDomain().getName();
 
-			logger.info("Creating new application " + appName + " at " + url);
+			loggers.parallelStream().forEach(logger -> logger.info("Creating new application " + appName + " at " + url + " with "
+					+
+					Arrays.asList(
+						properties.getMemory() + "M mem",
+						properties.getDisk() + "M disk",
+						"[" + properties.getServices().stream().collect(joining(",")) + "] services",
+						!properties.getBuildpack().equals("") ? properties.getBuildpack() + " buildpack" : "default buildpack"
+					).stream().collect(joining(", "))));
 
 			client.createApplication(appName,
 					staging,
@@ -131,7 +143,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 						e -> e.getKey().substring(envPrefix.length()),
 						Map.Entry::getValue));
 
-		logger.info("Assigning env variables " + env + " to " + appName);
+		loggers.parallelStream().forEach(logger -> logger.info("Assigning env variables " + env + " to " + appName));
 
 		client.updateApplicationEnv(appName, env);
 	}
@@ -145,7 +157,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	private void uploadApplication(String appName, AppDeploymentRequest request) {
 
 		try {
-			logger.info("Uploading " + request.getResource() + " to " + appName);
+			loggers.parallelStream().forEach(logger -> logger.info("Uploading " + request.getResource() + " to " + appName));
 
 			client.uploadApplication(appName, "spring-cloud-deployer-cloudfoundry",
 					request.getResource().getInputStream());
@@ -165,11 +177,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		try {
 			client.getApplication(appName);
 
-			logger.info("Does " + appName + " exist? Yes");
+			loggers.parallelStream().forEach(logger -> logger.info("Does " + appName + " exist? Yes"));
 
 			return true;
 		} catch (HttpStatusCodeException e) {
-			logger.info("Does " + appName + " exist? No");
+			loggers.parallelStream().forEach(logger -> logger.info("Does " + appName + " exist? No"));
 			return false;
 		}
 	}
@@ -202,4 +214,5 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 		return builder.build();
 	}
+
 }
