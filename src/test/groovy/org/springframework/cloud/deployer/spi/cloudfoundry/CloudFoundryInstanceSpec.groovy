@@ -15,15 +15,12 @@
  */
 
 package org.springframework.cloud.deployer.spi.cloudfoundry
-
 import org.cloudfoundry.client.lib.CloudFoundryOperations
 import org.cloudfoundry.client.lib.domain.InstanceInfo
 import org.cloudfoundry.client.lib.domain.InstanceState
 import org.cloudfoundry.client.lib.domain.InstancesInfo
-import org.springframework.cloud.deployer.spi.AppDeploymentId
-import org.springframework.cloud.deployer.spi.status.DeploymentState
+import org.springframework.cloud.deployer.spi.process.DeploymentState
 import spock.lang.Specification
-
 /**
  * @author Greg Turnquist
  */
@@ -38,9 +35,8 @@ class CloudFoundryInstanceSpec extends Specification {
 	def "should be able to lookup environment variables from Cloud Foundry"() {
 		given:
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
-		def cloudFoundryInstance = new CloudFoundryInstance(appDeploymentId, new InstanceInfo([index: '0', state: InstanceState.RUNNING.toString()]), client)
+		def cloudFoundryInstance = new CloudFoundryInstance(appName, new InstanceInfo([index: '0', state: InstanceState.RUNNING.toString()]), client)
 
 		when:
 		def attributes = cloudFoundryInstance.attributes
@@ -57,7 +53,6 @@ class CloudFoundryInstanceSpec extends Specification {
 	def "should be able to read a flapping app's state from cloud foundry"() {
 		given:
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		def instance = [index: '0', state: InstanceState.FLAPPING.toString()]
 
@@ -66,7 +61,7 @@ class CloudFoundryInstanceSpec extends Specification {
 		}
 
 		when:
-		def cloudFoundryInstance = new CloudFoundryInstance(appDeploymentId, new InstanceInfo(instance), client)
+		def cloudFoundryInstance = new CloudFoundryInstance(appName, new InstanceInfo(instance), client)
 
 		then:
 		cloudFoundryInstance.state == DeploymentState.unknown
@@ -77,7 +72,6 @@ class CloudFoundryInstanceSpec extends Specification {
 	def "should be able to read a crashed app's state from cloud foundry"() {
 		given:
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		def instance = [index: '0', state: InstanceState.CRASHED.toString()]
 
@@ -86,7 +80,7 @@ class CloudFoundryInstanceSpec extends Specification {
 		}
 
 		when:
-		def cloudFoundryInstance = new CloudFoundryInstance(appDeploymentId, new InstanceInfo(instance), client)
+		def cloudFoundryInstance = new CloudFoundryInstance(appName, new InstanceInfo(instance), client)
 
 		then:
 		cloudFoundryInstance.state == DeploymentState.failed
@@ -100,7 +94,6 @@ class CloudFoundryInstanceSpec extends Specification {
 	def "should be able to read a down app's state from cloud foundry"() {
 		given:
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		def instance = [index: '0', state: InstanceState.DOWN.toString()]
 
@@ -109,7 +102,7 @@ class CloudFoundryInstanceSpec extends Specification {
 		}
 
 		when:
-		def cloudFoundryInstance = new CloudFoundryInstance(appDeploymentId, new InstanceInfo(instance), client)
+		def cloudFoundryInstance = new CloudFoundryInstance(appName, new InstanceInfo(instance), client)
 
 		then:
 		cloudFoundryInstance.state == DeploymentState.failed
@@ -123,7 +116,6 @@ class CloudFoundryInstanceSpec extends Specification {
 	def "should be able to read an unknown app's state from cloud foundry"() {
 		given:
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		def instance = [index: '0', state: InstanceState.UNKNOWN.toString()]
 
@@ -132,7 +124,7 @@ class CloudFoundryInstanceSpec extends Specification {
 		}
 
 		when:
-		def cloudFoundryInstance = new CloudFoundryInstance(appDeploymentId, new InstanceInfo(instance), client)
+		def cloudFoundryInstance = new CloudFoundryInstance(appName, new InstanceInfo(instance), client)
 
 		then:
 		cloudFoundryInstance.state == DeploymentState.unknown

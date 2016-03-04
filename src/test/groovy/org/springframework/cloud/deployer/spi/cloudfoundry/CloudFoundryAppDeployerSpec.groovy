@@ -22,10 +22,9 @@ import org.cloudfoundry.client.lib.domain.CloudApplication
 import org.cloudfoundry.client.lib.domain.CloudDomain
 import org.cloudfoundry.client.lib.domain.InstanceState
 import org.cloudfoundry.client.lib.domain.InstancesInfo
-import org.springframework.cloud.deployer.spi.AppDefinition
-import org.springframework.cloud.deployer.spi.AppDeploymentId
-import org.springframework.cloud.deployer.spi.AppDeploymentRequest
-import org.springframework.cloud.deployer.spi.status.DeploymentState
+import org.springframework.cloud.deployer.spi.core.AppDefinition
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest
+import org.springframework.cloud.deployer.spi.process.DeploymentState
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpStatus
 import spock.lang.Specification
@@ -46,19 +45,17 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle deploying a non-existent app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
 		when:
 		def results = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition(appName, 'my-cool-group', Collections.EMPTY_MAP),
+				new AppDefinition(appName, Collections.EMPTY_MAP),
 				resource))
 
 		then:
-		results.name == appName
-		results.group == 'my-cool-group'
-		results.properties == [:]
+		results == appName
 
 		1 * client.getApplication(appName) >> {
 			throw new CloudFoundryException(HttpStatus.BAD_REQUEST, "my-cool-app doesn't exist")
@@ -78,13 +75,13 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should fail when deploying an already-existing app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
 		when:
 		deployer.deploy(new AppDeploymentRequest(
-			new AppDefinition(appName, 'my-cool-group', Collections.EMPTY_MAP),
+			new AppDefinition(appName, Collections.EMPTY_MAP),
 			resource))
 
 		then:
@@ -102,21 +99,19 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle passing environmental properties through to cloud foundry"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
 		when:
 		def results = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition(appName, 'my-cool-group', Collections.EMPTY_MAP),
+				new AppDefinition(appName, Collections.EMPTY_MAP),
 				resource,
 				['env.PROP1': 'something', 'env.PROP2': 'something else', 'PROP3': "shouldn't have this"]
 		))
 
 		then:
-		results.name == appName
-		results.group == 'my-cool-group'
-		results.properties == [:]
+		results == appName
 
 		1 * client.getApplication(appName) >> {
 			throw new CloudFoundryException(HttpStatus.NOT_FOUND, "Not Found", "Application not found");
@@ -136,13 +131,13 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should backoff in case uploading an app fails"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
 		when:
 		deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition(appName, 'my-cool-group', Collections.EMPTY_MAP),
+				new AppDefinition(appName, Collections.EMPTY_MAP),
 				resource,
 				['env.PROP1': 'something', 'env.PROP2': 'something else', 'PROP3': "shouldn't have this"]
 		))
@@ -167,13 +162,12 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle un-deploying an existing app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		when:
-		deployer.undeploy(appDeploymentId)
+		deployer.undeploy(appName)
 
 		then:
 
@@ -189,13 +183,12 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should fail to un-deploy a non-existent app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		when:
-		deployer.undeploy(appDeploymentId)
+		deployer.undeploy(appName)
 
 		then:
 		IllegalStateException e = thrown()
@@ -212,10 +205,9 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle reading the status of a deployed app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		def instance1 = [index: '0', state: InstanceState.RUNNING.toString()]
 		def instance2 = [index: '1', state: InstanceState.RUNNING.toString()]
@@ -225,10 +217,10 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		}
 
 		when:
-		def status = deployer.status(appDeploymentId)
+		def status = deployer.status(appName)
 
 		then:
-		status.appDeploymentId == appDeploymentId
+		status.processDeploymentId == appName
 		status.state == DeploymentState.deployed
 
 		1 * client.getApplicationInstances(appName) >> {
@@ -242,10 +234,9 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle reading the status of an app in the middle of getting deployed"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		def instance1 = [index: '0', state: InstanceState.STARTING.toString()]
 		def instance2 = [index: '1', state: InstanceState.RUNNING.toString()]
@@ -255,10 +246,10 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		}
 
 		when:
-		def status = deployer.status(appDeploymentId)
+		def status = deployer.status(appName)
 
 		then:
-		status.appDeploymentId == appDeploymentId
+		status.processDeploymentId == appName
 		status.state == DeploymentState.deploying
 
 		1 * client.getApplicationInstances(appName) >> {
@@ -272,20 +263,19 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle failing to read a cloud foundry app's status"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
+		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
 
 		def appName = 'my-cool-app'
-		AppDeploymentId appDeploymentId = new AppDeploymentId('my-cool-group', appName);
 
 		1 * client.getApplicationInstances(appName) >> {
 			throw new CloudFoundryException(HttpStatus.GATEWAY_TIMEOUT)
 		}
 
 		when:
-		def status = deployer.status(appDeploymentId)
+		def status = deployer.status(appName)
 
 		then:
-		status.appDeploymentId == appDeploymentId
+		status.processDeploymentId == appName
 		status.state == DeploymentState.failed
 
 		1 * client.getApplicationInstances(appName) >> {

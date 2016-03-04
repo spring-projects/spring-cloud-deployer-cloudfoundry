@@ -25,9 +25,8 @@ import org.cloudfoundry.client.lib.domain.InstanceInfo;
 import org.cloudfoundry.client.lib.domain.InstanceState;
 import org.cloudfoundry.client.lib.domain.InstancesInfo;
 
-import org.springframework.cloud.deployer.spi.AppDeploymentId;
-import org.springframework.cloud.deployer.spi.status.AppInstanceStatus;
-import org.springframework.cloud.deployer.spi.status.DeploymentState;
+import org.springframework.cloud.deployer.spi.process.AppInstanceStatus;
+import org.springframework.cloud.deployer.spi.process.DeploymentState;
 import org.springframework.web.client.HttpStatusCodeException;
 
 /**
@@ -37,12 +36,12 @@ import org.springframework.web.client.HttpStatusCodeException;
  */
 public class CloudFoundryInstance implements AppInstanceStatus {
 
-	private final AppDeploymentId appDeploymentId;
+	private final String appDeploymentId;
 
 	private final InstanceInfo instance;
 	private final CloudFoundryOperations client;
 
-	public CloudFoundryInstance(AppDeploymentId appDeploymentId, InstanceInfo instance, CloudFoundryOperations client) {
+	public CloudFoundryInstance(String appDeploymentId, InstanceInfo instance, CloudFoundryOperations client) {
 
 		this.appDeploymentId = appDeploymentId;
 		this.instance = instance;
@@ -63,7 +62,7 @@ public class CloudFoundryInstance implements AppInstanceStatus {
 	public DeploymentState getState() {
 
 		try {
-			return Optional.ofNullable(client.getApplicationInstances(appDeploymentId.getName()))
+			return Optional.ofNullable(client.getApplicationInstances(appDeploymentId))
 						.orElse(new InstancesInfo(Collections.emptyList()))
 						.getInstances().stream()
 							.filter(i -> i.getIndex() == this.instance.getIndex())
@@ -110,7 +109,7 @@ public class CloudFoundryInstance implements AppInstanceStatus {
 	@Override
 	public Map<String, String> getAttributes() {
 
-		return client.getApplicationEnvironment(appDeploymentId.getName())
+		return client.getApplicationEnvironment(appDeploymentId)
 				.entrySet().stream()
 				.collect(Collectors.toMap(
 					Map.Entry::getKey,

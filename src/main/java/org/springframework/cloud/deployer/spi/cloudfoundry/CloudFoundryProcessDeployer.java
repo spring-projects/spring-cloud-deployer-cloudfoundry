@@ -33,10 +33,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.deployer.spi.AppDeployer;
-import org.springframework.cloud.deployer.spi.AppDeploymentId;
-import org.springframework.cloud.deployer.spi.AppDeploymentRequest;
-import org.springframework.cloud.deployer.spi.status.AppStatus;
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.process.ProcessDeployer;
+import org.springframework.cloud.deployer.spi.process.ProcessStatus;
 import org.springframework.web.client.HttpStatusCodeException;
 
 /**
@@ -44,9 +43,9 @@ import org.springframework.web.client.HttpStatusCodeException;
  *
  * @author Greg Turnquist
  */
-public class CloudFoundryAppDeployer implements AppDeployer {
+public class CloudFoundryProcessDeployer implements ProcessDeployer {
 
-	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryAppDeployer.class);
+	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryProcessDeployer.class);
 
 	private CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties();
 
@@ -55,8 +54,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	private List<Logger> loggers = new ArrayList<>();
 
 	@Autowired
-	public CloudFoundryAppDeployer(CloudFoundryAppDeployProperties properties,
-								   CloudFoundryOperations client) {
+	public CloudFoundryProcessDeployer(CloudFoundryAppDeployProperties properties,
+									   CloudFoundryOperations client) {
 		this.properties = properties;
 		this.client = client;
 		this.registerCustomerLogger(logger);
@@ -74,7 +73,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	 * @throws {@link IllegalStateException} is the app is already deployed
 	 */
 	@Override
-	public AppDeploymentId deploy(AppDeploymentRequest request) {
+	public String deploy(AppDeploymentRequest request) {
 
 		String appName = request.getDefinition().getName();
 
@@ -90,7 +89,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		loggers.parallelStream().forEach(logger -> logger.info("Starting " + appName));
 		client.startApplication(appName);
 
-		return new AppDeploymentId(request.getDefinition().getGroup(), appName);
+		return appName;
 	}
 
 	/**
@@ -107,8 +106,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			String url = appName + "." + client.getDefaultDomain().getName();
 
 			loggers.parallelStream().forEach(logger -> logger.info("Creating new application " + appName + " at " + url + " with "
-					+
-					Arrays.asList(
+					+ Arrays.asList(
 						properties.getMemory() + "M mem",
 						properties.getDisk() + "M disk",
 						"[" + properties.getServices().stream().collect(joining(",")) + "] services",
@@ -137,7 +135,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 		String envPrefix = "env.";
 
-		Map<String,String> env = request.getDeploymentProperties().entrySet().stream()
+		Map<String,String> env = request.getEnvironmentProperties().entrySet().stream()
 				.filter(e -> e.getKey().startsWith(envPrefix))
 				.collect(Collectors.toMap(
 						e -> e.getKey().substring(envPrefix.length()),
@@ -192,21 +190,21 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	 * @throws {@link IllegalStateException} if the app does NOT exist.
 	 */
 	@Override
-	public void undeploy(AppDeploymentId id) {
+	public void undeploy(String id) {
 
-		if (appExists(id.getName())) {
-			client.deleteApplication(id.getName());
+		if (appExists(id)) {
+			client.deleteApplication(id);
 		} else {
-			throw new IllegalStateException(id.getName() + " is not deployed.");
+			throw new IllegalStateException(id + " is not deployed.");
 		}
 	}
 
 	@Override
-	public AppStatus status(AppDeploymentId id) {
+	public ProcessStatus status(String id) {
 
-		AppStatus.Builder builder = AppStatus.of(id);
+		ProcessStatus.Builder builder = ProcessStatus.of(id);
 
-		Optional.ofNullable(client.getApplicationInstances(id.getName()))
+		Optional.ofNullable(client.getApplicationInstances(id))
 				.orElse(new InstancesInfo(Collections.emptyList()))
 				.getInstances().stream()
 				.map(i -> new CloudFoundryInstance(id, i, client))
