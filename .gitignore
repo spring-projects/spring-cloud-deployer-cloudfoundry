@@ -109,3 +109,5 @@ local.properties
 # Code Recommenders
 .recommenders/
 
+!.mvn/**
+
