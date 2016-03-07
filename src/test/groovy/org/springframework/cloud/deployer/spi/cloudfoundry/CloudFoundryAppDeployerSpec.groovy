@@ -22,9 +22,9 @@ import org.cloudfoundry.client.lib.domain.CloudApplication
 import org.cloudfoundry.client.lib.domain.CloudDomain
 import org.cloudfoundry.client.lib.domain.InstanceState
 import org.cloudfoundry.client.lib.domain.InstancesInfo
+import org.springframework.cloud.deployer.spi.app.DeploymentState
 import org.springframework.cloud.deployer.spi.core.AppDefinition
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest
-import org.springframework.cloud.deployer.spi.process.DeploymentState
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpStatus
 import spock.lang.Specification
@@ -220,7 +220,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		def status = deployer.status(appName)
 
 		then:
-		status.processDeploymentId == appName
+		status.deploymentId == appName
 		status.state == DeploymentState.deployed
 
 		1 * client.getApplicationInstances(appName) >> {
@@ -249,7 +249,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		def status = deployer.status(appName)
 
 		then:
-		status.processDeploymentId == appName
+		status.deploymentId == appName
 		status.state == DeploymentState.deploying
 
 		1 * client.getApplicationInstances(appName) >> {
@@ -275,7 +275,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 		def status = deployer.status(appName)
 
 		then:
-		status.processDeploymentId == appName
+		status.deploymentId == appName
 		status.state == DeploymentState.failed
 
 		1 * client.getApplicationInstances(appName) >> {

@@ -33,9 +33,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import org.springframework.cloud.deployer.spi.process.ProcessDeployer;
-import org.springframework.cloud.deployer.spi.process.ProcessStatus;
 import org.springframework.web.client.HttpStatusCodeException;
 
 /**
@@ -43,7 +43,7 @@ import org.springframework.web.client.HttpStatusCodeException;
  *
  * @author Greg Turnquist
  */
-public class CloudFoundryProcessDeployer implements ProcessDeployer {
+public class CloudFoundryProcessDeployer implements AppDeployer {
 
 	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryProcessDeployer.class);
 
@@ -200,9 +200,9 @@ public class CloudFoundryProcessDeployer implements ProcessDeployer {
 	}
 
 	@Override
-	public ProcessStatus status(String id) {
+	public AppStatus status(String id) {
 
-		ProcessStatus.Builder builder = ProcessStatus.of(id);
+		AppStatus.Builder builder = AppStatus.of(id);
 
 		Optional.ofNullable(client.getApplicationInstances(id))
 				.orElse(new InstancesInfo(Collections.emptyList()))

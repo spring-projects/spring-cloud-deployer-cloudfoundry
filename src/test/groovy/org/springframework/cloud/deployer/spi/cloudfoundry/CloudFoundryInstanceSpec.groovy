@@ -19,7 +19,7 @@ import org.cloudfoundry.client.lib.CloudFoundryOperations
 import org.cloudfoundry.client.lib.domain.InstanceInfo
 import org.cloudfoundry.client.lib.domain.InstanceState
 import org.cloudfoundry.client.lib.domain.InstancesInfo
-import org.springframework.cloud.deployer.spi.process.DeploymentState
+import org.springframework.cloud.deployer.spi.app.DeploymentState
 import spock.lang.Specification
 /**
  * @author Greg Turnquist
