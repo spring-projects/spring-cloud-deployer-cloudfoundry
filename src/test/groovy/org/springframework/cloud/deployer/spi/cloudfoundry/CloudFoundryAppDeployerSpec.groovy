@@ -45,7 +45,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle deploying a non-existent app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -75,7 +75,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should fail when deploying an already-existing app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -99,7 +99,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle passing environmental properties through to cloud foundry"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -131,7 +131,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should backoff in case uploading an app fails"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -162,7 +162,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle un-deploying an existing app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -183,7 +183,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should fail to un-deploy a non-existent app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -205,7 +205,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle reading the status of a deployed app"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -234,7 +234,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle reading the status of an app in the middle of getting deployed"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 
@@ -263,7 +263,7 @@ class CloudFoundryAppDeployerSpec extends Specification {
 	def "should handle failing to read a cloud foundry app's status"() {
 		given:
 		CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties()
-		CloudFoundryProcessDeployer deployer = new CloudFoundryProcessDeployer(properties, client)
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(properties, client)
 
 		def appName = 'my-cool-app'
 

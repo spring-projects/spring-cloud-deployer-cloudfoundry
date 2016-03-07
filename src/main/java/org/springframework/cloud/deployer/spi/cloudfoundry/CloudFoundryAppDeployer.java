@@ -43,9 +43,9 @@ import org.springframework.web.client.HttpStatusCodeException;
  *
  * @author Greg Turnquist
  */
-public class CloudFoundryProcessDeployer implements AppDeployer {
+public class CloudFoundryAppDeployer implements AppDeployer {
 
-	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryProcessDeployer.class);
+	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryAppDeployer.class);
 
 	private CloudFoundryAppDeployProperties properties = new CloudFoundryAppDeployProperties();
 
@@ -54,8 +54,8 @@ public class CloudFoundryProcessDeployer implements AppDeployer {
 	private List<Logger> loggers = new ArrayList<>();
 
 	@Autowired
-	public CloudFoundryProcessDeployer(CloudFoundryAppDeployProperties properties,
-									   CloudFoundryOperations client) {
+	public CloudFoundryAppDeployer(CloudFoundryAppDeployProperties properties,
+								   CloudFoundryOperations client) {
 		this.properties = properties;
 		this.client = client;
 		this.registerCustomerLogger(logger);
