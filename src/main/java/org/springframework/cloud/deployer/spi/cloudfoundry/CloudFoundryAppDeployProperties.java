@@ -15,11 +15,13 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+
+import javax.validation.constraints.NotNull;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * @author Greg Turnquist
@@ -36,31 +38,37 @@ public class CloudFoundryAppDeployProperties {
 	/**
 	 * The domain to use when mapping routes for applications.
 	 */
+	@NotNull
 	private String domain;
 
 	/**
 	 * The organization to use when registering new applications.
 	 */
+	@NotNull
 	private String organization;
 
 	/**
 	 * The space to use when registering new applications.
 	 */
+	@NotNull
 	private String space;
 
 	/**
 	 * Location of the CloudFoundry REST API endpoint to use.
 	 */
+	@NotNull
 	private URL apiEndpoint;
 
 	/**
 	 * Username to use to authenticate against the Cloud Foundry API.
 	 */
+	@NotNull
 	private String username;
 
 	/**
 	 * Password to use to authenticate against the Cloud Foundry API.
 	 */
+	@NotNull
 	private String password;
 
 	/**
@@ -71,7 +79,7 @@ public class CloudFoundryAppDeployProperties {
 	/**
 	 * The buildpack to use for deploying the application.
 	 */
-	private String buildpack = "";
+	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v3.6";
 
 	/**
 	 * The amount of memory (MB) to allocate, if not overridden per-module.

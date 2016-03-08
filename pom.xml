@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<artifactId>spring-cloud-cloudfoundry-deployer</artifactId>
@@ -19,7 +19,6 @@
 
 	<properties>
 		<java.version>1.8</java.version>
-		<cloudfoundry-client-lib.version>1.1.4.RELEASE</cloudfoundry-client-lib.version>
 		<cloudfoundry-java-lib.version>2.0.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
 		<reactor.version>2.5.0.M2</reactor.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
@@ -42,11 +41,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.cloudfoundry</groupId>
-			<artifactId>cloudfoundry-client-lib</artifactId>
-			<version>${cloudfoundry-client-lib.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.cloudfoundry</groupId>
 			<artifactId>cloudfoundry-client-spring</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
 		</dependency>
@@ -55,7 +49,6 @@
 			<artifactId>cloudfoundry-operations</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-stream-test-support-internal</artifactId>
@@ -76,6 +69,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-deployer-spi-test</artifactId>
+			<version>${project.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
