@@ -20,6 +20,8 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<cloudfoundry-client-lib.version>1.1.4.RELEASE</cloudfoundry-client-lib.version>
+		<cloudfoundry-java-lib.version>2.0.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
+		<reactor.version>2.5.0.M2</reactor.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
 		<groovy-all.version>2.4.4</groovy-all.version>
 	</properties>
@@ -43,7 +45,22 @@
 			<artifactId>cloudfoundry-client-lib</artifactId>
 			<version>${cloudfoundry-client-lib.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.cloudfoundry</groupId>
+			<artifactId>cloudfoundry-client-spring</artifactId>
+			<version>${cloudfoundry-java-lib.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cloudfoundry</groupId>
+			<artifactId>cloudfoundry-operations</artifactId>
+			<version>${cloudfoundry-java-lib.version}</version>
+		</dependency>
 
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream-test-support-internal</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.spockframework</groupId>
 			<artifactId>spock-core</artifactId>
@@ -94,7 +111,7 @@
 		<repository>
 			<id>spring-snapshots</id>
 			<name>Spring Snapshots</name>
-			<url>http://repo.spring.io/libs-snapshot-local</url>
+			<url>http://repo.spring.io/libs-snapshot</url>
 			<snapshots>
 				<enabled>true</enabled>
 			</snapshots>
@@ -102,7 +119,7 @@
 		<repository>
 			<id>spring-milestones</id>
 			<name>Spring Milestones</name>
-			<url>http://repo.spring.io/libs-milestone-local</url>
+			<url>http://repo.spring.io/libs-milestone</url>
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
