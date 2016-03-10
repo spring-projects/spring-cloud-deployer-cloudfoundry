@@ -23,6 +23,7 @@ import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
 import org.cloudfoundry.spring.client.SpringCloudFoundryClient;
+import org.junit.Before;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -48,6 +49,40 @@ public class CloudFoundryProcessDeployerIntegrationTests extends AbstractAppDepl
 	protected AppDeployer appDeployer() {
 		return appDeployer;
 	}
+
+	/**
+	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if
+	 * running in an environment that is known to be slow.
+	 */
+	protected double timeoutMultiplier = 1.0D;
+
+	@Before
+	public void init() {
+		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
+		if (multiplier != null) {
+			timeoutMultiplier = Double.parseDouble(multiplier);
+		}
+	}
+
+
+	/**
+	 * Return the timeout to use for repeatedly querying a module while it is being deployed.
+	 * Default value is one minute, being queried every 5 seconds.
+	 */
+	@Override
+	protected Timeout deploymentTimeout() {
+		return new Timeout(12 * 4, (int) (5000 * timeoutMultiplier));
+	}
+
+	/**
+	 * Return the timeout to use for repeatedly querying a module while it is being un-deployed.
+	 * Default value is one minute, being queried every 5 seconds.
+	 */
+	@Autowired
+	protected Timeout undeploymentTimeout() {
+		return new Timeout(20 * 4, (int) (5000 * timeoutMultiplier));
+	}
+
 
 	@Configuration
 	@EnableConfigurationProperties(CloudFoundryAppDeployProperties.class)

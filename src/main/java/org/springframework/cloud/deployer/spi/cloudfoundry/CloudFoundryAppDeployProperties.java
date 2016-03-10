@@ -15,11 +15,11 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * @author Greg Turnquist
@@ -71,7 +71,7 @@ public class CloudFoundryAppDeployProperties {
 	/**
 	 * The buildpack to use for deploying the application.
 	 */
-	private String buildpack = "";
+	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v3.6";
 
 	/**
 	 * The amount of memory (MB) to allocate, if not overridden per-module.
