@@ -39,6 +39,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
+import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 
 /**
@@ -68,6 +69,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	@Override
 	public String deploy(AppDeploymentRequest request) {
 		String name = request.getDefinition().getName();
+
+		DeploymentState state = status(name).getState();
+		if (state != DeploymentState.unknown) {
+			throw new IllegalStateException(String.format("App %s is already deployed with state %s", name, state));
+		}
 
 		final InputStream inputStream;
 		try {
