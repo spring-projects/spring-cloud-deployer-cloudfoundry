@@ -19,6 +19,8 @@ import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.validation.constraints.NotNull;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -36,31 +38,37 @@ public class CloudFoundryAppDeployProperties {
 	/**
 	 * The domain to use when mapping routes for applications.
 	 */
+	@NotNull
 	private String domain;
 
 	/**
 	 * The organization to use when registering new applications.
 	 */
+	@NotNull
 	private String organization;
 
 	/**
 	 * The space to use when registering new applications.
 	 */
+	@NotNull
 	private String space;
 
 	/**
 	 * Location of the CloudFoundry REST API endpoint to use.
 	 */
+	@NotNull
 	private URL apiEndpoint;
 
 	/**
 	 * Username to use to authenticate against the Cloud Foundry API.
 	 */
+	@NotNull
 	private String username;
 
 	/**
 	 * Password to use to authenticate against the Cloud Foundry API.
 	 */
+	@NotNull
 	private String password;
 
 	/**

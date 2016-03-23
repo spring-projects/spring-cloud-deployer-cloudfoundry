@@ -24,6 +24,7 @@ import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
 import org.cloudfoundry.spring.client.SpringCloudFoundryClient;
 import org.junit.Before;
+import org.junit.ClassRule;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -41,6 +42,9 @@ import org.springframework.context.annotation.Configuration;
 @SpringApplicationConfiguration(classes = CloudFoundryProcessDeployerIntegrationTests.Config.class)
 @IntegrationTest
 public class CloudFoundryProcessDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
+
+	@ClassRule
+	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
 
 	@Autowired
 	private AppDeployer appDeployer;
