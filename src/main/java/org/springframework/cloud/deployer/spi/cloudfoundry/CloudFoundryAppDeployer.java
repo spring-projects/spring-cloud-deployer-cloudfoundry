@@ -33,7 +33,7 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.SetEnvironmentVariableApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
-import org.cloudfoundry.operations.services.BindServiceRequest;
+import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -108,9 +108,9 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 								.variableValue(argsAsJson)
 								.build()
 				))
-				.after(() -> servicesToBind(request).flatMap(service -> operations.services().bind(BindServiceRequest.builder()
+				.after(() -> servicesToBind(request).flatMap(service -> operations.services().bind(BindServiceInstanceRequest.builder()
 						.applicationName(name)
-						.serviceName(service)
+						.serviceInstanceName(service)
 						.build())).after() /* this after() merges N Mono<Void> back into 1 */)
 				.after(() -> operations.applications().start(StartApplicationRequest.builder().name(name).build()))
 				.subscribe();
