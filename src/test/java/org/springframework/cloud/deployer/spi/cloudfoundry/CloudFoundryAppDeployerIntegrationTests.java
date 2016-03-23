@@ -16,36 +16,60 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-
 import org.junit.Before;
 import org.junit.ClassRule;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.IntegrationTest;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.core.AppDefinition;
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+import org.springframework.util.Assert;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Integration tests for CloudFoundryAppDeployer.
  *
  * @author Eric Bottard
+ * @author Greg Turnquist
  */
 @SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
 @IntegrationTest
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
+	private static final Logger log = LoggerFactory.getLogger(CloudFoundryAppDeployerIntegrationTests.class);
+
 	@ClassRule
 	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
 
 	@Autowired
+	ApplicationContext context;
+
+	@Autowired
 	private AppDeployer appDeployer;
+
+	AppDeploymentRequest request;
+
+	CloudFoundryAppDeployer cloudFoundryAppDeployer;
 
 	@Override
 	protected AppDeployer appDeployer() {
 		return appDeployer;
+	}
+
+	@Override
+	protected Resource integrationTestProcessor() {
+		return context.getResource("classpath:demo-0.0.1-SNAPSHOT.jar");
 	}
 
 	/**
@@ -54,12 +78,25 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	 */
 	protected double timeoutMultiplier = 1.0D;
 
+	protected int maxRetries = 1000;
+
 	@Before
 	public void init() {
 		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
 		if (multiplier != null) {
 			timeoutMultiplier = Double.parseDouble(multiplier);
 		}
+
+		Map<String, String> envProperties = new HashMap<>();
+		envProperties.put("organization", "spring-cloud");
+		envProperties.put("space", "production");
+
+		request = new AppDeploymentRequest(
+			new AppDefinition("sdrdemo", Collections.emptyMap()),
+			context.getResource("classpath:spring-data-rest-demo-0.0.1-SNAPSHOT.jar"),
+			envProperties);
+
+		cloudFoundryAppDeployer = (CloudFoundryAppDeployer) appDeployer;
 	}
 
 
@@ -69,7 +106,7 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	 */
 	@Override
 	protected Timeout deploymentTimeout() {
-		return new Timeout(12 * 4, (int) (5000 * timeoutMultiplier));
+		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
 	}
 
 	/**
@@ -78,9 +115,8 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	 */
 	@Autowired
 	protected Timeout undeploymentTimeout() {
-		return new Timeout(20 * 4, (int) (5000 * timeoutMultiplier));
+		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
 	}
-
 
 	/**
 	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.

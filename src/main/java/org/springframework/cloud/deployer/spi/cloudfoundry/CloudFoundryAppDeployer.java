@@ -15,15 +15,6 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashSet;
-import java.util.Set;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -34,18 +25,26 @@ import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.SetEnvironmentVariableApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.util.Map;
+
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static java.util.stream.Stream.concat;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
  * 
  * @author Eric Bottard
+ * @author Greg Turnquist
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
 
@@ -65,23 +64,22 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		this.operations = operations;
 	}
 
-
 	@Override
 	public String deploy(AppDeploymentRequest request) {
-		String name = request.getDefinition().getName();
-
-		DeploymentState state = status(name).getState();
+		DeploymentState state = status(request.getDefinition().getName()).getState();
 		if (state != DeploymentState.unknown) {
-			throw new IllegalStateException(String.format("App %s is already deployed with state %s", name, state));
+			throw new IllegalStateException(String.format("App %s is already deployed with state %s",
+				request.getDefinition().getName(), state));
 		}
 
-		final InputStream inputStream;
-		try {
-			inputStream = request.getResource().getInputStream();
-		}
-		catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		asyncDeploy(request)
+			.subscribe();
+
+		return request.getDefinition().getName();
+	}
+
+	Mono<Void> asyncDeploy(AppDeploymentRequest request) {
+		String name = request.getDefinition().getName();
 		final String argsAsJson;
 		try {
 			argsAsJson = new ObjectMapper().writeValueAsString(request.getDefinition().getProperties());
@@ -89,76 +87,108 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		catch (JsonProcessingException e) {
 			throw new RuntimeException(e);
 		}
-
-		operations.applications()
+		try {
+			return operations.applications()
 				.push(PushApplicationRequest.builder()
-						.name(name)
-						.application(inputStream)
-						.domain(properties.getDomain())
-						.buildpack(properties.getBuildpack())
-						.diskQuota(diskQuota(request))
-						.instances(instances(request))
-						.memory(memory(request))
-						.noStart(true)
-						.build())
+					.name(request.getDefinition().getName())
+					.application(request.getResource().getInputStream())
+					.domain(properties.getDomain())
+					.buildpack(properties.getBuildpack())
+					.diskQuota(diskQuota(request))
+					.instances(instances(request))
+					.memory(memory(request))
+					.noStart(true)
+					.build())
 				.after(() -> operations.applications().setEnvironmentVariable(
-						SetEnvironmentVariableApplicationRequest.builder()
-								.name(name)
-								.variableName("SPRING_APPLICATION_JSON")
-								.variableValue(argsAsJson)
-								.build()
+					SetEnvironmentVariableApplicationRequest.builder()
+						.name(name)
+						.variableName("SPRING_APPLICATION_JSON")
+						.variableValue(argsAsJson)
+						.build()
 				))
-				.after(() -> servicesToBind(request).flatMap(service -> operations.services().bind(BindServiceInstanceRequest.builder()
-						.applicationName(name)
-						.serviceInstanceName(service)
-						.build())).after() /* this after() merges N Mono<Void> back into 1 */)
-				.after(() -> operations.applications().start(StartApplicationRequest.builder().name(name).build()))
-				.subscribe();
-
-
-		return request.getDefinition().getName();
+				.after(() -> servicesToBind(request)
+					.flatMap(service -> operations.services()
+						.bind(BindServiceInstanceRequest.builder()
+							.applicationName(request.getDefinition().getName())
+							.serviceInstanceName(service)
+							.build()))
+					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
+                .after(() -> operations.applications()
+                    .start(StartApplicationRequest.builder()
+                        .name(request.getDefinition().getName())
+                        .build()));
+		} catch (IOException e) {
+			return Mono.error(e);
+		}
 	}
-
 
 	@Override
 	public void undeploy(String id) {
-		operations.applications().delete(
-				DeleteApplicationRequest.builder().deleteRoutes(true).name(id).build()
-		).subscribe();
+		asyncUndeploy(id).subscribe();
+	}
 
+	Mono<Void> asyncUndeploy(String id) {
+		return operations.applications()
+			.delete(
+				DeleteApplicationRequest.builder()
+					.deleteRoutes(true)
+					.name(id)
+					.build()
+		);
 	}
 
 	@Override
 	public AppStatus status(String id) {
-		return operations.applications().get(GetApplicationRequest.builder().name(id).build())
-				.then(ad -> createAppStatusBuilder(id, ad))
-				.otherwise(e -> emptyAppStatusBuilder(id))
-				.map(AppStatus.Builder::build)
-				.get();
+		return asyncStatus(id)
+			.get();
+	}
+
+	Mono<AppStatus> asyncStatus(String id) {
+		return operations.applications()
+			.get(GetApplicationRequest.builder()
+				.name(id)
+				.build())
+			.then(ad -> createAppStatusBuilder(id, ad))
+			.otherwise(e -> emptyAppStatusBuilder(id))
+			.map(AppStatus.Builder::build);
 	}
 
 
+	private Flux<Map.Entry<String, String>> environmenVariables(AppDeploymentRequest request) {
+		return Flux.fromStream(request.getDefinition().getProperties().entrySet().stream());
+	}
+
+	/**
+	 * TODO: Should we join properties with override, or replace?
+	 *
+	 * @param request
+	 * @return
+	 */
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {
-		Set<String> services = new HashSet<>(properties.getServices());
-		services.addAll(commaDelimitedListToSet(request.getEnvironmentProperties().get(SERVICES_PROPERTY_KEY)));
-		return Flux.fromIterable(services);
+		return Flux.fromStream(
+			concat(
+				properties.getServices().stream(),
+				commaDelimitedListToSet(request.getEnvironmentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
-		return parseInt(request.getEnvironmentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+		return parseInt(
+			request.getEnvironmentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
-		return parseInt(request.getEnvironmentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
+		return parseInt(
+			request.getEnvironmentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
 	}
 
 	private int diskQuota(AppDeploymentRequest request) {
-		return parseInt(request.getEnvironmentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+		return parseInt(
+			request.getEnvironmentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {
 		return emptyAppStatusBuilder(id)
-				.then(b -> addInstances(b, ad));
+			.then(b -> addInstances(b, ad));
 	}
 
 	private Mono<AppStatus.Builder> emptyAppStatusBuilder(String id) {
