@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.spi.cloudfoundry
+package org.springframework.cloud.deployer.spi.cloudfoundry.v1
 import org.apache.commons.io.IOUtils
 import org.cloudfoundry.client.lib.CloudFoundryException
 import org.cloudfoundry.client.lib.CloudFoundryOperations
@@ -23,6 +23,7 @@ import org.cloudfoundry.client.lib.domain.CloudDomain
 import org.cloudfoundry.client.lib.domain.InstanceState
 import org.cloudfoundry.client.lib.domain.InstancesInfo
 import org.springframework.cloud.deployer.spi.app.DeploymentState
+import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryAppDeployProperties
 import org.springframework.cloud.deployer.spi.core.AppDefinition
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest
 import org.springframework.core.io.Resource

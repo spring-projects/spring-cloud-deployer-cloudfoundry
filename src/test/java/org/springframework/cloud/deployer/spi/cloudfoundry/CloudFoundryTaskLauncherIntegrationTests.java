@@ -41,7 +41,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Runs integration tests for {@link CloudFoundryAppDeployer}, using the production configuration,
+ * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
  * that may be configured via {@link CloudFoundryAppDeployProperties}.
  *
  * Tests are only run if a successful connection can be made at startup.
