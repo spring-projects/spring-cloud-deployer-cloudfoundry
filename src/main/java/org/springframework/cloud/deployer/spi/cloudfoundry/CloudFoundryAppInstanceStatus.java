@@ -25,7 +25,9 @@ import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 
 /**
- * Created by ericbottard on 09/03/16.
+ * Maps status returned by the Cloud Foundry API to {@link AppInstanceStatus}.
+ *
+ * @author Eric Bottard
  */
 public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 
