@@ -16,13 +16,23 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import org.cloudfoundry.util.test.TestSubscriber;
 import org.junit.Before;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.IntegrationTest;
 import org.springframework.boot.test.SpringApplicationConfiguration;
@@ -32,17 +42,9 @@ import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-
 /**
- * Runs integration tests for {@link CloudFoundryAppDeployer}, using the production configuration,
- * that may be configured via {@link CloudFoundryAppDeployProperties}.
+ * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
+ * that may be configured via {@link CloudFoundryDeployerProperties}.
  *
  * Tests are only run if a successful connection can be made at startup.
  *
@@ -50,8 +52,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Greg Turnquist
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(classes = CloudFoundryAppDeployProperties.class)
+@SpringApplicationConfiguration(classes = CloudFoundryDeployerProperties.class)
 @IntegrationTest
+@Ignore
 public class CloudFoundryTaskLauncherIntegrationTests {
 
 	private static final Logger log = LoggerFactory.getLogger(CloudFoundryTaskLauncherIntegrationTests.class);
@@ -62,7 +65,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	ApplicationContext context;
 
 	@Autowired
-	CloudFoundryAppDeployProperties properties;
+	CloudFoundryDeployerProperties properties;
 
 	AppDeploymentRequest request;
 

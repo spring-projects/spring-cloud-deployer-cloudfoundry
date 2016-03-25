@@ -17,31 +17,25 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 
-import java.net.URL;
-
-import org.cloudfoundry.client.CloudFoundryClient;
-import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
-import org.cloudfoundry.spring.client.SpringCloudFoundryClient;
 import org.junit.Before;
 import org.junit.ClassRule;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.IntegrationTest;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Integration tests for CloudFoundryProcessDeployerIntegration.
+ * Integration tests for CloudFoundryAppDeployer.
+ *
  * @author Eric Bottard
  */
-@SpringApplicationConfiguration(classes = CloudFoundryProcessDeployerIntegrationTests.Config.class)
+@SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
 @IntegrationTest
-public class CloudFoundryProcessDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
+public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
 	@ClassRule
 	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
@@ -88,37 +82,14 @@ public class CloudFoundryProcessDeployerIntegrationTests extends AbstractAppDepl
 	}
 
 
+	/**
+	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.
+	 *
+	 * @author Eric Bottard
+	 */
 	@Configuration
-	@EnableConfigurationProperties(CloudFoundryAppDeployProperties.class)
+	@EnableAutoConfiguration
 	public static class Config {
-
-		@Bean
-		public CloudFoundryClient cloudFoundryClient(CloudFoundryAppDeployProperties properties) {
-			URL apiEndpoint = properties.getApiEndpoint();
-
-			return SpringCloudFoundryClient.builder()
-					.host(apiEndpoint.getHost())
-					.port(apiEndpoint.getPort())
-					.username(properties.getUsername())
-					.password(properties.getPassword())
-					.skipSslValidation(properties.isSkipSslValidation())
-					.build();
-		}
-
-		@Bean
-		CloudFoundryOperations cloudFoundryOperations(CloudFoundryAppDeployProperties properties, CloudFoundryClient cloudFoundryClient) {
-			return new CloudFoundryOperationsBuilder()
-					.cloudFoundryClient(cloudFoundryClient)
-					.target(properties.getOrganization(), properties.getSpace())
-					.build();
-		}
-
-
-		@Bean
-		public AppDeployer appDeployer(CloudFoundryAppDeployProperties properties, CloudFoundryOperations operations) {
-			return new CloudFoundryAppDeployer(properties, operations);
-		}
-
 	}
 
 }

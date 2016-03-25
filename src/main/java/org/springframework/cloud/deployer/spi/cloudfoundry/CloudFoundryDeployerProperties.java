@@ -24,10 +24,13 @@ import javax.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
+ * Holds configuration properties for connecting to a Cloud Foundry runtime.
+ *
+ * @author Eric Bottard
  * @author Greg Turnquist
  */
-@ConfigurationProperties(prefix = "deployer.cf")
-public class CloudFoundryAppDeployProperties {
+@ConfigurationProperties(prefix = "spring.cloud.cloudfoundry.deployer")
+public class CloudFoundryDeployerProperties {
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.

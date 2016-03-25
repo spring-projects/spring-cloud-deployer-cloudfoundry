@@ -55,11 +55,11 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 	@Configuration
 	@EnableAutoConfiguration
-	@EnableConfigurationProperties(CloudFoundryAppDeployProperties.class)
+	@EnableConfigurationProperties(CloudFoundryDeployerProperties.class)
 	public static class Config {
 
 		@Bean
-		public CloudFoundryClient cloudFoundryClient(CloudFoundryAppDeployProperties properties) {
+		public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties) {
 			return SpringCloudFoundryClient.builder()
 				.username(properties.getUsername())
 				.password(properties.getPassword())
@@ -71,7 +71,7 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 		@Bean
 		public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient,
-															 CloudFoundryAppDeployProperties properties) {
+															 CloudFoundryDeployerProperties properties) {
 			return new CloudFoundryOperationsBuilder()
 				.cloudFoundryClient(cloudFoundryClient)
 				.target(properties.getOrganization(), properties.getSpace())
