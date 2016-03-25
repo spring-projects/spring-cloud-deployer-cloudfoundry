@@ -56,11 +56,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
 
-	private final CloudFoundryAppDeployProperties properties;
+	private final CloudFoundryDeployerProperties properties;
 
 	private final CloudFoundryOperations operations;
 
-	public CloudFoundryAppDeployer(CloudFoundryAppDeployProperties properties, CloudFoundryOperations operations) {
+	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations) {
 		this.properties = properties;
 		this.operations = operations;
 	}
