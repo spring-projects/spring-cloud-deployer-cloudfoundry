@@ -16,13 +16,12 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.cloudfoundry.operations.applications.ApplicationDetail;
-
 import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Maps status returned by the Cloud Foundry API to {@link AppInstanceStatus}.
@@ -53,6 +52,7 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 		if (instanceDetail == null) {
 			return DeploymentState.failed;
 		}
+
 		switch (instanceDetail.getState()) {
 			case "STARTING":
 			case "DOWN":
