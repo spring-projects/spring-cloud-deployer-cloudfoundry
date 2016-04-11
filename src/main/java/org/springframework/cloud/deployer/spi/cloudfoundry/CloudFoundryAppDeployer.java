@@ -15,6 +15,14 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static java.util.stream.Stream.concat;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
+
+import java.io.IOException;
+import java.util.Map;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -25,20 +33,13 @@ import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.SetEnvironmentVariableApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.util.Map;
-
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static java.util.stream.Stream.concat;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -66,20 +67,21 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	@Override
 	public String deploy(AppDeploymentRequest request) {
-		DeploymentState state = status(request.getDefinition().getName()).getState();
+		String deploymentId = deploymentId(request);
+		DeploymentState state = status(deploymentId).getState();
 		if (state != DeploymentState.unknown) {
 			throw new IllegalStateException(String.format("App %s is already deployed with state %s",
-				request.getDefinition().getName(), state));
+					deploymentId, state));
 		}
 
 		asyncDeploy(request)
-			.subscribe();
+				.subscribe();
 
-		return request.getDefinition().getName();
+		return deploymentId;
 	}
 
 	Mono<Void> asyncDeploy(AppDeploymentRequest request) {
-		String name = request.getDefinition().getName();
+		String name = deploymentId(request);
 		final String argsAsJson;
 		try {
 			argsAsJson = new ObjectMapper().writeValueAsString(request.getDefinition().getProperties());
@@ -90,7 +92,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		try {
 			return operations.applications()
 				.push(PushApplicationRequest.builder()
-					.name(request.getDefinition().getName())
+					.name(name)
 					.application(request.getResource().getInputStream())
 					.domain(properties.getDomain())
 					.buildpack(properties.getBuildpack())
@@ -109,13 +111,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.after(() -> servicesToBind(request)
 					.flatMap(service -> operations.services()
 						.bind(BindServiceInstanceRequest.builder()
-							.applicationName(request.getDefinition().getName())
+							.applicationName(name)
 							.serviceInstanceName(service)
 							.build()))
 					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
                 .after(() -> operations.applications()
                     .start(StartApplicationRequest.builder()
-                        .name(request.getDefinition().getName())
+                        .name(name)
                         .build()));
 		} catch (IOException e) {
 			return Mono.error(e);
@@ -158,12 +160,12 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		return Flux.fromStream(request.getDefinition().getProperties().entrySet().stream());
 	}
 
-	/**
-	 * TODO: Should we join properties with override, or replace?
-	 *
-	 * @param request
-	 * @return
-	 */
+	private String deploymentId(AppDeploymentRequest request) {
+		return String.format("%s-%s",
+				request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY),
+				request.getDefinition().getName());
+	}
+
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {
 		return Flux.fromStream(
 			concat(
