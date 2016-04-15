@@ -20,7 +20,7 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<cloudfoundry-java-lib.version>2.0.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
-		<reactor.version>2.5.0.M2</reactor.version>
+		<reactor.version>2.5.0.BUILD-SNAPSHOT</reactor.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
 		<groovy-all.version>2.4.4</groovy-all.version>
 	</properties>
