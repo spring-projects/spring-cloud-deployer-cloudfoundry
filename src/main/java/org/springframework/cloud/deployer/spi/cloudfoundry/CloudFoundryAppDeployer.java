@@ -25,6 +25,8 @@ import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
@@ -60,6 +62,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private final CloudFoundryOperations operations;
 
+	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeployer.class);
+
 	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations) {
 		this.properties = properties;
 		this.operations = operations;
@@ -92,7 +96,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		try {
 			return operations.applications()
 				.push(PushApplicationRequest.builder()
-					.name(name)
+					.name(request.getDefinition().getName())
 					.application(request.getResource().getInputStream())
 					.domain(properties.getDomain())
 					.buildpack(properties.getBuildpack())
@@ -101,24 +105,34 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.memory(memory(request))
 					.noStart(true)
 					.build())
+				.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
+				.doOnError(e -> logger.error(String.format("Error creating app %s", name), e))
 				.after(() -> operations.applications().setEnvironmentVariable(
 					SetEnvironmentVariableApplicationRequest.builder()
 						.name(name)
 						.variableName("SPRING_APPLICATION_JSON")
 						.variableValue(argsAsJson)
-						.build()
-				))
+						.build())
+					.doOnSuccess(v -> logger.debug(String.format("Setting env for app %s as %s", name, argsAsJson)))
+					.doOnError(e -> logger.error(String.format("Error setting environment for app %s", name), e))
+				)
 				.after(() -> servicesToBind(request)
 					.flatMap(service -> operations.services()
 						.bind(BindServiceInstanceRequest.builder()
 							.applicationName(name)
 							.serviceInstanceName(service)
-							.build()))
+							.build())
+							.doOnSuccess(v -> logger.debug(String.format("Binding service %s to app %s", service, name)))
+							.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
+					)
 					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
                 .after(() -> operations.applications()
                     .start(StartApplicationRequest.builder()
-                        .name(name)
-                        .build()));
+                        .name(request.getDefinition().getName())
+                        .build())
+		                .doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
+		                .doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
+                );
 		} catch (IOException e) {
 			return Mono.error(e);
 		}
@@ -132,11 +146,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	Mono<Void> asyncUndeploy(String id) {
 		return operations.applications()
 			.delete(
-				DeleteApplicationRequest.builder()
-					.deleteRoutes(true)
-					.name(id)
-					.build()
-		);
+					DeleteApplicationRequest.builder()
+							.deleteRoutes(true)
+							.name(id)
+							.build()
+			)
+			.doOnSuccess(v -> logger.info(String.format("Sucessfully undeployed app %s", id)))
+			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e));
 	}
 
 	@Override
@@ -148,8 +164,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	Mono<AppStatus> asyncStatus(String id) {
 		return operations.applications()
 			.get(GetApplicationRequest.builder()
-				.name(id)
-				.build())
+					.name(id)
+					.build())
 			.then(ad -> createAppStatusBuilder(id, ad))
 			.otherwise(e -> emptyAppStatusBuilder(id))
 			.map(AppStatus.Builder::build);
