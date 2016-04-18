@@ -177,9 +177,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
-		if (!request.getEnvironmentProperties().containsKey(GROUP_PROPERTY_KEY)) {
-			throw new IllegalArgumentException("Environment property [" + GROUP_PROPERTY_KEY + "] is required for deployment.");
-		}
 		return String.format("%s-%s",
 			request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY),
 			request.getDefinition().getName());
