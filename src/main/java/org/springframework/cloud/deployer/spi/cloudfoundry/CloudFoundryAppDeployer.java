@@ -96,7 +96,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		try {
 			return operations.applications()
 				.push(PushApplicationRequest.builder()
-					.name(request.getDefinition().getName())
+					.name(name)
 					.application(request.getResource().getInputStream())
 					.domain(properties.getDomain())
 					.buildpack(properties.getBuildpack())
@@ -128,7 +128,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
                 .after(() -> operations.applications()
                     .start(StartApplicationRequest.builder()
-                        .name(request.getDefinition().getName())
+                        .name(name)
                         .build())
 		                .doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
 		                .doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
