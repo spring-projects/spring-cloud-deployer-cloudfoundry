@@ -22,6 +22,7 @@ import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -177,9 +178,9 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
-		return String.format("%s-%s",
-			request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY),
-			request.getDefinition().getName());
+		return Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
+						.map(groupName -> String.format("%s-", groupName))
+						.orElse("") + request.getDefinition().getName();
 	}
 
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {

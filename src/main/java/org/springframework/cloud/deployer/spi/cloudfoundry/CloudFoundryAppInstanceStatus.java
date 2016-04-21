@@ -16,12 +16,13 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.cloudfoundry.operations.applications.ApplicationDetail;
-import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
-import org.springframework.cloud.deployer.spi.app.DeploymentState;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.cloudfoundry.operations.applications.ApplicationDetail;
+
+import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
+import org.springframework.cloud.deployer.spi.app.DeploymentState;
 
 /**
  * Maps status returned by the Cloud Foundry API to {@link AppInstanceStatus}.
