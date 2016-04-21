@@ -15,14 +15,6 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static java.util.stream.Stream.concat;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
-
-import java.io.IOException;
-import java.util.Map;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
@@ -35,13 +27,21 @@ import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.SetEnvironmentVariableApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
+
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static java.util.stream.Stream.concat;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -177,9 +177,9 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
-		return String.format("%s-%s",
-			request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY),
-			request.getDefinition().getName());
+		return Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
+						.map(groupName -> String.format("%s-", groupName))
+						.orElse("") + request.getDefinition().getName();
 	}
 
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {
