@@ -3,12 +3,11 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<artifactId>spring-cloud-cloudfoundry-deployer</artifactId>
+	<artifactId>spring-cloud-deployer-cloudfoundry</artifactId>
 	<version>1.0.0.BUILD-SNAPSHOT</version>
 	<groupId>org.springframework.cloud</groupId>
 	<packaging>jar</packaging>
 
-	<name>spring-cloud-cloudfoundry-deployer</name>
 	<description>Spring Cloud - Cloud Foundry Deployer</description>
 
 	<parent>
