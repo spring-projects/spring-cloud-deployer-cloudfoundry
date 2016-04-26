@@ -3,8 +3,8 @@ logging:
     cloudfoundry-client: DEBUG
 #spring:
 #  cloud:
-#    cloudfoundry:
-#      deployer:
+#    deployer:
+#      cloudfoundry:
 #        domain: navy.springapps.io
 #        organization: mpollack-org
 #        space: development

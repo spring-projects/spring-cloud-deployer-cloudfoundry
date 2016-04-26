@@ -16,6 +16,12 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
+import static org.cloudfoundry.util.tuple.TupleUtils.function;
+
+import java.io.IOException;
+import java.time.Duration;
+
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.spaces.ListSpacesRequest;
 import org.cloudfoundry.client.v3.Relationship;
@@ -42,18 +48,13 @@ import org.cloudfoundry.util.PaginationUtils;
 import org.cloudfoundry.util.ResourceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.time.Duration;
-
-import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
-import static org.cloudfoundry.util.tuple.TupleUtils.function;
 
 /**
  * @author Greg Turnquist
@@ -86,7 +87,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
         asyncLaunch(request).subscribe();
 
-        /**
+        /*
          * The blocking API does NOT wait for async operations to complete before
          * returning
          */

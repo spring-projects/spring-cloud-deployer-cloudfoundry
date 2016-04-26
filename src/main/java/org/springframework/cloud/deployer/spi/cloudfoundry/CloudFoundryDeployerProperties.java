@@ -29,7 +29,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@ConfigurationProperties(prefix = "spring.cloud.cloudfoundry.deployer")
+@ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
 public class CloudFoundryDeployerProperties {
 
 	/**
