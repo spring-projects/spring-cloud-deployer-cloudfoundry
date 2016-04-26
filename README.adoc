@@ -1,3 +1,39 @@
-= Spring Cloud - Cloud Foundry Deployer
+= Spring Cloud Deployer for Cloud Foundry image:https://build.spring.io/plugins/servlet/buildStatusImage/SCD-DCF[Build Status, link=https://build.spring.io/browse/SCD-DCF] image:https://badge.waffle.io/spring-cloud/spring-cloud-deployer-cloudfoundry.svg?label=ready&title=Ready[Stories Ready, link=http://waffle.io/spring-cloud/spring-cloud-deployer-cloudfoundry] image:https://badge.waffle.io/spring-cloud/spring-cloud-deployer-cloudfoundry.svg?label=In%20Progress&title=In%20Progress[Stories In Progress, link=http://waffle.io/spring-cloud/spring-cloud-deployer-cloudfoundry]
 
 This project provides a common means to deploy applications to Cloud Foundry based on the Spring Cloud Deployer SPI.
+
+== Building
+
+Clone the repo and type
+
+----
+$ ./mvnw clean install
+----
+
+The project includes a set of integration tests that can be run against a Cloud Foundry installation, provided that
+connection information is correctly set. If credentials are not set correctly, those tests will be silently skipped.
+Below is the list of environment variables you'll want to specify:
+
+----
+# url of the CF API (used when using cf login -a for example)
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_API_ENDPOINT
+
+# name of the space into which modules will be deployed
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_SPACE
+
+# name of the organization that owns the space above
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_ORGANIZATION
+
+# the root domain to use when mapping routes
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_DOMAIN
+
+# Comma separated set of service instance names to bind to the deployed app
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_SERVICES
+
+# username and password of the user to use to create apps
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_USERNAME
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_PASSWORD
+
+# whether to allow self-signed certificates during SSL validation
+SPRING_CLOUD_CLOUDFOUNDRY_DEPLOYER_SKIP_SSL_VALIDATION
+----
