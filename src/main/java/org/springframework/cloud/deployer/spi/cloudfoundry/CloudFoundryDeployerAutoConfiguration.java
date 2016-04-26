@@ -43,6 +43,7 @@ import org.springframework.core.Ordered;
 public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
+	@ConditionalOnMissingBean
 	public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties) {
 		URL apiEndpoint = properties.getApiEndpoint();
 
@@ -56,6 +57,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 	}
 
 	@Bean
+	@ConditionalOnMissingBean
 	CloudFoundryOperations cloudFoundryOperations(CloudFoundryDeployerProperties properties, CloudFoundryClient cloudFoundryClient) {
 		return new CloudFoundryOperationsBuilder()
 				.cloudFoundryClient(cloudFoundryClient)
