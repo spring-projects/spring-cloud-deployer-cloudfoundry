@@ -39,6 +39,11 @@
 			<artifactId>spring-boot-loader</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
 			<groupId>org.cloudfoundry</groupId>
 			<artifactId>cloudfoundry-client-spring</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
