@@ -15,13 +15,12 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import javax.validation.constraints.NotNull;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
-
-import javax.validation.constraints.NotNull;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
@@ -29,7 +28,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@ConfigurationProperties(prefix = "spring.cloud.cloudfoundry.deployer")
+@ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
 public class CloudFoundryDeployerProperties {
 
 	/**
