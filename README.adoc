@@ -16,13 +16,13 @@ Below is a short list of common Spring Boot @ConfigurationProperties (in environ
 
 ----
 # url of the CF API (used when using cf login -a for example)
-SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_API_ENDPOINT
+SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_URL
 
 # name of the space into which modules will be deployed
 SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_SPACE
 
 # name of the organization that owns the space above
-SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_ORGANIZATION
+SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_ORG
 
 # the root domain to use when mapping routes
 SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_DOMAIN

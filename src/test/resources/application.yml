@@ -6,9 +6,9 @@ logging:
 #    deployer:
 #      cloudfoundry:
 #        domain: navy.springapps.io
-#        organization: mpollack-org
+#        org : mpollack-org
 #        space: development
-#        apiEndpoint: https://api.navy.springapps.io
+#        url : https://api.navy.springapps.io
 #        username: *****
 #        password: *****
 #        skipSslValidation: true

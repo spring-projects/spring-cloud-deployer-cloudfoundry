@@ -63,8 +63,8 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 			return SpringCloudFoundryClient.builder()
 				.username(properties.getUsername())
 				.password(properties.getPassword())
-				.host(properties.getApiEndpoint().getHost())
-				.port(properties.getApiEndpoint().getPort())
+				.host(properties.getUrl().getHost())
+				.port(properties.getUrl().getPort())
 				.skipSslValidation(properties.isSkipSslValidation())
 				.build();
 		}
@@ -74,7 +74,7 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 															 CloudFoundryDeployerProperties properties) {
 			return new CloudFoundryOperationsBuilder()
 				.cloudFoundryClient(cloudFoundryClient)
-				.target(properties.getOrganization(), properties.getSpace())
+				.target(properties.getOrg(), properties.getSpace())
 				.build();
 		}
 
