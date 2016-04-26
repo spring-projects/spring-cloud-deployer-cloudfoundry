@@ -15,13 +15,12 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import javax.validation.constraints.NotNull;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
-
-import javax.validation.constraints.NotNull;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
@@ -48,7 +47,7 @@ public class CloudFoundryDeployerProperties {
 	 * The organization to use when registering new applications.
 	 */
 	@NotNull
-	private String organization;
+	private String org;
 
 	/**
 	 * The space to use when registering new applications.
@@ -60,7 +59,7 @@ public class CloudFoundryDeployerProperties {
 	 * Location of the CloudFoundry REST API endpoint to use.
 	 */
 	@NotNull
-	private URL apiEndpoint;
+	private URL url;
 
 	/**
 	 * Username to use to authenticate against the Cloud Foundry API.
@@ -115,12 +114,12 @@ public class CloudFoundryDeployerProperties {
 		this.domain = domain;
 	}
 
-	public String getOrganization() {
-		return organization;
+	public String getOrg() {
+		return org;
 	}
 
-	public void setOrganization(String organization) {
-		this.organization = organization;
+	public void setOrg(String org) {
+		this.org = org;
 	}
 
 	public String getSpace() {
@@ -131,12 +130,12 @@ public class CloudFoundryDeployerProperties {
 		this.space = space;
 	}
 
-	public URL getApiEndpoint() {
-		return apiEndpoint;
+	public URL getUrl() {
+		return url;
 	}
 
-	public void setApiEndpoint(URL apiEndpoint) {
-		this.apiEndpoint = apiEndpoint;
+	public void setUrl(URL url) {
+		this.url = url;
 	}
 
 	public String getUsername() {

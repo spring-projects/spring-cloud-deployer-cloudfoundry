@@ -44,7 +44,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties) {
-		URL apiEndpoint = properties.getApiEndpoint();
+		URL apiEndpoint = properties.getUrl();
 
 		return SpringCloudFoundryClient.builder()
 				.host(apiEndpoint.getHost())
@@ -59,7 +59,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 	CloudFoundryOperations cloudFoundryOperations(CloudFoundryDeployerProperties properties, CloudFoundryClient cloudFoundryClient) {
 		return new CloudFoundryOperationsBuilder()
 				.cloudFoundryClient(cloudFoundryClient)
-				.target(properties.getOrganization(), properties.getSpace())
+				.target(properties.getOrg(), properties.getSpace())
 				.build();
 	}
 
