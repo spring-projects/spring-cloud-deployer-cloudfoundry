@@ -17,6 +17,7 @@
 
 	<properties>
 		<java.version>1.8</java.version>
+		<spring-cloud-deployer-spi.version>1.0.0.M1</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.0.0.M4</cloudfoundry-java-lib.version>
 		<reactor.version>2.5.0.M3</reactor.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
@@ -27,7 +28,7 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-spi</artifactId>
-			<version>${project.version}</version>
+			<version>${spring-cloud-deployer-spi.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -84,7 +85,7 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-spi-test</artifactId>
-			<version>${project.version}</version>
+			<version>${spring-cloud-deployer-spi.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
