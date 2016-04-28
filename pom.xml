@@ -5,6 +5,7 @@
 	<artifactId>spring-cloud-deployer-cloudfoundry</artifactId>
 	<version>1.0.0.BUILD-SNAPSHOT</version>
 	<groupId>org.springframework.cloud</groupId>
+	<name>spring-cloud-deployer-cloudfoundry</name>
 	<packaging>jar</packaging>
 
 	<description>Spring Cloud - Cloud Foundry Deployer</description>
@@ -41,6 +42,12 @@
 			<groupId>org.cloudfoundry</groupId>
 			<artifactId>cloudfoundry-client-spring</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.atteo</groupId>
+					<artifactId>evo-inflector</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.cloudfoundry</groupId>
