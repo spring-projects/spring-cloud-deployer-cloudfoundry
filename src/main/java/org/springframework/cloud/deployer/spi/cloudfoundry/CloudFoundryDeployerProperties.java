@@ -15,13 +15,13 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
-import javax.validation.constraints.NotNull;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+import javax.validation.constraints.NotNull;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
@@ -31,6 +31,12 @@ import java.util.Set;
  */
 @ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
 public class CloudFoundryDeployerProperties {
+
+	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
+
+	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
+
+	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
@@ -103,6 +109,11 @@ public class CloudFoundryDeployerProperties {
 	 * Flag to enable prefixing the app name with a random prefix
 	 */
 	private boolean enableRandomAppNamePrefix = true;
+
+	/**
+	 * Timeout for blocking task launches
+	 */
+	private long taskTimeout = 30L;
 
 	/**
 	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
@@ -220,5 +231,13 @@ public class CloudFoundryDeployerProperties {
 
 	public void setAppNamePrefix(String appNamePrefix) {
 		this.appNamePrefix = appNamePrefix;
+	}
+
+	public long getTaskTimeout() {
+		return taskTimeout;
+	}
+
+	public void setTaskTimeout(long taskTimeout) {
+		this.taskTimeout = taskTimeout;
 	}
 }

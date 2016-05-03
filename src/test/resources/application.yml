@@ -5,11 +5,14 @@ spring:
   cloud:
     deployer:
       cloudfoundry:
-        domain: navy.springapps.io
-        org : mpollack-org
-        space: development
-        url : https://api.navy.springapps.io
-        username: mpollack
-        password: metrocard
+#        domain: navy.springapps.io
+#        org : mpollack-org
+#        space: development
+#        url : https://api.navy.springapps.io
+#        username: mpollack
+#        password: metrocard
         skipSslValidation: true
-        services: redis
+        services: my_mysql
+        defaults:
+          services: my_mysql
+

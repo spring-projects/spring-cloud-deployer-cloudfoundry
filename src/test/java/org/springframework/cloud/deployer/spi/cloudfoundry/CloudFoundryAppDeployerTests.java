@@ -16,19 +16,7 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.rules.ExpectedException.none;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,6 +53,17 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.rules.ExpectedException.none;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
@@ -110,54 +109,28 @@ public class CloudFoundryAppDeployerTests {
 	}
 
 	@Test
-	public void shouldSwitchToSimpleDeploymentIdWhenGroupIsLeftOut() {
+	public void shouldNamespaceTheDeploymentIdWhenAGroupIsUsed() throws InterruptedException, IOException {
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
-		// given
-		given(operations.applications()).willReturn(applications);
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("id")
-				.name("time")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.build()));
-
-		// when
-		String deploymentId = deployer.deploy(new AppDeploymentRequest(
+		String deploymentId = runFullDeployment(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
-				new FileSystemResource("")));
-
-		// then
-		assertThat(deploymentId, equalTo("dataflow-server-time"));
-	}
-
-	@Test
-	public void shouldNamespaceTheDeploymentIdWhenAGroupIsUsed() {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("id")
-				.name("time")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.build()));
-
-		// when
-		String deploymentId = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				new FileSystemResource(""),
+				resource,
 				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "ticktock")));
 
 		// then
 		assertThat(deploymentId, equalTo("dataflow-server-ticktock-time"));
+	}
+
+	@Test
+	public void shouldNotNamespaceTheDeploymentIdWhenNoGroupIsUsed() throws InterruptedException, IOException {
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		String deploymentId = runFullDeployment(new AppDeploymentRequest(
+				new AppDefinition("time", Collections.emptyMap()),
+				resource,
+				Collections.emptyMap()));
+
+		assertThat(deploymentId, equalTo("dataflow-server-time"));
 	}
 
 	@Test
@@ -178,22 +151,11 @@ public class CloudFoundryAppDeployerTests {
 		deploymentProperties.put(fooKey, fooVal);
 		deploymentProperties.put(barKey, barVal);
 
-		final Resource mockResource = mock(Resource.class);
-
 		deployer = new CloudFoundryAppDeployer(properties, operations, client, deploymentCustomizer);
 
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.build()));
+		mockGetApplication("test", "RUNNING");
 		given(applications.push(any())).willReturn(Mono.empty());
 		given(applications.start(any())).willReturn(Mono.empty());
 
@@ -202,16 +164,15 @@ public class CloudFoundryAppDeployerTests {
 		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
 				.build()));
 
-		given(mockResource.getInputStream()).willReturn(mock(InputStream.class));
-
 		// when
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		deployer.asyncDeploy(new AppDeploymentRequest(
 				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
-				mockResource,
+				resource,
 				deploymentProperties))
-			.subscribe(testSubscriber);
+				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
 
@@ -242,48 +203,12 @@ public class CloudFoundryAppDeployerTests {
 
 	@Test
 	public void shouldHandleRoutineDeployment() throws InterruptedException, IOException {
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
-		// given
-		final Resource mockResource = mock(Resource.class);
-
-		deployer.getProperties().setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
-
-		given(operations.applications()).willReturn(applications);
-		given(operations.services()).willReturn(services);
-
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("sample-app")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.build()));
-		given(applications.push(any())).willReturn(Mono.empty());
-		given(applications.start(any())).willReturn(Mono.empty());
-
-		given(client.applicationsV2()).willReturn(applicationsV2);
-
-		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
-				.build()));
-
-		given(services.bind(any())).willReturn(Mono.empty());
-
-		given(mockResource.getInputStream()).willReturn(mock(InputStream.class));
-
-		// when
-		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
-
-		deployer.asyncDeploy(new AppDeploymentRequest(
+		runAsyncFullDeployment(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
-				mockResource,
-				Collections.emptyMap()))
-				.subscribe(testSubscriber);
-
-		testSubscriber.verify(Duration.ofSeconds(10L));
-
+				resource,
+				Collections.emptyMap()));
 		// then
 		then(operations).should(times(3)).applications();
 		then(operations).should(times(2)).services();
@@ -322,19 +247,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-			.id("abc123")
-			.name("test")
-			.stack("stack")
-			.diskQuota(1024)
-			.instances(1)
-			.memoryLimit(1024)
-			.requestedState("RUNNING")
-			.runningInstances(1)
-			.instanceDetail(InstanceDetail.builder()
-				.state("RUNNING")
-				.build())
-			.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "RUNNING");
 
 		thrown.expect(IllegalStateException.class);
 		thrown.expectMessage(containsString("already deployed"));
@@ -360,7 +273,7 @@ public class CloudFoundryAppDeployerTests {
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncUndeploy("test")
-			.subscribe(testSubscriber);
+				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
 
@@ -369,9 +282,9 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(operations);
 
 		then(applications).should().delete(DeleteApplicationRequest.builder()
-			.name("test")
-			.deleteRoutes(true)
-			.build());
+				.name("test")
+				.deleteRoutes(true)
+				.build());
 		verifyNoMoreInteractions(applications);
 	}
 
@@ -381,19 +294,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("DOWN")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("DOWN")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "DOWN", "DOWN");
 
 		// when
 		AppStatus status = deployer.status("test");
@@ -415,19 +316,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("STARTING")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "STARTING");
 
 		// when
 		AppStatus status = deployer.status("test");
@@ -448,19 +337,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("CRASHED")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "CRASHED");
 
 		// when
 		AppStatus status = deployer.status("test");
@@ -481,19 +358,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("FLAPPING")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "FLAPPING");
 
 		// when
 		AppStatus status = deployer.status("test");
@@ -514,19 +379,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("RUNNING")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "RUNNING");
 
 		// when
 		AppStatus status = deployer.status("test");
@@ -549,19 +402,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("UNKNOWN")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "UNKNOWN");
 
 		// when
 		AppStatus status = deployer.status("test");
@@ -582,19 +423,7 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name("test")
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState("RUNNING")
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state("some code never before seen")
-						.build())
-				.build()));
+		mockGetApplicationWithInstanceDetail("test", "RUNNING", "some code never before seen");
 
 		thrown.expect(IllegalStateException.class);
 		thrown.expectMessage(containsString("Unsupported CF state"));
@@ -604,6 +433,86 @@ public class CloudFoundryAppDeployerTests {
 
 		// then
 		assertThat(status.getState(), equalTo(DeploymentState.unknown));
+	}
+
+	private void mockGetApplication(String applicationName, String requestedStatus) {
+		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
+				.id("abc123")
+				.name(applicationName)
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState(requestedStatus)
+				.runningInstances(1)
+				.build()));
+	}
+
+	private void mockGetApplicationWithInstanceDetail(String applicationName, String requestedState, String instanceState) {
+		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
+				.id("abc123")
+				.name(applicationName)
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState(requestedState)
+				.runningInstances(1)
+				.instanceDetail(InstanceDetail.builder()
+						.state(instanceState)
+						.build())
+				.build()));
+	}
+
+	private void runAsyncFullDeployment(AppDeploymentRequest request) throws InterruptedException {
+
+		// given
+		deployer.getProperties().setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
+
+		given(operations.applications()).willReturn(applications);
+		given(operations.services()).willReturn(services);
+
+		mockGetApplication(request.getDefinition().getName(), "RUNNING");
+		given(applications.push(any())).willReturn(Mono.empty());
+		given(applications.start(any())).willReturn(Mono.empty());
+
+		given(client.applicationsV2()).willReturn(applicationsV2);
+
+		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
+				.build()));
+
+		given(services.bind(any())).willReturn(Mono.empty());
+
+		// when
+		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
+
+		deployer.asyncDeploy(request)
+				.subscribe(testSubscriber);
+
+		testSubscriber.verify(Duration.ofSeconds(10L));
+	}
+
+	private String runFullDeployment(AppDeploymentRequest request) throws InterruptedException {
+
+		// given
+		deployer.getProperties().setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
+
+		given(operations.applications()).willReturn(applications);
+		given(operations.services()).willReturn(services);
+
+		mockGetApplication(request.getDefinition().getName(), "RUNNING");
+		given(applications.push(any())).willReturn(Mono.empty());
+		given(applications.start(any())).willReturn(Mono.empty());
+
+		given(client.applicationsV2()).willReturn(applicationsV2);
+
+		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
+				.build()));
+
+		given(services.bind(any())).willReturn(Mono.empty());
+
+		// when
+		return deployer.deploy(request);
 	}
 
 }
