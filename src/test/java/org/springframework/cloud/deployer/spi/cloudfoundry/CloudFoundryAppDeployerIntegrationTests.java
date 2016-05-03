@@ -16,71 +16,61 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.cloudfoundry.util.test.TestSubscriber;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.IntegrationTest;
+import org.springframework.boot.test.SpringApplicationConfiguration;
+import org.springframework.cloud.deployer.spi.core.AppDefinition;
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.task.LaunchState;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.test.IntegrationTest;
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.core.AppDefinition;
-import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
-import org.springframework.util.Assert;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Integration tests for CloudFoundryAppDeployer.
+ * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
+ * that may be configured via {@link CloudFoundryDeployerProperties}.
+ *
+ * Tests are only run if a successful connection can be made at startup.
  *
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
-@IntegrationTest("spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false")
-public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
+@RunWith(SpringJUnit4ClassRunner.class)
+@SpringApplicationConfiguration(classes = CloudFoundryDeployerProperties.class)
+@IntegrationTest
+public class CloudFoundryTaskLauncherIntegrationTests {
 
-	private static final Logger log = LoggerFactory.getLogger(CloudFoundryAppDeployerIntegrationTests.class);
+	private static final Logger log = LoggerFactory.getLogger(CloudFoundryTaskLauncherIntegrationTests.class);
 
-	@ClassRule
-	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+	private CloudFoundryTaskLauncher taskLauncher;
 
 	@Autowired
 	ApplicationContext context;
 
 	@Autowired
-	private AppDeployer appDeployer;
+	CloudFoundryDeployerProperties properties;
 
 	AppDeploymentRequest request;
-
-	CloudFoundryAppDeployer cloudFoundryAppDeployer;
-
-	@Override
-	protected AppDeployer appDeployer() {
-		return appDeployer;
-	}
-
-	@Override
-	protected Resource integrationTestProcessor() {
-		return context.getResource("classpath:demo-0.0.1-SNAPSHOT.jar");
-	}
 
 	/**
 	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if
 	 * running in an environment that is known to be slow.
 	 */
 	protected double timeoutMultiplier = 1.0D;
-
-	protected int maxRetries = 1000;
 
 	@Before
 	public void init() {
@@ -90,53 +80,83 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "spring-cloud");
-		envProperties.put("space", "production");
+		envProperties.put("organization", "pcfdev-org");
+		envProperties.put("space", "pcfdev-space");
 
 		request = new AppDeploymentRequest(
-			new AppDefinition("sdrdemo", Collections.emptyMap()),
-			context.getResource("classpath:spring-data-rest-demo-0.0.1-SNAPSHOT.jar"),
+			new AppDefinition("timestamp", Collections.emptyMap()),
+			context.getResource("classpath:timestamp-task-1.0.0.BUILD-SNAPSHOT-exec-2.jar"),
 			envProperties);
 
-		cloudFoundryAppDeployer = (CloudFoundryAppDeployer) appDeployer;
+		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource());
 	}
 
-	/**
-	 * Doesn't appear like we can enter the failed state, tried for about 3 hrs.
-	 */
-	@Override
-	public void testFailedDeployment() {
-		Assert.isTrue(true);
+	@Test
+	public void testNonExistentAppsStatus() {
+		assertThat(taskLauncher.status("foo").getState(), is(LaunchState.unknown));
 	}
 
+
+	@Test
+	public void testSimpleLaunch() throws InterruptedException {
+
+		TestSubscriber<String> subscriber = new TestSubscriber<>();
+
+		String taskId = taskLauncher.asyncLaunch(request).get(30000000);
+
+//		System.out.println(">> taskId");
+//
+//		TaskStatus status = taskLauncher.asyncStatus(taskId).get();
+//
+//		while (status.getState().equals(LaunchState.unknown)) {
+//			Thread.sleep(5000);
+//			status = taskLauncher.asyncStatus(taskId).get();
+//		}
+//
+//		assertEquals(LaunchState.complete, status.getState());
+
+
+//		exists.subscribe(subscriber
+//			.assertCount(1)
+//			.assertEquals(false));
+
+		subscriber.verify(Duration.ofDays(1));
+	}
 
 	/**
 	 * Return the timeout to use for repeatedly querying a module while it is being deployed.
 	 * Default value is one minute, being queried every 5 seconds.
 	 */
-	@Override
-	protected Timeout deploymentTimeout() {
-		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
+	protected Attempts deploymentTimeout() {
+		return new Attempts(12, (int) (5000 * timeoutMultiplier));
 	}
 
 	/**
 	 * Return the timeout to use for repeatedly querying a module while it is being un-deployed.
 	 * Default value is one minute, being queried every 5 seconds.
 	 */
-	@Autowired
-	protected Timeout undeploymentTimeout() {
-		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
+	protected Attempts undeploymentTimeout() {
+		return new Attempts(20, (int) (5000 * timeoutMultiplier));
 	}
+
 
 	/**
-	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.
-	 *
+	 * Represents a timeout for querying status, with repetitive queries until a certain number have been made.
 	 * @author Eric Bottard
 	 */
-	@Configuration
-	@EnableAutoConfiguration
-	public static class Config {
+	protected static class Attempts {
 
+		public final int noAttempts;
+
+		public final int pause;
+
+		public Attempts(int noAttempts, int pause) {
+			this.noAttempts = noAttempts;
+			this.pause = pause;
+		}
 	}
+
+	@ClassRule
+	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
 
 }

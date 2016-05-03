@@ -5,11 +5,11 @@ spring:
   cloud:
     deployer:
       cloudfoundry:
-        domain: navy.springapps.io
-        org : mpollack-org
-        space: development
-        url : https://api.navy.springapps.io
-        username: mpollack
-        password: metrocard
+        domain: local.pcfdev.io
+        organization: pcfdev-org
+        space: pcfdev-space
+        apiEndpoint: https://api.local.pcfdev.io
+        username: admin
+        password: admin
         skipSslValidation: true
-        services: redis
+        services: my_mysql
