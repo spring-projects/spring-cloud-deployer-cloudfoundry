@@ -5,11 +5,32 @@ spring:
   cloud:
     deployer:
       cloudfoundry:
-        domain: navy.springapps.io
-        org : mpollack-org
+#        domain: api.sys.jackal.wild.cf-app.com
+#        org: system
+#        space: system
+#        url: https://api.sys.jackal.wild.cf-app.com
+#        username: mminella
+#        password: passmminella
+        domain: api.ivory.springapps.io
+        org: spring
         space: development
-        url : https://api.navy.springapps.io
-        username: mpollack
-        password: metrocard
+        url: https://api.ivory.springapps.io
+        username: mminella
+        password: passmminella
+#        domain: api.a1.cf-app.com
+#        org: scdf-org
+#        space: dev
+#        url: https://api.a1.cf-app.com
+#        username: scdf
+#        password: tasks4life
+#        domain: navy.springapps.io
+#        org : mpollack-org
+#        space: development
+#        url : https://api.navy.springapps.io
+#        username: mpollack
+#        password: metrocard
         skipSslValidation: true
-        services: redis
+        services: my_mysql
+        defaults:
+          services: my_mysql
+

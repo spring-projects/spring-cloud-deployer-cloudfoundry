@@ -16,17 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.rules.ExpectedException.none;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -65,6 +54,17 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.rules.ExpectedException.none;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
@@ -211,7 +211,7 @@ public class CloudFoundryAppDeployerTests {
 				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
 				mockResource,
 				deploymentProperties))
-			.subscribe(testSubscriber);
+				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
 
@@ -323,18 +323,18 @@ public class CloudFoundryAppDeployerTests {
 		given(operations.applications()).willReturn(applications);
 
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-			.id("abc123")
-			.name("test")
-			.stack("stack")
-			.diskQuota(1024)
-			.instances(1)
-			.memoryLimit(1024)
-			.requestedState("RUNNING")
-			.runningInstances(1)
-			.instanceDetail(InstanceDetail.builder()
-				.state("RUNNING")
-				.build())
-			.build()));
+				.id("abc123")
+				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
+				.runningInstances(1)
+				.instanceDetail(InstanceDetail.builder()
+						.state("RUNNING")
+						.build())
+				.build()));
 
 		thrown.expect(IllegalStateException.class);
 		thrown.expectMessage(containsString("already deployed"));
@@ -360,7 +360,7 @@ public class CloudFoundryAppDeployerTests {
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncUndeploy("test")
-			.subscribe(testSubscriber);
+				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
 
@@ -369,9 +369,9 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(operations);
 
 		then(applications).should().delete(DeleteApplicationRequest.builder()
-			.name("test")
-			.deleteRoutes(true)
-			.build());
+				.name("test")
+				.deleteRoutes(true)
+				.build());
 		verifyNoMoreInteractions(applications);
 	}
 

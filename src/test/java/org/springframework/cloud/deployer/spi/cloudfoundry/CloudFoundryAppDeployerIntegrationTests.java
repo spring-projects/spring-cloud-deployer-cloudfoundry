@@ -22,8 +22,6 @@ import java.util.Map;
 
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -34,7 +32,6 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.util.Assert;
@@ -48,8 +45,6 @@ import org.springframework.util.Assert;
 @SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
 @IntegrationTest("spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false")
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
-
-	private static final Logger log = LoggerFactory.getLogger(CloudFoundryAppDeployerIntegrationTests.class);
 
 	@ClassRule
 	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
@@ -94,9 +89,9 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 		envProperties.put("space", "production");
 
 		request = new AppDeploymentRequest(
-			new AppDefinition("sdrdemo", Collections.emptyMap()),
-			context.getResource("classpath:spring-data-rest-demo-0.0.1-SNAPSHOT.jar"),
-			envProperties);
+				new AppDefinition("sdrdemo", Collections.emptyMap()),
+				context.getResource("classpath:spring-data-rest-demo-0.0.1-SNAPSHOT.jar"),
+				envProperties);
 
 		cloudFoundryAppDeployer = (CloudFoundryAppDeployer) appDeployer;
 	}

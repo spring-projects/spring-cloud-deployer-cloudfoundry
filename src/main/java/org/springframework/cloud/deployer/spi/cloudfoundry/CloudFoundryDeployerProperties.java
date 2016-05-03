@@ -32,6 +32,12 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
 public class CloudFoundryDeployerProperties {
 
+	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
+
+	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
+
+	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
+
 	/**
 	 * The names of services to bind to all applications deployed as a module.
 	 * This should typically contain a service capable of playing the role of a binding transport.

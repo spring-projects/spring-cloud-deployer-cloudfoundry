@@ -15,11 +15,6 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static java.util.stream.Stream.concat;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +42,11 @@ import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static java.util.stream.Stream.concat;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
+
 /**
  * A deployer that targets Cloud Foundry using the public API.
  *
@@ -54,12 +54,6 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
  * @author Greg Turnquist
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
-
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
-
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
-
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
 
 	private final CloudFoundryDeployerProperties properties;
 
@@ -85,11 +79,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		DeploymentState state = status(deploymentId).getState();
 		if (state != DeploymentState.unknown) {
 			throw new IllegalStateException(String.format("App %s is already deployed with state %s",
-					deploymentId, state));
+				deploymentId, state));
 		}
 
 		asyncDeploy(request)
-				.subscribe();
+			.subscribe();
 
 		return deploymentId;
 	}
@@ -101,9 +95,9 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 		try {
 			envVariables.put("SPRING_APPLICATION_JSON",
-					new ObjectMapper().writeValueAsString(
-							Optional.ofNullable(request.getDefinition().getProperties())
-									.orElse(Collections.emptyMap())));
+				new ObjectMapper().writeValueAsString(
+					Optional.ofNullable(request.getDefinition().getProperties())
+						.orElse(Collections.emptyMap())));
 		} catch (JsonProcessingException e) {
 			throw new RuntimeException(e);
 		}
@@ -144,13 +138,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
 					)
 					.then() /* this then() merges all the bindServices Mono<Void>'s into 1 */)
-                .then(() -> operations.applications()
-                    .start(StartApplicationRequest.builder()
-                        .name(name)
-                        .build())
+				.then(() -> operations.applications()
+					.start(StartApplicationRequest.builder()
+						.name(name)
+						.build())
 					.doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
 					.doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
-                );
+				);
 		} catch (IOException e) {
 			return Mono.error(e);
 		}
@@ -164,10 +158,10 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	Mono<Void> asyncUndeploy(String id) {
 		return operations.applications()
 			.delete(
-					DeleteApplicationRequest.builder()
-							.deleteRoutes(true)
-							.name(id)
-							.build()
+				DeleteApplicationRequest.builder()
+					.deleteRoutes(true)
+					.name(id)
+					.build()
 			)
 			.doOnSuccess(v -> logger.info(String.format("Sucessfully undeployed app %s", id)))
 			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e));
@@ -182,8 +176,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	Mono<AppStatus> asyncStatus(String id) {
 		return operations.applications()
 			.get(GetApplicationRequest.builder()
-					.name(id)
-					.build())
+				.name(id)
+				.build())
 			.then(ad -> createAppStatusBuilder(id, ad))
 			.otherwise(e -> emptyAppStatusBuilder(id))
 			.map(AppStatus.Builder::build);
@@ -195,8 +189,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private String deploymentId(AppDeploymentRequest request) {
 		String appName = Optional.ofNullable(request.getDeploymentProperties().get(GROUP_PROPERTY_KEY))
-				.map(groupName -> String.format("%s-", groupName))
-				.orElse("") + request.getDefinition().getName();
+			.map(groupName -> String.format("%s-", groupName))
+			.orElse("") + request.getDefinition().getName();
 		return appDeploymentCustomizer.generateAppName(appName);
 	}
 
@@ -212,12 +206,12 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		return Flux.fromStream(
 			concat(
 				properties.getServices().stream(),
-				commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
+				commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
@@ -227,7 +221,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {
@@ -241,8 +235,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private Mono<AppStatus.Builder> addInstances(AppStatus.Builder initial, ApplicationDetail ad) {
 		return Flux.fromIterable(ad.getInstanceDetails())
-				.zipWith(Flux.range(0, ad.getRunningInstances()))
-				.reduce(initial, (b, inst) -> b.with(new CloudFoundryAppInstanceStatus(ad, inst.t1, inst.t2)));
+			.zipWith(Flux.range(0, ad.getRunningInstances()))
+			.reduce(initial, (b, inst) -> b.with(new CloudFoundryAppInstanceStatus(ad, inst.t1, inst.t2)));
 	}
 
 }
