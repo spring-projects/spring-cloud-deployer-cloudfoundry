@@ -194,4 +194,5 @@ public class CloudFoundryDeployerProperties {
 	public void setInstances(int instances) {
 		this.instances = instances;
 	}
+
 }
