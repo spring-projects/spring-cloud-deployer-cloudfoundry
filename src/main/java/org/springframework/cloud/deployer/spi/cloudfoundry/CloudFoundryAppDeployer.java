@@ -137,16 +137,18 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 							.applicationName(name)
 							.serviceInstanceName(service)
 							.build())
-							.doOnSuccess(v -> logger.debug(String.format("Binding service %s to app %s", service, name)))
-							.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
+						.doOnSuccess(v -> {
+							logger.debug(String.format("Binding service %s to app %s", service, name));
+						})
+						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
 					)
 					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
                 .after(() -> operations.applications()
                     .start(StartApplicationRequest.builder()
                         .name(name)
                         .build())
-		                .doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
-		                .doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
+					.doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
+					.doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
                 );
 		} catch (IOException e) {
 			return Mono.error(e);
@@ -186,6 +188,9 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			.map(AppStatus.Builder::build);
 	}
 
+	public CloudFoundryDeployerProperties getProperties() {
+		return properties;
+	}
 
 	private String deploymentId(AppDeploymentRequest request) {
 		return Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
