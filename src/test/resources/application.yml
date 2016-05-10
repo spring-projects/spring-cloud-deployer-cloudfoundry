@@ -13,3 +13,6 @@ spring:
         password: admin
         skipSslValidation: true
         services: my_mysql
+        defaults:
+          services: my_mysql
+

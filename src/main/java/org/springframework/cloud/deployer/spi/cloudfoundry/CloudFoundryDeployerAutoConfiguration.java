@@ -16,8 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.net.URL;
-
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
@@ -26,11 +24,11 @@ import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
-
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -94,5 +92,10 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@ConditionalOnMissingBean(AppNameGenerator.class)
 	public AppNameGenerator appDeploymentCustomizer(CloudFoundryDeployerProperties properties) {
 		return new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+	}
+
+	@ConditionalOnMissingBean(TaskLauncher.class)
+	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryDeployerProperties properties, CloudFoundryOperations operations) {
+		return new CloudFoundryTaskLauncher(client, operations, properties);
 	}
 }

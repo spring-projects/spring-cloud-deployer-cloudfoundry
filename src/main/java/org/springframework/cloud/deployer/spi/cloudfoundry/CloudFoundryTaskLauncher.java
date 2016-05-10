@@ -17,6 +17,7 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
 import org.cloudfoundry.client.v2.spaces.ListSpacesRequest;
 import org.cloudfoundry.client.v3.Relationship;
 import org.cloudfoundry.client.v3.applications.Application;
@@ -38,6 +39,8 @@ import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.cloudfoundry.client.v3.tasks.Task;
+import org.cloudfoundry.operations.CloudFoundryOperations;
+import org.cloudfoundry.operations.services.ServiceInstance;
 import org.cloudfoundry.util.PaginationUtils;
 import org.cloudfoundry.util.ResourceUtils;
 import org.slf4j.Logger;
@@ -51,10 +54,13 @@ import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
 import static org.cloudfoundry.util.tuple.TupleUtils.function;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * @author Greg Turnquist
@@ -66,8 +72,16 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private final CloudFoundryClient client;
 
-    public CloudFoundryTaskLauncher(CloudFoundryClient client) {
+    private final CloudFoundryOperations operations;
+
+    private final CloudFoundryDeployerProperties properties;
+
+    public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.services";
+
+    public CloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryOperations operations, CloudFoundryDeployerProperties properties) {
         this.client = client;
+        this.operations = operations;
+        this.properties = properties;
     }
 
     @Override
@@ -131,7 +145,63 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     Mono<String> asyncLaunch(AppDeploymentRequest request) {
 
         return deploy(request)
-            .then(this::launchTask);
+            .log("stream.deploy")
+            .then(applicationId -> bindServices(request, applicationId))
+            .log("stream.bindServices")
+            .then(applicationId -> launchTask(applicationId))
+            .log("stream.launched");
+    }
+
+    Mono<String> bindServices(AppDeploymentRequest request, String applicationId) {
+        return operations.services()
+            .listInstances()
+            .log("stream.serviceInstances")
+            .filter(instance -> servicesToBind(request).contains(instance.getName()))
+            .log("stream.filteredInstances")
+            .map(ServiceInstance::getId)
+            .log("stream.serviceInstanceId")
+            .flatMap(serviceInstanceId -> client.serviceBindingsV3()
+                .create(CreateServiceBindingRequest.builder()
+                    .relationships(CreateServiceBindingRequest.Relationships.builder()
+                        .application(Relationship.builder().id(applicationId).build())
+                        .serviceInstance(Relationship.builder().id(serviceInstanceId).build())
+                        .build())
+                    .type(CreateServiceBindingRequest.ServiceBindingType.APP)
+                    .build())
+                .log("created")
+                .map(a -> applicationId)
+                .log("mapped"))
+            .log("stream.serviceBindingCreated")
+            .map(a -> applicationId)
+            .log("stream.applicationId")
+            .single();
+
+//
+//        return servicesToBind(request)
+//            .log("stream.servicesToBind")
+//            .map(service -> operations.services()
+//                .listInstances()
+//                .log("stream.serviceInstances")
+//                .filter(instance -> instance.getName().equals(service))
+//                .log("stream.servicesThatMatch")
+//                .map(ServiceInstance::getId)
+//                .log("stream.instanceId")
+//                .map(serviceId -> client.serviceBindings().create(CreateServiceBindingRequest.builder()
+//                    .applicationId(applicationId)
+//                    .serviceInstanceId(serviceId)
+//                    .build())))
+//            .map(a -> applicationId)
+//            .single();
+    }
+
+
+
+    private Set<String> servicesToBind(AppDeploymentRequest request) {
+        Set<String> services = new HashSet<>();
+        services.addAll(properties.getServices());
+        services.addAll(commaDelimitedListToSet(request.getEnvironmentProperties().get(SERVICES_PROPERTY_KEY)));
+
+        return services;
     }
 
     Mono<TaskStatus> asyncStatus(String id) {
@@ -291,6 +361,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .dropletId(resource.getId())
                 .name("timestamp")
 //                .command((String) ((Map<String, Object>) resource.getResults().get("process_types")).get("web"))
+//                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher --spring.profiles.active=cloud")
                 .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher")
                 .build())
             .log("stream.createTask")

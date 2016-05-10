@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.cloudfoundry.operations.CloudFoundryOperations;
+import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
 import org.cloudfoundry.util.test.TestSubscriber;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -82,13 +84,19 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		Map<String, String> envProperties = new HashMap<>();
 		envProperties.put("organization", "pcfdev-org");
 		envProperties.put("space", "pcfdev-space");
+		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 
 		request = new AppDeploymentRequest(
 			new AppDefinition("timestamp", Collections.emptyMap()),
-			context.getResource("classpath:timestamp-task-1.0.0.BUILD-SNAPSHOT-exec-2.jar"),
+			context.getResource("classpath:batch-job-1.0.0.BUILD-SNAPSHOT.jar"),
 			envProperties);
 
-		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource());
+		CloudFoundryOperations cloudFoundryOperations = new CloudFoundryOperationsBuilder()
+			.cloudFoundryClient(cfAvailable.getResource())
+			.target("pcfdev-org", "pcfdev-space")
+			.build();
+
+		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
 	}
 
 	@Test
