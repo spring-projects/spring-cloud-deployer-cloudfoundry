@@ -18,7 +18,6 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
-import org.cloudfoundry.util.test.TestSubscriber;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -31,10 +30,10 @@ import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
+import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -85,6 +84,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		envProperties.put("organization", "pcfdev-org");
 		envProperties.put("space", "pcfdev-space");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
+		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
+		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
 
 		request = new AppDeploymentRequest(
 			new AppDefinition("timestamp", Collections.emptyMap()),
@@ -108,27 +109,19 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleLaunch() throws InterruptedException {
 
-		TestSubscriber<String> subscriber = new TestSubscriber<>();
+		String taskId = taskLauncher.asyncLaunch(request).get(300000);
 
-		String taskId = taskLauncher.asyncLaunch(request).get(30000000);
+		System.out.println(">> taskId = " + taskId);
 
-//		System.out.println(">> taskId");
-//
-//		TaskStatus status = taskLauncher.asyncStatus(taskId).get();
-//
-//		while (status.getState().equals(LaunchState.unknown)) {
-//			Thread.sleep(5000);
-//			status = taskLauncher.asyncStatus(taskId).get();
-//		}
-//
-//		assertEquals(LaunchState.complete, status.getState());
+		TaskStatus status = taskLauncher.asyncStatus(taskId).get();
 
+		while (!status.getState().equals(LaunchState.complete)) {
+			System.out.println(">> state = " + status.getState());
+			Thread.sleep(5000);
+			status = taskLauncher.asyncStatus(taskId).get();
+		}
 
-//		exists.subscribe(subscriber
-//			.assertCount(1)
-//			.assertEquals(false));
-
-		subscriber.verify(Duration.ofDays(1));
+		assertThat(status.getState(), is(LaunchState.complete));
 	}
 
 	/**
