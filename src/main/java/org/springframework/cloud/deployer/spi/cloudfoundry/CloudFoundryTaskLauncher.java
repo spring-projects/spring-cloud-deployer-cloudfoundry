@@ -110,7 +110,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     @Override
     public String launch(AppDeploymentRequest request) {
 
-        asyncLaunch(request).subscribe();
+        asyncLaunch(request);
 
         /*
          * The blocking API does NOT wait for async operations to complete before
@@ -154,15 +154,40 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     }
 
     Mono<String> asyncLaunch(AppDeploymentRequest request) {
-        return deploy(request)
-            .log("stream.deploy")
-            .then(applicationId -> bindServices(request, applicationId))
-            .log("stream.bindServices")
-            .then(applicationId -> launchTask(applicationId))
-            .log("stream.launched");
+        return client.applicationsV3().list(ListApplicationsRequest.builder()
+                .name(request.getDefinition().getName())
+                .page(1)
+                .build())
+            .log("appsFound")
+            .flatMap(applicationsResponse -> processApplication(request, applicationsResponse))
+            .single();
+        // query for application
+        // call splitter function
+//        return deploy(request)
+//            .log("stream.deploy")
+//            .then(applicationId -> bindServices(request, applicationId))
+//            .log("stream.bindServices")
+//            .then(applicationId -> launchTask(applicationId))
+//            .log("stream.launched");
+    }
+
+    Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
+        if(response.getResources().size() == 0) {
+            System.out.println(">> About to do the deploy");
+            return deploy(request)
+                .log("processApp1")
+                .then(applicationId -> bindServices(request, applicationId))
+                .log("processApp2")
+                .then(applicationId -> launchTask(applicationId))
+                .log("processApp3");
+        }
+        else {
+            return launchTask(response.getResources().get(0).getId());
+        }
     }
 
     Mono<String> bindServices(AppDeploymentRequest request, String applicationId) {
+        System.out.println(">> applicationId = " + applicationId);
         return operations.services()
             .listInstances()
             .log("stream.serviceInstances")
@@ -218,15 +243,21 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         return createApplication(request.getDefinition().getName(), getSpaceId(request))
             .then(applicationId -> createPackage(applicationId)
                 .and(Mono.just(applicationId)))
+            .log("packageCreated")
             .then(function((packageId, applicationId) -> uploadPackage(packageId, request)
                 .and(Mono.just(applicationId))))
+            .log("packageUploaded")
             .then(function((packageId, applicationId) -> waitForPackageProcessing(client, packageId)
                 .and(Mono.just(applicationId))))
+            .log("waiting for package processing")
             .then(function((packageId, applicationId) -> createDroplet(packageId, request)
                 .and(Mono.just(applicationId))))
+            .log("droplet created")
             .then(function((dropletId, applicationId) -> waitForDropletProcessing(client, dropletId)
                 .and(Mono.just(applicationId))))
-            .map(function((dropletId, applicationId) -> applicationId));
+            .log("waiting for droplet processing")
+            .map(function((dropletId, applicationId) -> applicationId))
+            .log("application done...");
     }
 
     private static Mono<String> waitForDropletProcessing(CloudFoundryClient cloudFoundryClient, String dropletId) {
