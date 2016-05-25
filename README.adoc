@@ -12,7 +12,7 @@ $ ./mvnw clean install
 
 The project includes a set of integration tests that can be run against a Cloud Foundry installation, provided that
 connection information is correctly set. If credentials are not set correctly, those tests will be silently skipped.
-Below is the list of environment variables you'll want to specify:
+Below is a short list of common Spring Boot @ConfigurationProperties (in environment variable format) that you will need to set in order to deploy applications to Cloud Foundry:
 
 ----
 # url of the CF API (used when using cf login -a for example)
@@ -37,3 +37,9 @@ SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_PASSWORD
 # whether to allow self-signed certificates during SSL validation
 SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_SKIP_SSL_VALIDATION
 ----
+
+Refer to https://github.com/spring-cloud/spring-cloud-deployer-cloudfoundry/blob/master/src/main/java/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryDeployerProperties.java[CloudFoundryDeployerProperties] for a complete listing.
+
+The deployer also supports setting the properties `spring-cloud-deployer-cloudfoundry-services`,
+`spring-cloud-deployer-cloudfoundry-memory`, and `spring-cloud-deployer-cloudfoundry-disk` as part of an individual
+deployment request.
