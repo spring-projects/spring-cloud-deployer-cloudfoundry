@@ -56,11 +56,11 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 public class CloudFoundryAppDeployer implements AppDeployer {
 
 
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.memory";
+	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
 
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.disk";
+	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
 
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.services";
+	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
 
 	private final CloudFoundryDeployerProperties properties;
 
