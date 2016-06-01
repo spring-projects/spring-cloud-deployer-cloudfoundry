@@ -5,12 +5,12 @@ spring:
   cloud:
     deployer:
       cloudfoundry:
-        domain: local.pcfdev.io
-        organization: pcfdev-org
-        space: pcfdev-space
-        apiEndpoint: https://api.local.pcfdev.io
-        username: admin
-        password: admin
+        domain: api.a1.cf-app.com
+        organization: scdf-org
+        space: dev
+        apiEndpoint: https://api.a1.cf-app.com
+        username: scdf
+        password: tasks4life
         skipSslValidation: true
         services: my_mysql
         defaults:

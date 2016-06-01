@@ -20,25 +20,34 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.spaces.ListSpacesRequest;
+import org.cloudfoundry.client.v3.BuildpackData;
 import org.cloudfoundry.client.v3.Lifecycle;
 import org.cloudfoundry.client.v3.Relationship;
+import org.cloudfoundry.client.v3.Type;
 import org.cloudfoundry.client.v3.applications.Application;
+import org.cloudfoundry.client.v3.applications.ApplicationResource;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
 import org.cloudfoundry.client.v3.applications.DeleteApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
-import org.cloudfoundry.client.v3.applications.ListApplicationDropletsResponse;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationsResponse;
 import org.cloudfoundry.client.v3.droplets.Droplet;
+import org.cloudfoundry.client.v3.droplets.DropletResource;
 import org.cloudfoundry.client.v3.droplets.GetDropletRequest;
+import org.cloudfoundry.client.v3.droplets.StagedResult;
 import org.cloudfoundry.client.v3.packages.CreatePackageRequest;
 import org.cloudfoundry.client.v3.packages.GetPackageRequest;
 import org.cloudfoundry.client.v3.packages.Package;
+import org.cloudfoundry.client.v3.packages.PackageType;
 import org.cloudfoundry.client.v3.packages.StagePackageRequest;
+import org.cloudfoundry.client.v3.packages.State;
 import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
+import org.cloudfoundry.client.v3.servicebindings.Relationships;
+import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
+import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.cloudfoundry.client.v3.tasks.Task;
@@ -69,6 +78,10 @@ import static org.cloudfoundry.util.tuple.TupleUtils.function;
 import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
+ * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
+ * deployed, the app is created, the package is uploaded, and the droplet is created before launching the actual
+ * task.  If the app has been deployed previously, the app/package/droplet is reused and a new task is created.
+ *
  * @author Greg Turnquist
  * @author Michael Minella
  */
@@ -104,7 +117,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     /**
      * Set up a reactor pipeline to launch a task. Before launch, check if it exists. If not, deploy. Then launch.
      *
-     * @param request
+     * @param request description of the application to be launched
      * @return name of the launched task, returned without waiting for reactor pipeline to complete
      */
     @Override
@@ -131,7 +144,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         return asyncStatus(id).get(Duration.ofSeconds(30));
     }
 
-    Mono<Void> asyncCancel(String id) {
+    protected Mono<Void> asyncCancel(String id) {
 
         return client.applicationsV3()
             .list(ListApplicationsRequest.builder()
@@ -153,7 +166,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .after();
     }
 
-    Mono<String> asyncLaunch(AppDeploymentRequest request) {
+    protected Mono<String> asyncLaunch(AppDeploymentRequest request) {
         return client.applicationsV3().list(ListApplicationsRequest.builder()
                 .name(request.getDefinition().getName())
                 .page(1)
@@ -161,32 +174,24 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("appsFound")
             .flatMap(applicationsResponse -> processApplication(request, applicationsResponse))
             .single();
-        // query for application
-        // call splitter function
-//        return deploy(request)
-//            .log("stream.deploy")
-//            .then(applicationId -> bindServices(request, applicationId))
-//            .log("stream.bindServices")
-//            .then(applicationId -> launchTask(applicationId))
-//            .log("stream.launched");
     }
 
-    Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
+    protected Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
         if(response.getResources().size() == 0) {
             System.out.println(">> About to do the deploy");
             return deploy(request)
                 .log("processApp1")
                 .then(applicationId -> bindServices(request, applicationId))
                 .log("processApp2")
-                .then(applicationId -> launchTask(applicationId))
+                .then(applicationId -> launchTask(applicationId, request))
                 .log("processApp3");
         }
         else {
-            return launchTask(response.getResources().get(0).getId());
+            return launchTask(response.getResources().get(0).getId(), request);
         }
     }
 
-    Mono<String> bindServices(AppDeploymentRequest request, String applicationId) {
+    protected Mono<String> bindServices(AppDeploymentRequest request, String applicationId) {
         System.out.println(">> applicationId = " + applicationId);
         return operations.services()
             .listInstances()
@@ -197,11 +202,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("stream.serviceInstanceId")
             .flatMap(serviceInstanceId -> client.serviceBindingsV3()
                 .create(CreateServiceBindingRequest.builder()
-                    .relationships(CreateServiceBindingRequest.Relationships.builder()
+                    .relationships(Relationships.builder()
                         .application(Relationship.builder().id(applicationId).build())
                         .serviceInstance(Relationship.builder().id(serviceInstanceId).build())
                         .build())
-                    .type(CreateServiceBindingRequest.ServiceBindingType.APP)
+                    .type(ServiceBindingType.APPLICATION)
                     .build())
                 .log("created"))
             .log("stream.serviceBindingCreated")
@@ -209,8 +214,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("stream.applicationId")
             .single();
     }
-
-
 
     private Set<String> servicesToBind(AppDeploymentRequest request) {
         Set<String> services = new HashSet<>();
@@ -220,7 +223,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         return services;
     }
 
-    Mono<TaskStatus> asyncStatus(String id) {
+    protected Mono<TaskStatus> asyncStatus(String id) {
 
         return client.tasks().get(GetTaskRequest.builder()
                     .taskId(id)
@@ -238,7 +241,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @param request
      * @return {@link Mono} containing the newly created {@link Droplet}'s id
      */
-    Mono<String> createAndUploadApplication(AppDeploymentRequest request) {
+    protected Mono<String> createAndUploadApplication(AppDeploymentRequest request) {
 
         return createApplication(request.getDefinition().getName(), getSpaceId(request))
             .then(applicationId -> createPackage(applicationId)
@@ -266,7 +269,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .dropletId(dropletId)
                 .build())
             .log("stream.waitingForDroplet")
-            .where(response -> !response.getState().equals("PENDING"))
+            .where(response -> !response.getState().equals(org.cloudfoundry.client.v3.droplets.State.PENDING))
             .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(10), Duration.ofMinutes(1), Duration.ofMinutes(10)))
             .map(response -> dropletId);
     }
@@ -276,7 +279,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .get(GetPackageRequest.builder()
                 .packageId(packageId)
                 .build())
-            .where(response -> response.getState().equals("READY"))
+            .where(response -> response.getState().equals(State.READY))
             .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1), Duration.ofMinutes(10)))
             .map(response -> packageId);
     }
@@ -288,17 +291,29 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @param spaceId
      * @return applicationId
      */
-    Mono<String> createApplication(String name, Mono<String> spaceId) {
+    protected Mono<String> createApplication(String name, Mono<String> spaceId) {
 
         return spaceId
             .flatMap(spaceId2 -> client.applicationsV3()
                 .create(CreateApplicationRequest.builder()
                     .name(name)
-                    .lifecycle(Lifecycle.builder().type("buildpack").data("buildpack", properties.getBuildpack()).build())
-                    .relationship("space", Relationship.builder()
-                        .id(spaceId2)
+                    .lifecycle(Lifecycle.builder()
+                        .type(Type.BUILDPACK)
+                        .data(BuildpackData
+                            .builder()
+                            .buildpack(properties.getBuildpack())
+                            .build())
+                        .build())
+                    .relationships(org.cloudfoundry.client.v3.applications.Relationships.builder()
+                        .space(Relationship.builder()
+                            .id(spaceId2)
+                            .build())
                         .build())
                     .build()))
+//                    .relationship("space", Relationship.builder()
+//                        .id(spaceId2)
+//                        .build())
+//                    .build()))
             .single()
             .log("stream.createApplication")
             .map(Application::getId)
@@ -311,12 +326,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @param applicationId
      * @return packageId
      */
-    Mono<String> createPackage(String applicationId) {
+    protected Mono<String> createPackage(String applicationId) {
 
         return client.packages()
             .create(CreatePackageRequest.builder()
                 .applicationId(applicationId)
-                .type(CreatePackageRequest.PackageType.BITS)
+                .type(PackageType.BITS)
                 .build())
             .log("stream.createPackage")
             .map(Package::getId)
@@ -329,14 +344,14 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @param request
      * @return {@link Mono} with the applicationId
      */
-    Mono<String> deploy(AppDeploymentRequest request) {
+    protected Mono<String> deploy(AppDeploymentRequest request) {
         return getApplicationId(client, request.getDefinition().getName())
             .then(applicationId -> getReadyApplicationId(client, applicationId)
                 .otherwiseIfEmpty(deleteExistingApplication(client, applicationId)))
             .otherwiseIfEmpty(createAndUploadApplication(request));
     }
 
-    Mono<String> getSpaceId(AppDeploymentRequest request) {
+    protected Mono<String> getSpaceId(AppDeploymentRequest request) {
 
         return Mono
             .just(request.getEnvironmentProperties().get("organization"))
@@ -361,30 +376,48 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @param applicationId
      * @return {@link Mono} containing name of the task that was launched
      */
-    Mono<String> launchTask(String applicationId) {
+    protected Mono<String> launchTask(String applicationId, AppDeploymentRequest request) {
         return getDroplet(applicationId)
             .log("lauching.gotDroplet")
-            .then(droplet -> createTask(droplet, applicationId));
+            .then(droplet -> createTask(droplet, applicationId, request));
     }
 
-    Mono<String> createTask(ListApplicationDropletsResponse.Resource resource, String applicationId) {
-        // Commented out because I was getting an NPE here:
-//        System.out.println(">> command = " + ((Map<String, Object>) resource.getResults().get("process_types")).get("web"));
-        return client.tasks()
-            .create(CreateTaskRequest.builder()
-                .applicationId(applicationId)
+    protected Mono<String> createTask(DropletResource resource, String applicationId, AppDeploymentRequest request) {
+        return client.droplets()
+            .get(GetDropletRequest.builder()
                 .dropletId(resource.getId())
-                .name("timestamp")
-//                .command((String) ((Map<String, Object>) resource.getResults().get("process_types")).get("web"))
-                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher --spring.profiles.active=cloud")
-//                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher")
                 .build())
-            .log("stream.createTask")
-            .map(Task::getId)
-            .log("stream.taskName");
+            .map(dropletResponse -> client.tasks()
+                .create(CreateTaskRequest.builder()
+                    .applicationId(applicationId)
+                    .dropletId(resource.getId())
+                    .name(request.getDefinition().getName())
+                    .command(((StagedResult) dropletResponse.getResult()).getProcessTypes().get("web"))
+                    .build())
+                .map(CreateTaskResponse::getId).get());
+
+
+
+//
+//        return client.tasks()
+//            .create(CreateTaskRequest.builder()
+//                .applicationId(applicationId)
+//                .dropletId(resource.getId())
+//                .name(request.getDefinition().getName())
+//                .command(((StagedResult) resource.getResult()).getProcessTypes().get("web"))
+////                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher --spring.profiles.active=cloud")
+////                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher")
+//                .build())
+//            .log("stream.createTask")
+//            .map(Task::getId)
+//            .log("stream.taskName");
     }
 
-    Mono<ListApplicationDropletsResponse.Resource> getDroplet(String applicationId) {
+    protected String getTaskId(CreateTaskResponse response) {
+        return response.getId();
+    }
+
+    protected Mono<DropletResource> getDroplet(String applicationId) {
         return client.applicationsV3()
             .listDroplets(ListApplicationDropletsRequest.builder()
                 .applicationId(applicationId)
@@ -401,7 +434,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @param request
      * @return packageId
      */
-    Mono<String> uploadPackage(String packageId, AppDeploymentRequest request) {
+    protected Mono<String> uploadPackage(String packageId, AppDeploymentRequest request) {
 
         try {
             return client.packages()
@@ -438,12 +471,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private static Mono<String> getReadyApplicationId(CloudFoundryClient client, String applicationId) {
         return requestApplicationDroplets(client, applicationId)
-            .filter(resource -> "STAGED" .equals(resource.getState()))
+            .filter(resource -> org.cloudfoundry.client.v3.droplets.State.STAGED.equals(resource.getState()))
             .next()
             .map(resource -> applicationId);
     }
 
-    private static Flux<ListApplicationDropletsResponse.Resource> requestApplicationDroplets(CloudFoundryClient client, String applicationId) {
+    private static Flux<DropletResource> requestApplicationDroplets(CloudFoundryClient client, String applicationId) {
         return client.applicationsV3()
             .listDroplets(ListApplicationDropletsRequest.builder()
                 .applicationId(applicationId)
@@ -464,9 +497,9 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      *
      * @param client
      * @param name
-     * @return {@link Flux} of application resources {@link ListApplicationsResponse.Resource}
+     * @return {@link Flux} of application resources {@link ApplicationResource}
      */
-    private static Flux<ListApplicationsResponse.Resource> requestListApplications(
+    private static Flux<ApplicationResource> requestListApplications(
         CloudFoundryClient client, String name) {
 
         return client.applicationsV3()
@@ -498,8 +531,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         return client.packages()
             .stage(StagePackageRequest.builder()
                 .packageId(packageId)
-                .diskLimit(diskQuota(appDeploymentRequest))
-                .memoryLimit(memory(appDeploymentRequest))
+                .stagingDiskInMb(diskQuota(appDeploymentRequest))
+                .stagingMemoryInMb(memory(appDeploymentRequest))
                 .environmentVariables(environmentVariables)
                 .build())
             .log("stream.stageDroplet")
@@ -520,15 +553,15 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     private TaskStatus mapTaskToStatus(GetTaskResponse getTaskResponse) {
 
         switch (getTaskResponse.getState()) {
-            case Task.SUCCEEDED_STATE:
+            case SUCCEEDED_STATE:
                 return new TaskStatus(getTaskResponse.getId(), LaunchState.complete, null);
-            case Task.RUNNING_STATE:
+            case RUNNING_STATE:
                 return new TaskStatus(getTaskResponse.getId(), LaunchState.running, null);
-            case Task.PENDING_STATE:
+            case PENDING_STATE:
                 return new TaskStatus(getTaskResponse.getId(), LaunchState.launching, null);
-            case Task.CANCELING_STATE:
+            case CANCELING_STATE:
                 return new TaskStatus(getTaskResponse.getId(), LaunchState.cancelled, null);
-            case Task.FAILED_STATE:
+            case FAILED_STATE:
                 return new TaskStatus(getTaskResponse.getId(), LaunchState.failed, null);
             default:
                 throw new IllegalStateException(

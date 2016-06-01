@@ -16,6 +16,10 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
+import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
+import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
 import org.junit.Before;
@@ -33,6 +37,7 @@ import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import reactor.core.publisher.Flux;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -81,8 +86,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "pcfdev-org");
-		envProperties.put("space", "pcfdev-space");
+		envProperties.put("organization", "scdf-org");
+		envProperties.put("space", "dev");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
@@ -94,7 +99,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		CloudFoundryOperations cloudFoundryOperations = new CloudFoundryOperationsBuilder()
 			.cloudFoundryClient(cfAvailable.getResource())
-			.target("pcfdev-org", "pcfdev-space")
+			.target("scdf-org", "dev")
 			.build();
 
 		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
@@ -122,6 +127,33 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		assertThat(status.getState(), is(LaunchState.complete));
+	}
+
+	@Test
+	public void cleanUp() throws InterruptedException {
+		CloudFoundryClient client = cfAvailable.getResource();
+
+		client.applicationsV3().list(ListApplicationsRequest.builder()
+				.name("timestamp")
+				.page(1)
+				.build())
+			.log("applicationlist")
+			.flatMap(applicationsResponse -> Flux.fromIterable(applicationsResponse.getResources()))
+			.log("applicationResponses")
+			.single()
+			.log("single")
+			.flatMap(applicationResource -> client.serviceBindingsV3().list(ListServiceBindingsRequest.builder()
+				.applicationId(applicationResource.getId())
+				.build()))
+			.log("serviceBindingRequest")
+			.flatMap(serviceBindingsResponse -> Flux.fromIterable(serviceBindingsResponse.getResources()))
+			.log("serviceBindingResponses")
+			.flatMap(serviceBindingResource -> client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
+				.serviceBindingId(serviceBindingResource.getId())
+				.build()))
+			.log("serviceBindingDeletes")
+			.single()
+		.get();
 	}
 
 	/**
