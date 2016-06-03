@@ -39,8 +39,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -92,10 +94,15 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
 
+		List<String> commandLineArgs = new ArrayList<>(2);
+		commandLineArgs.add("--foo=bar");
+		commandLineArgs.add("--baz=qux");
+
 		request = new AppDeploymentRequest(
 			new AppDefinition("timestamp", Collections.emptyMap()),
 			context.getResource("classpath:batch-job-1.0.0.BUILD-SNAPSHOT.jar"),
-			envProperties);
+			envProperties,
+			commandLineArgs);
 
 		CloudFoundryOperations cloudFoundryOperations = new CloudFoundryOperationsBuilder()
 			.cloudFoundryClient(cfAvailable.getResource())

@@ -34,6 +34,7 @@ import org.cloudfoundry.client.v3.applications.ListApplicationsResponse;
 import org.cloudfoundry.client.v3.droplets.Droplet;
 import org.cloudfoundry.client.v3.droplets.DropletResource;
 import org.cloudfoundry.client.v3.droplets.GetDropletRequest;
+import org.cloudfoundry.client.v3.droplets.GetDropletResponse;
 import org.cloudfoundry.client.v3.droplets.StagedResult;
 import org.cloudfoundry.client.v3.packages.CreatePackageRequest;
 import org.cloudfoundry.client.v3.packages.GetPackageRequest;
@@ -45,7 +46,6 @@ import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.Relationships;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
-import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
@@ -70,6 +70,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
@@ -145,25 +146,26 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     }
 
     protected Mono<Void> asyncCancel(String id) {
-
-        return client.applicationsV3()
-            .list(ListApplicationsRequest.builder()
-                .name(id)
-                .page(1)
-                .build())
-            .log("stream.listApplications")
-            .flatMap(response -> Flux.fromIterable(response.getResources()))
-            .log("stream.applications")
-            .singleOrEmpty()
-            .log("stream.singleOrEmpty")
-            .map(Application::getId)
-            .log("stream.taskIds")
-            .then(taskId -> client.tasks()
-                .cancel(CancelTaskRequest.builder()
-                    .taskId(taskId)
-                    .build())
-                .log("stream.cancelTask"))
-            .after();
+        return Mono.empty();
+//
+//        return client.applicationsV3()
+//            .list(ListApplicationsRequest.builder()
+//                .name(id)
+//                .page(1)
+//                .build())
+//            .log("stream.listApplications")
+//            .flatMap(response -> Flux.fromIterable(response.getResources()))
+//            .log("stream.applications")
+//            .singleOrEmpty()
+//            .log("stream.singleOrEmpty")
+//            .map(Application::getId)
+//            .log("stream.taskIds")
+//            .then(taskId -> client.tasks()
+//                .cancel(CancelTaskRequest.builder()
+//                    .taskId(taskId)
+//                    .build())
+//                .log("stream.cancelTask"))
+//            .after();
     }
 
     protected Mono<String> asyncLaunch(AppDeploymentRequest request) {
@@ -269,7 +271,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .dropletId(dropletId)
                 .build())
             .log("stream.waitingForDroplet")
-            .where(response -> !response.getState().equals(org.cloudfoundry.client.v3.droplets.State.PENDING))
+            .filter(response -> !response.getState().equals(org.cloudfoundry.client.v3.droplets.State.PENDING))
             .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(10), Duration.ofMinutes(1), Duration.ofMinutes(10)))
             .map(response -> dropletId);
     }
@@ -279,7 +281,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .get(GetPackageRequest.builder()
                 .packageId(packageId)
                 .build())
-            .where(response -> response.getState().equals(State.READY))
+            .filter(response -> response.getState().equals(State.READY))
             .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1), Duration.ofMinutes(10)))
             .map(response -> packageId);
     }
@@ -346,8 +348,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     protected Mono<String> deploy(AppDeploymentRequest request) {
         return getApplicationId(client, request.getDefinition().getName())
-            .then(applicationId -> getReadyApplicationId(client, applicationId)
-                .otherwiseIfEmpty(deleteExistingApplication(client, applicationId)))
+            .then(applicationId -> getReadyApplicationId(client, applicationId))
+//                .otherwiseIfEmpty(deleteExistingApplication(client, applicationId)))
             .otherwiseIfEmpty(createAndUploadApplication(request));
     }
 
@@ -387,30 +389,26 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .get(GetDropletRequest.builder()
                 .dropletId(resource.getId())
                 .build())
-            .map(dropletResponse -> client.tasks()
-                .create(CreateTaskRequest.builder()
-                    .applicationId(applicationId)
-                    .dropletId(resource.getId())
-                    .name(request.getDefinition().getName())
-                    .command(((StagedResult) dropletResponse.getResult()).getProcessTypes().get("web"))
-                    .build())
-                .map(CreateTaskResponse::getId).get());
+            .map(dropletResponse -> createTask(dropletResponse, applicationId, request).get());
+    }
 
+    protected Mono<String> createTask(GetDropletResponse resource, String applicationId, AppDeploymentRequest request) {
+        StringBuilder command = new StringBuilder(((StagedResult) resource.getResult()).getProcessTypes().get("web"));
 
+        String commandLineArgs = request.getCommandlineArguments().stream()
+            .map(i -> i.toString())
+            .collect(Collectors.joining(" "));
 
-//
-//        return client.tasks()
-//            .create(CreateTaskRequest.builder()
-//                .applicationId(applicationId)
-//                .dropletId(resource.getId())
-//                .name(request.getDefinition().getName())
-//                .command(((StagedResult) resource.getResult()).getProcessTypes().get("web"))
-////                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher --spring.profiles.active=cloud")
-////                .command("eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java -Xmx2048m -Xms1024m -cp . org.springframework.boot.loader.JarLauncher")
-//                .build())
-//            .log("stream.createTask")
-//            .map(Task::getId)
-//            .log("stream.taskName");
+        command.append(" " + commandLineArgs);
+
+        return client.tasks()
+            .create(CreateTaskRequest.builder()
+                .applicationId(applicationId)
+                .dropletId(resource.getId())
+                .name(request.getDefinition().getName())
+                .command(command.toString())
+                .build())
+            .map(CreateTaskResponse::getId);
     }
 
     protected String getTaskId(CreateTaskResponse response) {
@@ -449,11 +447,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             return Mono.error(e);
         }
     }
-
-    private static Mono<String> deleteExistingApplication(CloudFoundryClient client, String applicationId) {
-        return requestDeleteApplication(client, applicationId)
-            .after(Mono::empty);
-    }
+//
+//    private static Mono<String> deleteExistingApplication(CloudFoundryClient client, String applicationId) {
+//        return requestDeleteApplication(client, applicationId)
+//            .after(Mono::empty);
+//    }
 
     /**
      * Look up the applicationId for a given app and confine results to 0 or 1 instance
