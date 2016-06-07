@@ -26,6 +26,7 @@ import org.cloudfoundry.client.v3.Relationship;
 import org.cloudfoundry.client.v3.Type;
 import org.cloudfoundry.client.v3.applications.Application;
 import org.cloudfoundry.client.v3.applications.ApplicationResource;
+import org.cloudfoundry.client.v3.applications.CancelApplicationTaskRequest;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
 import org.cloudfoundry.client.v3.applications.DeleteApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
@@ -123,14 +124,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     @Override
     public String launch(AppDeploymentRequest request) {
-
-        asyncLaunch(request);
-
-        /*
-         * The blocking API does NOT wait for async operations to complete before
-         * returning
-         */
-        return request.getDefinition().getName();
+        return asyncLaunch(request).get();
     }
 
     /**
@@ -146,7 +140,21 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     }
 
     protected Mono<Void> asyncCancel(String id) {
-        return Mono.empty();
+
+        return client.applicationsV3()
+                .list(ListApplicationsRequest.builder()
+                    .name(id)
+                    .page(1)
+                    .build())
+                .log("list Applications")
+                .flatMap(response -> Flux.fromIterable(response.getResources()))
+            .log("iterable")
+            .singleOrEmpty()
+            .log("single")
+            .map(Application::getId)
+            .log("getId")
+            .then()
+
 //
 //        return client.applicationsV3()
 //            .list(ListApplicationsRequest.builder()
