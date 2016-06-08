@@ -55,7 +55,6 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
 
-
 	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
 
 	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
@@ -68,13 +67,16 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private final CloudFoundryClient client;
 
+	private final AppDeploymentCustomizer appDeploymentCustomizer;
+
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeployer.class);
 
 	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations,
-								   CloudFoundryClient client) {
+								   CloudFoundryClient client, AppDeploymentCustomizer appDeploymentCustomizer) {
 		this.properties = properties;
 		this.operations = operations;
 		this.client = client;
+		this.appDeploymentCustomizer = appDeploymentCustomizer;
 	}
 
 	@Override
@@ -193,9 +195,10 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
+		String appName = Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
 				.map(groupName -> String.format("%s-", groupName))
 				.orElse("") + request.getDefinition().getName();
+		return appDeploymentCustomizer.deploymentIdWithUniquePrefix(appName);
 	}
 
 	private Mono<String> getApplicationId(String name) {
