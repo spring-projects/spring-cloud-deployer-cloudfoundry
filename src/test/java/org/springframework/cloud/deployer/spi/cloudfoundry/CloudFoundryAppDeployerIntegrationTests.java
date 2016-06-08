@@ -34,6 +34,7 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.util.Assert;
@@ -45,7 +46,7 @@ import org.springframework.util.Assert;
  * @author Greg Turnquist
  */
 @SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
-@IntegrationTest
+@IntegrationTest("spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false")
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
 	private static final Logger log = LoggerFactory.getLogger(CloudFoundryAppDeployerIntegrationTests.class);
@@ -135,6 +136,7 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	@Configuration
 	@EnableAutoConfiguration
 	public static class Config {
+
 	}
 
 }

@@ -40,6 +40,40 @@ SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_SKIP_SSL_VALIDATION
 
 Refer to https://github.com/spring-cloud/spring-cloud-deployer-cloudfoundry/blob/master/src/main/java/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryDeployerProperties.java[CloudFoundryDeployerProperties] for a complete listing.
 
+== Services, Disk and Memory settings.
+
 The deployer also supports setting the properties `spring-cloud-deployer-cloudfoundry-services`,
 `spring-cloud-deployer-cloudfoundry-memory`, and `spring-cloud-deployer-cloudfoundry-disk` as part of an individual
 deployment request.
+
+== Deployed application name settings
+
+To help avoid clashes with routes across spaces on Cloud Foundry, a naming strategy to provide a random prefix to a deployed application is available and is enabled by default.  There are two configuration properties, `enableRandomAppNamePrefix` and `appNamePrefix.  The `appNamePrefix` property defaults to `spring.application.name` if present, otherwise defaults to an empty string.
+
+There are four possible combinations for the name of an application called `time` based on these two property settings.  These are shown in the table below given an application where the name of the deployed application as defined via the deployer's high level API is 'time'
+
+.Application Name
+|===
+|appNamePrefix | enableRandomAppNamePrefix | application name
+
+|server
+|true
+|server-unfarming-restabilization-time
+
+|<empty string>
+|true
+|unfarming-restabilization-time
+
+|server
+|false
+|server-time
+
+|<emtpy string>
+|false
+|time
+
+
+
+
+
+

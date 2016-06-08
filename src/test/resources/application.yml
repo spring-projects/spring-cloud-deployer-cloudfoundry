@@ -1,15 +1,15 @@
 logging:
   level:
     cloudfoundry-client: DEBUG
-#spring:
-#  cloud:
-#    deployer:
-#      cloudfoundry:
-#        domain: navy.springapps.io
-#        org : mpollack-org
-#        space: development
-#        url : https://api.navy.springapps.io
-#        username: *****
-#        password: *****
-#        skipSslValidation: true
-#        services: redis
+spring:
+  cloud:
+    deployer:
+      cloudfoundry:
+        domain: navy.springapps.io
+        org : mpollack-org
+        space: development
+        url : https://api.navy.springapps.io
+        username: mpollack
+        password: passmpollack
+        skipSslValidation: true
+        services: redis

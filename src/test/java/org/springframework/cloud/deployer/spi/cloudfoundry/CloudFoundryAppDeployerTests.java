@@ -34,8 +34,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
@@ -53,7 +51,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
@@ -62,6 +59,10 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import reactor.core.publisher.Mono;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
@@ -84,15 +85,26 @@ public class CloudFoundryAppDeployerTests {
 
 	@Rule public ExpectedException thrown = none();
 
+	AppNameGenerator deploymentCustomizer;
+
 	@Before
-	public void setUp() {
+	public void setUp() throws Exception {
 
 		operations = mock(CloudFoundryOperations.class);
 		client = mock(CloudFoundryClient.class);
 		applications = mock(Applications.class);
 		applicationsV2 = mock(ApplicationsV2.class);
 		services = mock(Services.class);
-		deployer = new CloudFoundryAppDeployer(new CloudFoundryDeployerProperties(), operations, client);
+
+		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		properties.setAppNamePrefix("dataflow-server");
+		//Tests are setup not to handle random name prefix = true;
+		properties.setEnableRandomAppNamePrefix(false);
+		deploymentCustomizer = new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+		((CloudFoundryAppNameGenerator)deploymentCustomizer).afterPropertiesSet();
+
+		deployer = new CloudFoundryAppDeployer(properties, operations,
+				client, deploymentCustomizer);
 	}
 
 	@Test
@@ -104,11 +116,11 @@ public class CloudFoundryAppDeployerTests {
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
+				new AppDefinition("time", Collections.emptyMap()),
 				new FileSystemResource("")));
 
 		// then
-		assertThat(deploymentId, equalTo("test"));
+		assertThat(deploymentId, equalTo("dataflow-server-time"));
 	}
 
 	@Test
@@ -120,12 +132,12 @@ public class CloudFoundryAppDeployerTests {
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
+				new AppDefinition("time", Collections.emptyMap()),
 				new FileSystemResource(""),
-				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "prefix")));
+				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "ticktock")));
 
 		// then
-		assertThat(deploymentId, equalTo("prefix-test"));
+		assertThat(deploymentId, equalTo("dataflow-server-ticktock-time"));
 	}
 
 	@Test
@@ -146,7 +158,7 @@ public class CloudFoundryAppDeployerTests {
 		appDefinitionProperties.put(fooKey, fooVal);
 		appDefinitionProperties.put(barKey, barVal);
 
-		deployer = new CloudFoundryAppDeployer(properties, operations, client);
+		deployer = new CloudFoundryAppDeployer(properties, operations, client, deploymentCustomizer);
 
 		given(operations.applications()).willReturn(applications);
 
@@ -223,7 +235,7 @@ public class CloudFoundryAppDeployerTests {
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncDeploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
+				new AppDefinition("time", Collections.emptyMap()),
 				mock(Resource.class),
 				Collections.emptyMap()))
 				.subscribe(testSubscriber);
@@ -236,8 +248,8 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(operations);
 
 		then(applications).should().push(any());
-		then(applications).should().get(GetApplicationRequest.builder().name("test").build());
-		then(applications).should().start(StartApplicationRequest.builder().name("test").build());
+		then(applications).should().get(GetApplicationRequest.builder().name("dataflow-server-time").build());
+		then(applications).should().start(StartApplicationRequest.builder().name("dataflow-server-time").build());
 		verifyNoMoreInteractions(applications);
 
 		then(client).should().applicationsV2();
@@ -252,11 +264,11 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(applicationsV2);
 
 		then(services).should().bind(BindServiceInstanceRequest.builder()
-				.applicationName("test")
+				.applicationName("dataflow-server-time")
 				.serviceInstanceName("redis-service")
 				.build());
 		then(services).should().bind(BindServiceInstanceRequest.builder()
-				.applicationName("test")
+				.applicationName("dataflow-server-time")
 				.serviceInstanceName("mysql-service")
 				.build());
 		verifyNoMoreInteractions(services);
