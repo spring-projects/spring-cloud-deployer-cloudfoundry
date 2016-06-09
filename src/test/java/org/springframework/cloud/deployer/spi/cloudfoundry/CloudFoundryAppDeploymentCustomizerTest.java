@@ -29,8 +29,9 @@ public class CloudFoundryAppDeploymentCustomizerTest {
 
 	@Test
 	public void testDeploymentIdWithUniquePrefix() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new WordListRandomWords());
-		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).setSpringCloudDataFlowName("dataflow-foobar");
+		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		properties.setAppPrefix("dataflow-foobar");
+		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
 		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
 
 		assertEquals(deploymentCustomizer.deploymentIdWithUniquePrefix("foo"), "dataflow-foobar-foo");
@@ -38,7 +39,7 @@ public class CloudFoundryAppDeploymentCustomizerTest {
 
 	@Test
 	public void testDeploymentIdWithUniquePrefixWhenNoDataflowNameProvided() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new WordListRandomWords());
+		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new CloudFoundryDeployerProperties(), new WordListRandomWords());
 		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
 
 		String deploymentIdWithUniquePrefix = deploymentCustomizer.deploymentIdWithUniquePrefix("foo");
@@ -53,7 +54,7 @@ public class CloudFoundryAppDeploymentCustomizerTest {
 
 	@Test
 	public void testDeploymentIdWithUniquePrefixWhenCustomSpringApplicationNameIsProvided() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new WordListRandomWords());
+		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new CloudFoundryDeployerProperties(), new WordListRandomWords());
 		ReflectionTestUtils.setField(deploymentCustomizer, "springApplicationName", "custom-dataflow");
 		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
 
@@ -69,7 +70,7 @@ public class CloudFoundryAppDeploymentCustomizerTest {
 
 	@Test
 	public void testDeploymentIdWithUniquePrefixWhenSpringApplicationNameDefaultsToJarName() throws Exception {
-		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new WordListRandomWords());
+		AppDeploymentCustomizer deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new CloudFoundryDeployerProperties(), new WordListRandomWords());
 		ReflectionTestUtils.setField(deploymentCustomizer, "springApplicationName", "spring-cloud-dataflow-server-cloudfoundry");
 		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
 

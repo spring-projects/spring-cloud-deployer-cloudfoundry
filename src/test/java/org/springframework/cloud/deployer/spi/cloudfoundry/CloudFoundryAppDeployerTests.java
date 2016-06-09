@@ -96,11 +96,13 @@ public class CloudFoundryAppDeployerTests {
 		applicationsV2 = mock(ApplicationsV2.class);
 		services = mock(Services.class);
 
-		deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(new WordListRandomWords());
-		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).setSpringCloudDataFlowName("dataflow-foobar");
+		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		properties.setAppPrefix("dataflow-foobar");
+		properties.setAppPrefixEnabled(true);
+		deploymentCustomizer = new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
 		((CloudFoundryAppDeploymentCustomizer)deploymentCustomizer).afterPropertiesSet();
 
-		deployer = new CloudFoundryAppDeployer(new CloudFoundryDeployerProperties(), operations,
+		deployer = new CloudFoundryAppDeployer(properties, operations,
 				client, deploymentCustomizer);
 	}
 

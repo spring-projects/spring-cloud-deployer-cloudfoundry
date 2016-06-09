@@ -82,6 +82,6 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(AppDeploymentCustomizer.class)
 	public AppDeploymentCustomizer appDeploymentCustomizer(CloudFoundryDeployerProperties properties) {
-		return new CloudFoundryAppDeploymentCustomizer(new WordListRandomWords());
+		return new CloudFoundryAppDeploymentCustomizer(properties, new WordListRandomWords());
 	}
 }

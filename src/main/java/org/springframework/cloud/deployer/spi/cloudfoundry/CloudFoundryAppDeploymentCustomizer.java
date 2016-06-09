@@ -37,40 +37,38 @@ public class CloudFoundryAppDeploymentCustomizer implements AppDeploymentCustomi
 
 	private String uniquePrefix;
 
+	private final CloudFoundryDeployerProperties properties;
 	private final WordListRandomWords wordListRandomWords;
 
-	@Value("${spring.application.name}")
+	@Value("${spring.application.name:}")
 	private String springApplicationName;
 
-	@Value("${spring.cloud.dataflow.name:}")
-	private String springCloudDataFlowName;
-
-	public CloudFoundryAppDeploymentCustomizer(WordListRandomWords wordListRandomWords) {
+	public CloudFoundryAppDeploymentCustomizer(CloudFoundryDeployerProperties cloudFoundryDeployerProperties,
+											   WordListRandomWords wordListRandomWords) {
+		this.properties = cloudFoundryDeployerProperties;
 		this.wordListRandomWords = wordListRandomWords;
 	}
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
-		uniquePrefix = StringUtils.isEmpty(springCloudDataFlowName) ?
-				String.format("%s-%s-%s", shallFallBackToDefault()
-								? DEFAULT_DATAFLOW_NAME_TO_USE : springApplicationName, wordListRandomWords.getAdjective(),
-						wordListRandomWords.getNoun()) :
-				springCloudDataFlowName;
-		logger.info(String.format("Unique prefix to be used for deploying apps: %s", uniquePrefix));
+		if (properties.isAppPrefixEnabled()) {
+			uniquePrefix = StringUtils.isEmpty(properties.getAppPrefix()) ?
+					String.format("%s-%s-%s", shallFallBackToDefault()
+									? DEFAULT_DATAFLOW_NAME_TO_USE : springApplicationName, wordListRandomWords.getAdjective(),
+							wordListRandomWords.getNoun()) :
+					properties.getAppPrefix();
+			logger.info(String.format("Unique prefix to be used for deploying apps: %s", uniquePrefix));
+		}
 	}
 
 	@Override
 	public String deploymentIdWithUniquePrefix(String appName) {
-		return String.format("%s-%s", uniquePrefix, appName);
+		return StringUtils.isEmpty(uniquePrefix) ? appName : String.format("%s-%s", uniquePrefix, appName);
 	}
 
 	private boolean shallFallBackToDefault() {
 		return StringUtils.isEmpty(springApplicationName) ||
 				springApplicationName.equals(DEFAULT_SPRING_APPLICATION_NAME);
-	}
-
-	public void setSpringCloudDataFlowName(String springCloudDataFlowName) {
-		this.springCloudDataFlowName = springCloudDataFlowName;
 	}
 
 }
