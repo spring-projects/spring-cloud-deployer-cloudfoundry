@@ -98,6 +98,16 @@ public class CloudFoundryDeployerProperties {
 	 */
 	private int instances = 1;
 
+	/**
+	 * Flag to enable prefixing the app deployment.
+	 */
+	private boolean appPrefixEnabled = true;
+
+	/**
+	 * String to use as prefix for app deployment.
+	 */
+	private String appPrefix;
+
 	public Set<String> getServices() {
 		return services;
 	}
@@ -194,4 +204,19 @@ public class CloudFoundryDeployerProperties {
 		this.instances = instances;
 	}
 
+	public boolean isAppPrefixEnabled() {
+		return appPrefixEnabled;
+	}
+
+	public void setAppPrefixEnabled(boolean appPrefixEnabled) {
+		this.appPrefixEnabled = appPrefixEnabled;
+	}
+
+	public String getAppPrefix() {
+		return appPrefix;
+	}
+
+	public void setAppPrefix(String appPrefix) {
+		this.appPrefix = appPrefix;
+	}
 }

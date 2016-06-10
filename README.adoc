@@ -43,3 +43,9 @@ Refer to https://github.com/spring-cloud/spring-cloud-deployer-cloudfoundry/blob
 The deployer also supports setting the properties `spring-cloud-deployer-cloudfoundry-services`,
 `spring-cloud-deployer-cloudfoundry-memory`, and `spring-cloud-deployer-cloudfoundry-disk` as part of an individual
 deployment request.
+
+In addition, you can override the standard `spring.application.name` spring boot property to prefix the stream app
+deployments. In that case it will be followed by a random adjective, noun, stream and app names. You can bypass the
+generation of random adjective and noun by setting a property called `appPrefix` in which case this will
+be followed by stream and app names. Otherwise, a prefix of `dataflow` will be used which is followed by random adjective and noun.
+The prefixing of app deployment with a unique id is enabled by default. This can be disabled by setting `appPrefixEnabled` to false.
