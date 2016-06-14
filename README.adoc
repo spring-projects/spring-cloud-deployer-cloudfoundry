@@ -12,7 +12,7 @@ $ ./mvnw clean install
 
 The project includes a set of integration tests that can be run against a Cloud Foundry installation, provided that
 connection information is correctly set. If credentials are not set correctly, those tests will be silently skipped.
-Below is a short list of common Spring Boot @ConfigurationProperties (in environment variable format) that you will need to set in order to deploy applications to Cloud Foundry:
+Below is a short list of common Spring Boot `@ConfigurationProperties` (in environment variable format) that you will need to set in order to deploy applications to Cloud Foundry:
 
 ----
 # url of the CF API (used when using cf login -a for example)
@@ -40,17 +40,17 @@ SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_SKIP_SSL_VALIDATION
 
 Refer to https://github.com/spring-cloud/spring-cloud-deployer-cloudfoundry/blob/master/src/main/java/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryDeployerProperties.java[CloudFoundryDeployerProperties] for a complete listing.
 
-== Services, Disk and Memory settings.
+== Services, Disk and Memory Settings for Applications
 
-The deployer also supports setting the properties `spring-cloud-deployer-cloudfoundry-services`,
-`spring-cloud-deployer-cloudfoundry-memory`, and `spring-cloud-deployer-cloudfoundry-disk` as part of an individual
+The deployer also supports setting the properties `spring.cloud.deployer.cloudfoundry.services`,
+`spring.cloud.deployer.cloudfoundry.memory`, and `spring.cloud.deployer.cloudfoundry.disk` as part of an individual
 deployment request.
 
-== Deployed application name settings
+== Application Name Settings and Deployments
 
-To help avoid clashes with routes across spaces on Cloud Foundry, a naming strategy to provide a random prefix to a deployed application is available and is enabled by default.  There are two configuration properties, `enableRandomAppNamePrefix` and `appNamePrefix.  The `appNamePrefix` property defaults to `spring.application.name` if present, otherwise defaults to an empty string.
+To help avoid clashes with routes across spaces on Cloud Foundry, a naming strategy to provide a random prefix to a deployed application is available and is enabled by default.  There are two configuration properties, `enableRandomAppNamePrefix` and `appNamePrefix`.  The `appNamePrefix` property defaults to `spring.application.name` if present, otherwise defaults to an empty string.
 
-There are four possible combinations for the name of an application called `time` based on these two property settings.  These are shown in the table below given an application where the name of the deployed application as defined via the deployer's high level API is 'time'
+An application can have four possible "name" combinations. For instance, the `time` application can have name combinations as shown in the table below. The name of the deployed application is defined via deployer's high level API, in this case it is 'time'.
 
 .Application Name
 |===
