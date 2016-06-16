@@ -12,12 +12,12 @@
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-deployer-parent</artifactId>
-		<version>1.0.0.M1</version>
+		<version>1.0.0.RC1</version>
 	</parent>
 
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-cloud-deployer-spi.version>1.0.0.M1</spring-cloud-deployer-spi.version>
+		<spring-cloud-deployer-spi.version>1.0.0.RC1</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.0.0.M4</cloudfoundry-java-lib.version>
 		<reactor.version>2.5.0.M3</reactor.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
