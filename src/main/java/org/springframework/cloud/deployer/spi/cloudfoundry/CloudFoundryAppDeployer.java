@@ -105,7 +105,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				new ObjectMapper().writeValueAsString(
 					Optional.ofNullable(request.getDefinition().getProperties())
 							.orElse(Collections.emptyMap())));
-			envVariables.putAll(request.getEnvironmentProperties());
+			envVariables.putAll(request.getDeploymentProperties());
 		} catch (JsonProcessingException e) {
 			throw new RuntimeException(e);
 		}
@@ -196,7 +196,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
-		String appName = Optional.ofNullable(request.getEnvironmentProperties().get(GROUP_PROPERTY_KEY))
+		String appName = Optional.ofNullable(request.getDeploymentProperties().get(GROUP_PROPERTY_KEY))
 				.map(groupName -> String.format("%s-", groupName))
 				.orElse("") + request.getDefinition().getName();
 		return appDeploymentCustomizer.generateAppName(appName);
@@ -214,22 +214,22 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		return Flux.fromStream(
 			concat(
 				properties.getServices().stream(),
-				commaDelimitedListToSet(request.getEnvironmentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
+				commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
-			request.getEnvironmentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+			request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
 		return parseInt(
-			request.getEnvironmentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
+			request.getDeploymentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
 	}
 
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
-			request.getEnvironmentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+			request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {

@@ -256,11 +256,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     Mono<String> getSpaceId(AppDeploymentRequest request) {
 
         return Mono
-            .just(request.getEnvironmentProperties().get("organization"))
+            .just(request.getDeploymentProperties().get("organization"))
             .flatMap(organization -> PaginationUtils
                 .requestResources(page -> client.spaces()
                     .list(ListSpacesRequest.builder()
-                        .name(request.getEnvironmentProperties().get("space"))
+                        .name(request.getDeploymentProperties().get("space"))
                         .page(page)
                         .build())))
             .log("stream.listSpaces")
