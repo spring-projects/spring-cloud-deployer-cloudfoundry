@@ -27,13 +27,12 @@ import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
 /**
- * Creates a {@link CloudFoundryAppDeployer} and {@link CloudFoundryTaskLauncher}
+ * Creates a {@link CloudFoundryAppDeployer}
  *
  * @author Eric Bottard
  */
@@ -71,12 +70,6 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public AppDeployer appDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations, CloudFoundryClient client,
 								   AppNameGenerator appDeploymentCustomizer) {
 		return new CloudFoundryAppDeployer(properties, operations, client, appDeploymentCustomizer);
-	}
-
-	@Bean
-	@ConditionalOnMissingBean(TaskLauncher.class)
-	public TaskLauncher taskLauncher(CloudFoundryClient client) {
-		return new CloudFoundryTaskLauncher(client);
 	}
 
 	@Bean
