@@ -63,6 +63,7 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -145,40 +146,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         return client.tasks().cancel(CancelTaskRequest.builder()
             .taskId(id)
             .build());
-
-//        return client.applicationsV3()
-//                .list(ListApplicationsRequest.builder()
-//                    .name(id)
-//                    .page(1)
-//                    .build())
-//                .log("list Applications")
-//                .flatMap(response -> Flux.fromIterable(response.getResources()))
-//            .log("iterable")
-//            .singleOrEmpty()
-//            .log("single")
-//            .map(Application::getId)
-//            .log("getId")
-//            .then()
-
-//
-//        return client.applicationsV3()
-//            .list(ListApplicationsRequest.builder()
-//                .name(id)
-//                .page(1)
-//                .build())
-//            .log("stream.listApplications")
-//            .flatMap(response -> Flux.fromIterable(response.getResources()))
-//            .log("stream.applications")
-//            .singleOrEmpty()
-//            .log("stream.singleOrEmpty")
-//            .map(Application::getId)
-//            .log("stream.taskIds")
-//            .then(taskId -> client.tasks()
-//                .cancel(CancelTaskRequest.builder()
-//                    .taskId(taskId)
-//                    .build())
-//                .log("stream.cancelTask"))
-//            .after();
     }
 
     protected Mono<String> asyncLaunch(AppDeploymentRequest request) {
@@ -187,12 +154,13 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .page(1)
                 .build())
             .log("appsFound")
+            .doOnError(e -> logger.error(String.format("Error obtaining app %s", request.getDefinition().getName()), e))
             .flatMap(applicationsResponse -> processApplication(request, applicationsResponse))
             .single();
     }
 
     protected Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
-        if(response.getResources().size() == 0) {
+        if(CollectionUtils.isEmpty(response.getResources())) {
             System.out.println(">> About to do the deploy");
             return deploy(request)
                 .log("processApp1")
@@ -325,10 +293,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                             .build())
                         .build())
                     .build()))
-//                    .relationship("space", Relationship.builder()
-//                        .id(spaceId2)
-//                        .build())
-//                    .build()))
             .single()
             .log("stream.createApplication")
             .map(Application::getId)
@@ -362,7 +326,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     protected Mono<String> deploy(AppDeploymentRequest request) {
         return getApplicationId(client, request.getDefinition().getName())
             .then(applicationId -> getReadyApplicationId(client, applicationId))
-//                .otherwiseIfEmpty(deleteExistingApplication(client, applicationId)))
             .otherwiseIfEmpty(createAndUploadApplication(request));
     }
 
@@ -460,11 +423,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             return Mono.error(e);
         }
     }
-//
-//    private static Mono<String> deleteExistingApplication(CloudFoundryClient client, String applicationId) {
-//        return requestDeleteApplication(client, applicationId)
-//            .after(Mono::empty);
-//    }
 
     /**
      * Look up the applicationId for a given app and confine results to 0 or 1 instance
