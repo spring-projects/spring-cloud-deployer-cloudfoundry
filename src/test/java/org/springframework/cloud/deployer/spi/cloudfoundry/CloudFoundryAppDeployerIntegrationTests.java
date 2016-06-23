@@ -21,7 +21,7 @@ import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
+import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -104,9 +104,10 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 			envProperties,
 			commandLineArgs);
 
-		CloudFoundryOperations cloudFoundryOperations = new CloudFoundryOperationsBuilder()
+		CloudFoundryOperations cloudFoundryOperations = DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cfAvailable.getResource())
-			.target("scdf-org", "dev")
+			.organization("scdf-org")
+			.space("dev")
 			.build();
 
 		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
@@ -121,19 +122,58 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleLaunch() throws InterruptedException {
 
-		String taskId = taskLauncher.asyncLaunch(request).get(300000);
+		String taskId = taskLauncher.asyncLaunch(request).block(300000);
 
 		System.out.println(">> taskId = " + taskId);
 
-		TaskStatus status = taskLauncher.asyncStatus(taskId).get();
+		TaskStatus status = taskLauncher.asyncStatus(taskId).block();
 
 		while (!status.getState().equals(LaunchState.complete)) {
 			System.out.println(">> state = " + status.getState());
 			Thread.sleep(5000);
-			status = taskLauncher.asyncStatus(taskId).get();
+			status = taskLauncher.asyncStatus(taskId).block();
 		}
 
 		assertThat(status.getState(), is(LaunchState.complete));
+	}
+
+	@Test
+	public void testSimpleCancel() throws InterruptedException {
+		Map<String, String> envProperties = new HashMap<>();
+		envProperties.put("organization", "scdf-org");
+		envProperties.put("space", "dev");
+		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
+		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
+		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
+
+		List<String> commandLineArgs = new ArrayList<>(2);
+		commandLineArgs.add("30000");
+
+		request = new AppDeploymentRequest(
+			new AppDefinition("long-runner", Collections.emptyMap()),
+			context.getResource("classpath:long-running-task-1.0.0.BUILD-SNAPSHOT.jar"),
+			envProperties,
+			commandLineArgs);
+
+		String taskId = taskLauncher.asyncLaunch(request).block(300000);
+
+		System.out.println(">> taskId = " + taskId);
+
+		Thread.sleep(10000L);
+
+		System.out.println(">> About to cancel the task");
+
+		taskLauncher.cancel(taskId);
+
+		TaskStatus status = taskLauncher.asyncStatus(taskId).block();
+
+		while (!status.getState().equals(LaunchState.failed)) {
+			System.out.println(">> state = " + status.getState());
+			Thread.sleep(5000);
+			status = taskLauncher.asyncStatus(taskId).block();
+		}
+
+		assertThat(status.getState(), is(LaunchState.failed));
 	}
 
 	@Test
@@ -141,7 +181,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		CloudFoundryClient client = cfAvailable.getResource();
 
 		client.applicationsV3().list(ListApplicationsRequest.builder()
-				.name("timestamp")
+				.name("long-runner")
 				.page(1)
 				.build())
 			.log("applicationlist")
@@ -160,7 +200,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 				.build()))
 			.log("serviceBindingDeletes")
 			.single()
-		.get();
+		.block();
 	}
 
 	/**

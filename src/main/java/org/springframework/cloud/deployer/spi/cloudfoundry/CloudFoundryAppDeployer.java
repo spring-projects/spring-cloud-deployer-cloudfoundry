@@ -157,7 +157,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	@Override
 	public AppStatus status(String id) {
 		return asyncStatus(id)
-			.get();
+			.block();
 	}
 
 	Mono<AppStatus> asyncStatus(String id) {

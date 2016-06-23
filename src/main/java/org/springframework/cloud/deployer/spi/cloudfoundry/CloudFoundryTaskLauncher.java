@@ -26,7 +26,6 @@ import org.cloudfoundry.client.v3.Relationship;
 import org.cloudfoundry.client.v3.Type;
 import org.cloudfoundry.client.v3.applications.Application;
 import org.cloudfoundry.client.v3.applications.ApplicationResource;
-import org.cloudfoundry.client.v3.applications.CancelApplicationTaskRequest;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
 import org.cloudfoundry.client.v3.applications.DeleteApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
@@ -47,6 +46,8 @@ import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.Relationships;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
+import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
+import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
@@ -124,7 +125,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     @Override
     public String launch(AppDeploymentRequest request) {
-        return asyncLaunch(request).get();
+        return asyncLaunch(request).block();
     }
 
     /**
@@ -136,24 +137,28 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     @Override
     public TaskStatus status(String id) {
 
-        return asyncStatus(id).get(Duration.ofSeconds(30));
+        return asyncStatus(id).block(Duration.ofSeconds(30));
     }
 
-    protected Mono<Void> asyncCancel(String id) {
+    protected Mono<CancelTaskResponse> asyncCancel(String id) {
 
-        return client.applicationsV3()
-                .list(ListApplicationsRequest.builder()
-                    .name(id)
-                    .page(1)
-                    .build())
-                .log("list Applications")
-                .flatMap(response -> Flux.fromIterable(response.getResources()))
-            .log("iterable")
-            .singleOrEmpty()
-            .log("single")
-            .map(Application::getId)
-            .log("getId")
-            .then()
+        return client.tasks().cancel(CancelTaskRequest.builder()
+            .taskId(id)
+            .build());
+
+//        return client.applicationsV3()
+//                .list(ListApplicationsRequest.builder()
+//                    .name(id)
+//                    .page(1)
+//                    .build())
+//                .log("list Applications")
+//                .flatMap(response -> Flux.fromIterable(response.getResources()))
+//            .log("iterable")
+//            .singleOrEmpty()
+//            .log("single")
+//            .map(Application::getId)
+//            .log("getId")
+//            .then()
 
 //
 //        return client.applicationsV3()
@@ -397,7 +402,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .get(GetDropletRequest.builder()
                 .dropletId(resource.getId())
                 .build())
-            .map(dropletResponse -> createTask(dropletResponse, applicationId, request).get());
+            .map(dropletResponse -> createTask(dropletResponse, applicationId, request).block());
     }
 
     protected Mono<String> createTask(GetDropletResponse resource, String applicationId, AppDeploymentRequest request) {
