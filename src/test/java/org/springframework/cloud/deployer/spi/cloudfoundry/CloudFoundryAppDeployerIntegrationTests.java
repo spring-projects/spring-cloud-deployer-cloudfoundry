@@ -199,8 +199,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 				.serviceBindingId(serviceBindingResource.getId())
 				.build()))
 			.log("serviceBindingDeletes")
-			.single()
-		.block();
+			.singleOrEmpty()
+			.block();
 	}
 
 	/**

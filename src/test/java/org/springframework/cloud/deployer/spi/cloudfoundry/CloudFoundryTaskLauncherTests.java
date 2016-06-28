@@ -37,6 +37,8 @@ import org.cloudfoundry.client.v3.packages.GetPackageResponse;
 import org.cloudfoundry.client.v3.packages.Packages;
 import org.cloudfoundry.client.v3.packages.StagePackageResponse;
 import org.cloudfoundry.client.v3.packages.UploadPackageResponse;
+import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingResponse;
+import org.cloudfoundry.client.v3.servicebindings.ServiceBindingsV3;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.cloudfoundry.client.v3.tasks.State;
@@ -94,6 +96,9 @@ public class CloudFoundryTaskLauncherTests {
 
     @Mock
     private ApplicationsV3 applicationsV3;
+
+    @Mock
+    private ServiceBindingsV3 serviceBindingsV3;
 
     private CloudFoundryTaskLauncher launcher;
 
@@ -187,6 +192,7 @@ public class CloudFoundryTaskLauncherTests {
         UUID spaceId = UUID.randomUUID();
         UUID packageId = UUID.randomUUID();
         UUID dropletId = UUID.randomUUID();
+        UUID serviceBindingId = UUID.randomUUID();
         UUID taskleltId = UUID.randomUUID();
 
         ListApplicationsResponse emptyListApplicationsResponse = ListApplicationsResponse.builder()
@@ -242,6 +248,10 @@ public class CloudFoundryTaskLauncherTests {
         CreateTaskResponse createTaskResponse = CreateTaskResponse.builder()
             .id(taskleltId.toString())
             .build();
+        CreateServiceBindingResponse createServiceBindingResponse = CreateServiceBindingResponse.builder()
+            .id(serviceBindingId.toString())
+            .build();
+
 
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
         given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
@@ -258,8 +268,13 @@ public class CloudFoundryTaskLauncherTests {
         given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
         given(this.operations.services()).willReturn(this.services);
         given(this.services.listInstances()).willReturn(Flux.empty());
-        given(this.client.tasks()).willReturn(this.tasks);
-        given(this.tasks.create(any())).willReturn(Mono.just(createTaskResponse));
+
+
+
+
+
+//        given(this.client.tasks()).willReturn(this.tasks);
+//        given(this.tasks.create(any())).willReturn(Mono.just(createTaskResponse));
 
         // when
         AppDefinition definition = new AppDefinition("foo", null);
