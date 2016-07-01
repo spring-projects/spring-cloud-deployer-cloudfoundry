@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.client.CloudFoundryClient;
@@ -37,16 +39,13 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -102,10 +101,9 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 		try {
 			envVariables.put("SPRING_APPLICATION_JSON",
-				new ObjectMapper().writeValueAsString(
-					Optional.ofNullable(request.getDefinition().getProperties())
-							.orElse(Collections.emptyMap())));
-			envVariables.putAll(request.getDeploymentProperties());
+					new ObjectMapper().writeValueAsString(
+							Optional.ofNullable(request.getDefinition().getProperties())
+									.orElse(Collections.emptyMap())));
 		} catch (JsonProcessingException e) {
 			throw new RuntimeException(e);
 		}

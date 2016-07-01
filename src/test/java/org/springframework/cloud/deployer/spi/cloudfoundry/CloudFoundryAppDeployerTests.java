@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
@@ -51,6 +53,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
@@ -59,10 +62,6 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.core.publisher.Mono;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
@@ -146,8 +145,8 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
 
-		// Define the env variables for the app
-		Map<String, String> appDefinitionProperties = new HashMap<>();
+		// Define the deployment properties for the app
+		Map<String, String> deploymentProperties = new HashMap<>();
 
 		final String fooKey = "spring.cloud.foo";
 		final String fooVal = "this should end up in SPRING_APPLICATION_JSON";
@@ -155,8 +154,8 @@ public class CloudFoundryAppDeployerTests {
 		final String barKey = "another.cloud.bar";
 		final String barVal = "this should too";
 
-		appDefinitionProperties.put(fooKey, fooVal);
-		appDefinitionProperties.put(barKey, barVal);
+		deploymentProperties.put(fooKey, fooVal);
+		deploymentProperties.put(barKey, barVal);
 
 		deployer = new CloudFoundryAppDeployer(properties, operations, client, deploymentCustomizer);
 
@@ -179,7 +178,7 @@ public class CloudFoundryAppDeployerTests {
 		deployer.asyncDeploy(new AppDeploymentRequest(
 				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
 				mock(Resource.class),
-				appDefinitionProperties))
+				deploymentProperties))
 			.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
@@ -202,8 +201,8 @@ public class CloudFoundryAppDeployerTests {
 					put("SPRING_APPLICATION_JSON",
 							new ObjectMapper().writeValueAsString(
 									Collections.singletonMap("some.key", "someValue")));
-					put(fooKey, fooVal);
-					put(barKey, barVal);
+					// Note that fooKey and barKey are not expected to be in the environment as they are
+					// deployment properties
 				}})
 				.build());
 		verifyNoMoreInteractions(applicationsV2);
