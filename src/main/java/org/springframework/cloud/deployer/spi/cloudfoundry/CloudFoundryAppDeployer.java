@@ -72,7 +72,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeployer.class);
 
 	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations,
-								   CloudFoundryClient client, AppNameGenerator appDeploymentCustomizer) {
+			CloudFoundryClient client, AppNameGenerator appDeploymentCustomizer) {
 		this.properties = properties;
 		this.operations = operations;
 		this.client = client;
@@ -100,58 +100,67 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		Map<String, String> envVariables = new HashMap<>();
 
 		try {
+			Map<String, String> properties = new HashMap<>(request.getDefinition().getProperties());
+			// Remove server.port as CF assigns a port for us, and we don't want to override that
+			String port = properties.remove("server.port");
+			if (port != null) {
+				logger.info(String.format("Ignoring server.port=%s property for app %s, as Cloud Foundry will assign a dynamic port", name, port));
+			}
+
 			envVariables.put("SPRING_APPLICATION_JSON",
 					new ObjectMapper().writeValueAsString(
-							Optional.ofNullable(request.getDefinition().getProperties())
+							Optional.ofNullable(properties)
 									.orElse(Collections.emptyMap())));
-		} catch (JsonProcessingException e) {
+		}
+		catch (JsonProcessingException e) {
 			throw new RuntimeException(e);
 		}
 
 		try {
 			return operations.applications()
-				.push(PushApplicationRequest.builder()
-					.name(name)
-					.application(request.getResource().getInputStream())
-					.domain(properties.getDomain())
-					.buildpack(properties.getBuildpack())
-					.diskQuota(diskQuota(request))
-					.instances(instances(request))
-					.memory(memory(request))
-					.noStart(true)
-					.build())
-				.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
-				.doOnError(e -> logger.error(String.format("Error creating app %s", name), e))
-				// TODO: GH-34: Replace the following clause with an -operations API call
-				.after(() -> getApplicationId(name)
-					.then(applicationId -> client.applicationsV2()
-						.update(UpdateApplicationRequest.builder()
-							.applicationId(applicationId)
-							.environmentJsons(envVariables)
-							.build()))
-					.doOnSuccess(v -> logger.debug(String.format("Setting individual env variables to %s for app %s", envVariables, name)))
-					.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", name)))
-				)
-				.after(() -> servicesToBind(request)
-					.flatMap(service -> operations.services()
-						.bind(BindServiceInstanceRequest.builder()
-							.applicationName(name)
-							.serviceInstanceName(service)
+					.push(PushApplicationRequest.builder()
+							.name(name)
+							.application(request.getResource().getInputStream())
+							.domain(properties.getDomain())
+							.buildpack(properties.getBuildpack())
+							.diskQuota(diskQuota(request))
+							.instances(instances(request))
+							.memory(memory(request))
+							.noStart(true)
 							.build())
-						.doOnSuccess(v -> {
-							logger.debug(String.format("Binding service %s to app %s", service, name));
-						})
-						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
+					.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
+					.doOnError(e -> logger.error(String.format("Error creating app %s", name), e))
+					// TODO: GH-34: Replace the following clause with an -operations API call
+					.after(() -> getApplicationId(name)
+							.then(applicationId -> client.applicationsV2()
+									.update(UpdateApplicationRequest.builder()
+											.applicationId(applicationId)
+											.environmentJsons(envVariables)
+											.build()))
+							.doOnSuccess(v -> logger.debug(String.format("Setting individual env variables to %s for app %s", envVariables, name)))
+							.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", name)))
 					)
-					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
-                .after(() -> operations.applications()
-                    .start(StartApplicationRequest.builder()
-                        .name(name)
-                        .build())
-					.doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
-					.doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
-                );
-		} catch (IOException e) {
+					.after(() -> servicesToBind(request)
+							.flatMap(service -> operations.services()
+									.bind(BindServiceInstanceRequest.builder()
+											.applicationName(name)
+											.serviceInstanceName(service)
+											.build())
+									.doOnSuccess(v -> {
+										logger.debug(String.format("Binding service %s to app %s", service, name));
+									})
+									.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
+							)
+							.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
+					.after(() -> operations.applications()
+							.start(StartApplicationRequest.builder()
+									.name(name)
+									.build())
+							.doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
+							.doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
+					);
+		}
+		catch (IOException e) {
 			return Mono.error(e);
 		}
 	}
@@ -163,30 +172,30 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	Mono<Void> asyncUndeploy(String id) {
 		return operations.applications()
-			.delete(
-					DeleteApplicationRequest.builder()
-							.deleteRoutes(true)
-							.name(id)
-							.build()
-			)
-			.doOnSuccess(v -> logger.info(String.format("Sucessfully undeployed app %s", id)))
-			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e));
+				.delete(
+						DeleteApplicationRequest.builder()
+								.deleteRoutes(true)
+								.name(id)
+								.build()
+				)
+				.doOnSuccess(v -> logger.info(String.format("Sucessfully undeployed app %s", id)))
+				.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e));
 	}
 
 	@Override
 	public AppStatus status(String id) {
 		return asyncStatus(id)
-			.get();
+				.get();
 	}
 
 	Mono<AppStatus> asyncStatus(String id) {
 		return operations.applications()
-			.get(GetApplicationRequest.builder()
-					.name(id)
-					.build())
-			.then(ad -> createAppStatusBuilder(id, ad))
-			.otherwise(e -> emptyAppStatusBuilder(id))
-			.map(AppStatus.Builder::build);
+				.get(GetApplicationRequest.builder()
+						.name(id)
+						.build())
+				.then(ad -> createAppStatusBuilder(id, ad))
+				.otherwise(e -> emptyAppStatusBuilder(id))
+				.map(AppStatus.Builder::build);
 	}
 
 	public CloudFoundryDeployerProperties getProperties() {
@@ -202,37 +211,37 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private Mono<String> getApplicationId(String name) {
 		return operations.applications()
-			.get(GetApplicationRequest.builder()
-				.name(name)
-				.build())
-			.map(applicationDetail -> applicationDetail.getId());
+				.get(GetApplicationRequest.builder()
+						.name(name)
+						.build())
+				.map(applicationDetail -> applicationDetail.getId());
 	}
 
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {
 		return Flux.fromStream(
-			concat(
-				properties.getServices().stream(),
-				commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
+				concat(
+						properties.getServices().stream(),
+						commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+				request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
+				request.getDeploymentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
 	}
 
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+				request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {
 		return emptyAppStatusBuilder(id)
-			.then(b -> addInstances(b, ad));
+				.then(b -> addInstances(b, ad));
 	}
 
 	private Mono<AppStatus.Builder> emptyAppStatusBuilder(String id) {
