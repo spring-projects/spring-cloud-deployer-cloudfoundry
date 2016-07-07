@@ -43,6 +43,9 @@ import org.cloudfoundry.client.v3.packages.PackageType;
 import org.cloudfoundry.client.v3.packages.StagePackageRequest;
 import org.cloudfoundry.client.v3.packages.State;
 import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
+import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
+import org.cloudfoundry.client.v3.servicebindings.Relationships;
+import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
@@ -51,6 +54,7 @@ import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.cloudfoundry.client.v3.tasks.Task;
 import org.cloudfoundry.operations.CloudFoundryOperations;
+import org.cloudfoundry.operations.services.ServiceInstance;
 import org.cloudfoundry.util.PaginationUtils;
 import org.cloudfoundry.util.ResourceUtils;
 import org.slf4j.Logger;
@@ -177,21 +181,20 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         return operations.services()
             .listInstances()
             .log("stream.serviceInstances")
-            .then()
-//            .filter(instance -> servicesToBind(request).contains(instance.getName()))
-//            .log("stream.filteredInstances")
-//            .map(ServiceInstance::getId)
-//            .log("stream.serviceInstanceId")
-//            .flatMap(serviceInstanceId -> client.serviceBindingsV3()
-//                .create(CreateServiceBindingRequest.builder()
-//                    .relationships(Relationships.builder()
-//                        .application(Relationship.builder().id(applicationId).build())
-//                        .serviceInstance(Relationship.builder().id(serviceInstanceId).build())
-//                        .build())
-//                    .type(ServiceBindingType.APPLICATION)
-//                    .build())
-//                .log("created"))
-//            .log("stream.serviceBindingCreated")
+            .filter(instance -> servicesToBind(request).contains(instance.getName()))
+            .log("stream.filteredInstances")
+            .map(ServiceInstance::getId)
+            .log("stream.serviceInstanceId")
+            .flatMap(serviceInstanceId -> client.serviceBindingsV3()
+                .create(CreateServiceBindingRequest.builder()
+                    .relationships(Relationships.builder()
+                        .application(Relationship.builder().id(applicationId).build())
+                        .serviceInstance(Relationship.builder().id(serviceInstanceId).build())
+                        .build())
+                    .type(ServiceBindingType.APPLICATION)
+                    .build())
+                .log("created"))
+            .log("stream.serviceBindingCreated")
             .singleOrEmpty()
             .log("stream.applicationId")
             .map(a -> applicationId)

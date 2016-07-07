@@ -88,7 +88,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "scdf-org");
+		envProperties.put("organization", "system");
 		envProperties.put("space", "dev");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
@@ -140,7 +140,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "scdf-org");
+		envProperties.put("organization", "system");
 		envProperties.put("space", "dev");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
