@@ -93,13 +93,19 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 		Map<String, String> envVariables = new HashMap<>();
 
-		try {
-			envVariables.put("SPRING_APPLICATION_JSON",
-				new ObjectMapper().writeValueAsString(
+		if (useSpringApplicationJson(request)) {
+			try {
+				envVariables.put("SPRING_APPLICATION_JSON",
+						new ObjectMapper().writeValueAsString(
+								Optional.ofNullable(request.getDefinition().getProperties())
+										.orElse(Collections.emptyMap())));
+			} catch (JsonProcessingException e) {
+				throw new RuntimeException(e);
+			}
+		} else {
+			envVariables.putAll(
 					Optional.ofNullable(request.getDefinition().getProperties())
-						.orElse(Collections.emptyMap())));
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException(e);
+							.orElse(Collections.emptyMap()));
 		}
 
 		try {
@@ -108,7 +114,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.name(name)
 					.application(request.getResource().getFile().toPath())
 					.domain(properties.getDomain())
-					.buildpack(properties.getBuildpack())
+					.buildpack(buildpack(request))
 					.diskQuota(diskQuota(request))
 					.instances(instances(request))
 					.memory(memory(request))
@@ -219,9 +225,18 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			request.getDeploymentProperties().getOrDefault(AppDeployer.COUNT_PROPERTY_KEY, "1"));
 	}
 
+	private String buildpack(AppDeploymentRequest request) {
+		return request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.BUILDPACK_PROPERTY_KEY, properties.getBuildpack());
+	}
+
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
 			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+	}
+
+	private boolean useSpringApplicationJson(AppDeploymentRequest request) {
+		return Boolean.valueOf(
+				request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.USE_SPRING_APPLICATION_JSON_KEY, valueOf(properties.isUseSpringApplicationJson())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {
