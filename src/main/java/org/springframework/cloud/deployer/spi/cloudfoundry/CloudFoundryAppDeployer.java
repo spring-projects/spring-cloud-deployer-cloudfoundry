@@ -123,7 +123,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
 				.doOnError(e -> logger.error(String.format("Error creating app %s", name), e))
 				// TODO: GH-34: Replace the following clause with an -operations API call
-				.after(() -> getApplicationId(name)
+				.then(() -> getApplicationId(name)
 					.then(applicationId -> client.applicationsV2()
 						.update(UpdateApplicationRequest.builder()
 							.applicationId(applicationId)
@@ -132,7 +132,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.doOnSuccess(v -> logger.debug(String.format("Setting individual env variables to %s for app %s", envVariables, name)))
 					.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", name)))
 				)
-				.after(() -> servicesToBind(request)
+				.then(() -> servicesToBind(request)
 					.flatMap(service -> operations.services()
 						.bind(BindServiceInstanceRequest.builder()
 							.applicationName(name)
@@ -143,8 +143,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 						})
 						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
 					)
-					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
-                .after(() -> operations.applications()
+					.then() /* this then() merges all the bindServices Mono<Void>'s into 1 */)
+                .then(() -> operations.applications()
                     .start(StartApplicationRequest.builder()
                         .name(name)
                         .build())
@@ -176,7 +176,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	@Override
 	public AppStatus status(String id) {
 		return asyncStatus(id)
-			.get();
+			.block();
 	}
 
 	Mono<AppStatus> asyncStatus(String id) {
