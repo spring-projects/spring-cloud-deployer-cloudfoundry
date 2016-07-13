@@ -147,10 +147,10 @@ public class CloudFoundryAppDeployerTests {
 		Map<String, String> appDeploymentProperties = new HashMap<>();
 
 		final String fooKey = "spring.cloud.foo";
-		final String fooVal = "this should end up in SPRING_APPLICATION_JSON";
+		final String fooVal = "this should NOT end up in SPRING_APPLICATION_JSON";
 
 		final String barKey = "another.cloud.bar";
-		final String barVal = "this should too";
+		final String barVal = "neither should";
 
 		appDeploymentProperties.put(fooKey, fooVal);
 		appDeploymentProperties.put(barKey, barVal);
@@ -198,6 +198,75 @@ public class CloudFoundryAppDeployerTests {
 					put("SPRING_APPLICATION_JSON",
 							new ObjectMapper().writeValueAsString(
 									Collections.singletonMap("some.key", "someValue")));
+					// Note that fooKey and barKey are not expected to be in the environment as they are
+					// deployment properties
+				}})
+				.build());
+		verifyNoMoreInteractions(applicationsV2);
+	}
+
+	@Test
+	public void applyAppPropertiesIndividually() throws InterruptedException, IOException {
+
+		// given
+		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
+		CloudFoundryConnectionProperties connProperties = new CloudFoundryConnectionProperties();
+
+		// Define the deployment properties for the app
+		Map<String, String> appDeploymentProperties = new HashMap<>();
+
+		final String fooKey = "spring.cloud.foo";
+		final String fooVal = "this should NOT end up in SPRING_APPLICATION_JSON";
+
+		final String barKey = "another.cloud.bar";
+		final String barVal = "neither should this";
+
+		appDeploymentProperties.put(fooKey, fooVal);
+		appDeploymentProperties.put(barKey, barVal);
+
+		deployer = new CloudFoundryAppDeployer(connProperties, deploymentProperties, operations, client, deploymentCustomizer);
+
+		given(operations.applications()).willReturn(applications);
+
+		mockGetApplication("test", "RUNNING");
+		given(applications.push(any())).willReturn(Mono.empty());
+		given(applications.start(any())).willReturn(Mono.empty());
+
+		given(client.applicationsV2()).willReturn(applicationsV2);
+
+		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
+				.build()));
+
+		// when
+		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		appDeploymentProperties.put(CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY, "false");
+
+		deployer.asyncDeploy(new AppDeploymentRequest(
+				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
+				resource,
+				appDeploymentProperties))
+				.subscribe(testSubscriber);
+
+		testSubscriber.verify(Duration.ofSeconds(10L));
+
+		// then
+		then(operations).should(times(3)).applications();
+		verifyNoMoreInteractions(operations);
+
+		then(applications).should().push(any());
+		then(applications).should().get(any());
+		then(applications).should().start(any());
+		verifyNoMoreInteractions(applications);
+
+		then(client).should().applicationsV2();
+		verifyNoMoreInteractions(client);
+
+		then(applicationsV2).should().update(UpdateApplicationRequest.builder()
+				.applicationId("abc123")
+				.environmentJsons(new HashMap<String, String>() {{
+					put("some.key", "someValue");
 					// Note that fooKey and barKey are not expected to be in the environment as they are
 					// deployment properties
 				}})
