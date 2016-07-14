@@ -5,12 +5,12 @@ spring:
   cloud:
     deployer:
       cloudfoundry:
-        domain: api.sys.deer.wild.cf-app.com
+        domain: api.sys.crane.wild.cf-app.com
         organization: system
-        space: dev
-        apiEndpoint: https://api.sys.deer.wild.cf-app.com
-        username: michael
-        password: passmichael
+        space: system
+        apiEndpoint: https://api.sys.crane.wild.cf-app.com
+        username: mminella
+        password: passmminella
         skipSslValidation: true
         services: my_mysql
         defaults:

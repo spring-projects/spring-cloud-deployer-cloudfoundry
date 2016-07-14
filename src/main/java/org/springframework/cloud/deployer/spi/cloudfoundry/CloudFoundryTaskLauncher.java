@@ -27,7 +27,6 @@ import org.cloudfoundry.client.v3.Type;
 import org.cloudfoundry.client.v3.applications.Application;
 import org.cloudfoundry.client.v3.applications.ApplicationResource;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
-import org.cloudfoundry.client.v3.applications.DeleteApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationsResponse;
@@ -162,8 +161,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     }
 
     protected Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
+        System.out.println(">> response.getResources() = " + response.getResources());
         if(CollectionUtils.isEmpty(response.getResources())) {
-            System.out.println(">> About to do the deploy");
             return deploy(request)
                 .log("processApp1")
                 .then(applicationId -> bindServices(request, applicationId))
@@ -192,19 +191,18 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                         .serviceInstance(Relationship.builder().id(serviceInstanceId).build())
                         .build())
                     .type(ServiceBindingType.APPLICATION)
-                    .build())
-                .log("created"))
+                    .build()))
             .log("stream.serviceBindingCreated")
-            .singleOrEmpty()
+            .last()
             .log("stream.applicationId")
-            .map(a -> applicationId)
+            .then(Mono.just(applicationId))
             .log("stream.done");
     }
 
     private Set<String> servicesToBind(AppDeploymentRequest request) {
         Set<String> services = new HashSet<>();
         services.addAll(properties.getServices());
-        services.addAll(commaDelimitedListToSet(request.getEnvironmentProperties().get(SERVICES_PROPERTY_KEY)));
+        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
 
         return services;
     }
@@ -335,11 +333,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     protected Mono<String> getSpaceId(AppDeploymentRequest request) {
 
         return Mono
-            .just(request.getEnvironmentProperties().get("organization"))
+            .just(request.getDeploymentProperties().get("organization"))
             .flatMap(organization -> PaginationUtils
-                .requestResources(page -> client.spaces()
+                .requestClientV2Resources(page -> client.spaces()
                     .list(ListSpacesRequest.builder()
-                        .name(request.getEnvironmentProperties().get("space"))
+                        .name(request.getDeploymentProperties().get("space"))
                         .page(page)
                         .build())))
             .log("stream.listSpaces")
@@ -370,7 +368,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .get(GetDropletRequest.builder()
                 .dropletId(resource.getId())
                 .build())
-            .map(dropletResponse -> createTask(dropletResponse, applicationId, request).block());
+            .log("createTask.haveDroplet")
+            .then(dropletResponse -> createTask(dropletResponse, applicationId, request));
     }
 
     protected Mono<String> createTask(GetDropletResponse resource, String applicationId, AppDeploymentRequest request) {
@@ -381,6 +380,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .collect(Collectors.joining(" "));
 
         command.append(" " + commandLineArgs);
+        System.out.println(">> have command: " + command);
 
         return client.tasks()
             .create(CreateTaskRequest.builder()
@@ -389,6 +389,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .name(request.getDefinition().getName())
                 .command(command.toString())
                 .build())
+            .log("Task created")
             .map(CreateTaskResponse::getId);
     }
 
@@ -458,13 +459,13 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .build())
             .flatMap(response -> Flux.fromIterable(response.getResources()));
     }
-
-    private static Mono<Void> requestDeleteApplication(CloudFoundryClient client, String applicationId) {
-        return client.applicationsV3()
-            .delete(DeleteApplicationRequest.builder()
-                .applicationId(applicationId)
-                .build());
-    }
+//
+//    private static Mono<Void> requestDeleteApplication(CloudFoundryClient client, String applicationId) {
+//        return client.applicationsV3()
+//            .delete(DeleteApplicationRequest.builder()
+//                .applicationId(applicationId)
+//                .build());
+//    }
 
     /**
      * List ALL application entries filtered to the provided name
@@ -516,12 +517,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private int diskQuota(AppDeploymentRequest request) {
         return parseInt(
-            request.getEnvironmentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+            request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
     }
 
     private int memory(AppDeploymentRequest request) {
         return parseInt(
-            request.getEnvironmentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+            request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
     }
 
     private TaskStatus mapTaskToStatus(GetTaskResponse getTaskResponse) {

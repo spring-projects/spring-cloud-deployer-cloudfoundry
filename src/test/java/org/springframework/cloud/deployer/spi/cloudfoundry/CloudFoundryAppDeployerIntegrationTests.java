@@ -39,6 +39,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -89,7 +91,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		Map<String, String> envProperties = new HashMap<>();
 		envProperties.put("organization", "system");
-		envProperties.put("space", "dev");
+		envProperties.put("space", "system");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
@@ -106,8 +108,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		CloudFoundryOperations cloudFoundryOperations = DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cfAvailable.getResource())
-			.organization("scdf-org")
-			.space("dev")
+			.organization("system")
+			.space("system")
 			.build();
 
 		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
@@ -122,7 +124,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleLaunch() throws InterruptedException {
 
-		String taskId = taskLauncher.asyncLaunch(request).block(300000);
+		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(60, ChronoUnit.SECONDS));
 
 		System.out.println(">> taskId = " + taskId);
 
@@ -141,7 +143,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
 		envProperties.put("organization", "system");
-		envProperties.put("space", "dev");
+		envProperties.put("space", "system");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
@@ -155,7 +157,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 			envProperties,
 			commandLineArgs);
 
-		String taskId = taskLauncher.asyncLaunch(request).block(300000);
+		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(5, ChronoUnit.MINUTES));
 
 		System.out.println(">> taskId = " + taskId);
 
@@ -181,7 +183,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		CloudFoundryClient client = cfAvailable.getResource();
 
 		client.applicationsV3().list(ListApplicationsRequest.builder()
-				.name("long-runner")
+				.name("timestamp")
 				.page(1)
 				.build())
 			.log("applicationlist")
