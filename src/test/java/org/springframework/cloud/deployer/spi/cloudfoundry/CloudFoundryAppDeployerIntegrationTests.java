@@ -191,7 +191,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 			.log("applicationResponses")
 			.single()
 			.log("single")
-			.flatMap(applicationResource -> client.serviceBindingsV3().list(ListServiceBindingsRequest.builder()
+			.then(applicationResource -> client.serviceBindingsV3().list(ListServiceBindingsRequest.builder()
 				.applicationId(applicationResource.getId())
 				.build()))
 			.log("serviceBindingRequest")

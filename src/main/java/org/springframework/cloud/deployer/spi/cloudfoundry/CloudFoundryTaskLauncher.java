@@ -105,12 +105,26 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.disk";
 
+    private long timeout = 30;
+
     public CloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryOperations operations, CloudFoundryDeployerProperties properties) {
         this.client = client;
         this.operations = operations;
         this.properties = properties;
     }
 
+    /**
+     * @param timeout timeout in seconds for blocking events (status and launch).
+     */
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    /**
+     * Setup a reactor pipeline to cancel a running task.
+     *
+     * @param id the task's id to be cancled as returned from the {@link TaskLauncher#launch(AppDeploymentRequest)}
+     */
     @Override
     public void cancel(String id) {
 
@@ -125,21 +139,27 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     @Override
     public String launch(AppDeploymentRequest request) {
-        return asyncLaunch(request).block();
+        return asyncLaunch(request).block(Duration.ofSeconds(this.timeout));
     }
 
     /**
      * Lookup the current status based on task id.
      *
-     * @param id
-     * @return
+     * @param id taskId as returned from the {@link TaskLauncher#launch(AppDeploymentRequest)}
+     * @return the current task status
      */
     @Override
     public TaskStatus status(String id) {
 
-        return asyncStatus(id).block(Duration.ofSeconds(30));
+        return asyncStatus(id).block(Duration.ofSeconds(this.timeout));
     }
 
+    /**
+     * Issues an async request to cancel a running task
+     *
+     * @param id the id of the task to be canceled
+     * @return A Mono that will return the results of the cancel request.
+     */
     protected Mono<CancelTaskResponse> asyncCancel(String id) {
 
         return client.tasks().cancel(CancelTaskRequest.builder()
@@ -147,6 +167,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .build());
     }
 
+    /**
+     * Issues an async request to launch a task
+     *
+     * @param request an {@link AppDeploymentRequest} containing the details of the task to be launched
+     * @return A Mono that will return the id of the task launched
+     */
     protected Mono<String> asyncLaunch(AppDeploymentRequest request) {
         return client.applicationsV3().list(ListApplicationsRequest.builder()
                 .name(request.getDefinition().getName())
@@ -160,8 +186,33 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .single();
     }
 
+    /**
+     * Issues an async request for the status of a task
+     *
+     * @param id the id of the task to query about
+     * @return A Mono that will return the task's status
+     */
+    protected Mono<TaskStatus> asyncStatus(String id) {
+
+        return client.tasks().get(GetTaskRequest.builder()
+            .taskId(id)
+            .build())
+            .map(this::mapTaskToStatus)
+            .otherwise(throwable -> {
+                logger.error(throwable.getMessage());
+                return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
+            });
+    }
+
+    /**
+     * If an app has been deployed before, the task is launched.  If not, the app is
+     * deployed then launched as a task.
+     *
+     * @param request {@link AppDeploymentRequest} describing app to be deployed
+     * @param response {@link ListApplicationsResponse} with the previously deployed app or empty
+     * @return A Mono that will return the task's id
+     */
     protected Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
-        System.out.println(">> response.getResources() = " + response.getResources());
         if(CollectionUtils.isEmpty(response.getResources())) {
             return deploy(request)
                 .log("processApp1")
@@ -175,8 +226,14 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         }
     }
 
+    /**
+     * Binds requested services to the app.
+     *
+     * @param request {@link AppDeploymentRequest} metadata about the services to be bound
+     * @param applicationId the id of the app to bind the services to
+     * @return A Mono that will return the application id
+     */
     protected Mono<String> bindServices(AppDeploymentRequest request, String applicationId) {
-        System.out.println(">> bindServices.applicationId = " + applicationId);
         return operations.services()
             .listInstances()
             .log("stream.serviceInstances")
@@ -199,30 +256,10 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("stream.done");
     }
 
-    private Set<String> servicesToBind(AppDeploymentRequest request) {
-        Set<String> services = new HashSet<>();
-        services.addAll(properties.getServices());
-        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
-
-        return services;
-    }
-
-    protected Mono<TaskStatus> asyncStatus(String id) {
-
-        return client.tasks().get(GetTaskRequest.builder()
-                    .taskId(id)
-                    .build())
-                .map(this::mapTaskToStatus)
-                .otherwise(throwable -> {
-                    logger.error(throwable.getMessage());
-                    return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
-                });
-    }
-
     /**
      * Create a new application using supplied {@link AppDeploymentRequest}.
      *
-     * @param request
+     * @param request The {@link AppDeploymentRequest} containing the details of the app's location
      * @return {@link Mono} containing the newly created {@link Droplet}'s id
      */
     protected Mono<String> createAndUploadApplication(AppDeploymentRequest request) {
@@ -247,32 +284,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("application done...");
     }
 
-    private static Mono<String> waitForDropletProcessing(CloudFoundryClient cloudFoundryClient, String dropletId) {
-        return cloudFoundryClient.droplets()
-            .get(GetDropletRequest.builder()
-                .dropletId(dropletId)
-                .build())
-            .log("stream.waitingForDroplet")
-            .filter(response -> !response.getState().equals(org.cloudfoundry.client.v3.droplets.State.PENDING))
-            .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(10), Duration.ofMinutes(1), Duration.ofMinutes(10)))
-            .map(response -> dropletId);
-    }
-
-    private static Mono<String> waitForPackageProcessing(CloudFoundryClient cloudFoundryClient, String packageId) {
-        return cloudFoundryClient.packages()
-            .get(GetPackageRequest.builder()
-                .packageId(packageId)
-                .build())
-            .filter(response -> response.getState().equals(State.READY))
-            .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1), Duration.ofMinutes(10)))
-            .map(response -> packageId);
-    }
-
     /**
      * Create a new Cloud Foundry application by name
      *
-     * @param name
-     * @param spaceId
+     * @param name the name of the Cloud Foundry app to be created
+     * @param spaceId the id of the Cloud Foundry space the app is to be created in
      * @return applicationId
      */
     protected Mono<String> createApplication(String name, Mono<String> spaceId) {
@@ -303,7 +319,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     /**
      * Create Cloud Foundry package by applicationId
      *
-     * @param applicationId
+     * @param applicationId the application's id to create a package for
      * @return packageId
      */
     protected Mono<String> createPackage(String applicationId) {
@@ -321,7 +337,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     /**
      * Create an application with a package, then upload the bits into a staging.
      *
-     * @param request
+     * @param request the {@link AppDeploymentRequest} containing the information about the
+     *                app to be deployed
      * @return {@link Mono} with the applicationId
      */
     protected Mono<String> deploy(AppDeploymentRequest request) {
@@ -330,6 +347,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .otherwiseIfEmpty(createAndUploadApplication(request));
     }
 
+    /**
+     * Returns a Mono that will return the id of the space requested
+     *
+     * @param request metadata about the space to be deployed
+     * @return A Mono that will return the id of the space requested
+     */
     protected Mono<String> getSpaceId(AppDeploymentRequest request) {
 
         return Mono
@@ -352,35 +375,50 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     /**
      * Create a new {@link Task} based on applicationId.
      *
-     * @param applicationId
+     * @param applicationId the id of the application the task is to be launched from
      * @return {@link Mono} containing name of the task that was launched
      */
     protected Mono<String> launchTask(String applicationId, AppDeploymentRequest request) {
-        System.out.println(">> request = " + request);
-        System.out.println(">> appId = " + applicationId);
         return getDroplet(applicationId)
             .log("lauching.gotDroplet")
-            .then(droplet -> createTask(droplet, applicationId, request));
+            .map(DropletResource::getId)
+            .then(dropletId -> createTask(dropletId, applicationId, request));
     }
 
-    protected Mono<String> createTask(DropletResource resource, String applicationId, AppDeploymentRequest request) {
+    /**
+     * Obtains the droplet to be launched as a task and launches it.
+     *
+     * @param dropletId id of the droplet to be launched
+     * @param applicationId id of the app the droplet is associated with
+     * @param request metedata about the task to be launched
+     * @return A Mono that will return the task's id
+     */
+    protected Mono<String> createTask(String dropletId, String applicationId, AppDeploymentRequest request) {
         return client.droplets()
             .get(GetDropletRequest.builder()
-                .dropletId(resource.getId())
+                .dropletId(dropletId)
                 .build())
             .log("createTask.haveDroplet")
-            .then(dropletResponse -> createTask(dropletResponse, applicationId, request));
+            .then(dropletResponse -> createTaskRequest(dropletResponse, applicationId, request));
     }
 
-    protected Mono<String> createTask(GetDropletResponse resource, String applicationId, AppDeploymentRequest request) {
+    /**
+     * Creates an async request to launch a task
+     *
+     * @param resource droplet to be executed as a task
+     * @param applicationId id of the application to be used for the task
+     * @param request metadata about the task launch request
+     * @return A Mono that will return the id of the task launched
+     */
+    protected Mono<String> createTaskRequest(GetDropletResponse resource, String applicationId, AppDeploymentRequest request) {
         StringBuilder command = new StringBuilder(((StagedResult) resource.getResult()).getProcessTypes().get("web"));
 
         String commandLineArgs = request.getCommandlineArguments().stream()
-            .map(i -> i.toString())
+//            .map(i -> i)
             .collect(Collectors.joining(" "));
 
-        command.append(" " + commandLineArgs);
-        System.out.println(">> have command: " + command);
+        command.append(" ");
+        command.append(commandLineArgs);
 
         return client.tasks()
             .create(CreateTaskRequest.builder()
@@ -392,11 +430,17 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("Task created")
             .map(CreateTaskResponse::getId);
     }
+//
+//    protected String getTaskId(CreateTaskResponse response) {
+//        return response.getId();
+//    }
 
-    protected String getTaskId(CreateTaskResponse response) {
-        return response.getId();
-    }
-
+    /**
+     * Obtain the droplet associated with the application id
+     *
+     * @param applicationId application id for the droplet requested
+     * @return A Mono that will return the droplet requested
+     */
     protected Mono<DropletResource> getDroplet(String applicationId) {
         return client.applicationsV3()
             .listDroplets(ListApplicationDropletsRequest.builder()
@@ -410,8 +454,9 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     /**
      * Upload bits to a Cloud Foundry application by packageId.
      *
-     * @param packageId
-     * @param request
+     * @param packageId id of the package to upload the bits to
+     * @param request the {@link AppDeploymentRequest} with information about the location
+     *                of the bits
      * @return packageId
      */
     protected Mono<String> uploadPackage(String packageId, AppDeploymentRequest request) {
@@ -430,67 +475,18 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         }
     }
 
-    /**
-     * Look up the applicationId for a given app and confine results to 0 or 1 instance
-     *
-     * @param client
-     * @param name
-     * @return {@link Mono} with the application's id
-     */
-    private static Mono<String> getApplicationId(CloudFoundryClient client, String name) {
+    private Set<String> servicesToBind(AppDeploymentRequest request) {
+        Set<String> services = new HashSet<>();
+        services.addAll(properties.getServices());
+        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
 
-        return requestListApplications(client, name)
-            .singleOrEmpty()
-            .map(Application::getId);
-    }
-
-    private static Mono<String> getReadyApplicationId(CloudFoundryClient client, String applicationId) {
-        return requestApplicationDroplets(client, applicationId)
-            .filter(resource -> org.cloudfoundry.client.v3.droplets.State.STAGED.equals(resource.getState()))
-            .next()
-            .map(resource -> applicationId);
-    }
-
-    private static Flux<DropletResource> requestApplicationDroplets(CloudFoundryClient client, String applicationId) {
-        return client.applicationsV3()
-            .listDroplets(ListApplicationDropletsRequest.builder()
-                .applicationId(applicationId)
-                .page(1)
-                .build())
-            .flatMap(response -> Flux.fromIterable(response.getResources()));
-    }
-//
-//    private static Mono<Void> requestDeleteApplication(CloudFoundryClient client, String applicationId) {
-//        return client.applicationsV3()
-//            .delete(DeleteApplicationRequest.builder()
-//                .applicationId(applicationId)
-//                .build());
-//    }
-
-    /**
-     * List ALL application entries filtered to the provided name
-     *
-     * @param client
-     * @param name
-     * @return {@link Flux} of application resources {@link ApplicationResource}
-     */
-    private static Flux<ApplicationResource> requestListApplications(
-        CloudFoundryClient client, String name) {
-
-        return client.applicationsV3()
-            .list(ListApplicationsRequest.builder()
-                .name(name)
-                .page(1)
-                .build())
-            .log("stream.listApplications")
-            .flatMap(response -> Flux.fromIterable(response.getResources()))
-            .log("stream.applications");
+        return services;
     }
 
     /**
      * Create a new {@link Droplet} based upon packageId.
      *
-     * @param packageId
+     * @param packageId The package id the droplet is associated with
      * @return {@link Mono} containing the {@link Droplet}'s ID.
      */
     private Mono<String> createDroplet(String packageId, AppDeploymentRequest appDeploymentRequest) {
@@ -544,4 +540,81 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         }
     }
 
+    /**
+     * Look up the applicationId for a given app and confine results to 0 or 1 instance
+     *
+     * @param client a {@link CloudFoundryClient} to work with
+     * @param name Name of the application to get the id for
+     * @return {@link Mono} with the application's id
+     */
+    private static Mono<String> getApplicationId(CloudFoundryClient client, String name) {
+
+        return requestListApplications(client, name)
+            .singleOrEmpty()
+            .map(Application::getId);
+    }
+
+    private static Mono<String> getReadyApplicationId(CloudFoundryClient client, String applicationId) {
+        return requestApplicationDroplets(client, applicationId)
+            .filter(resource -> org.cloudfoundry.client.v3.droplets.State.STAGED.equals(resource.getState()))
+            .next()
+            .map(resource -> applicationId);
+    }
+
+    private static Flux<DropletResource> requestApplicationDroplets(CloudFoundryClient client, String applicationId) {
+        return client.applicationsV3()
+            .listDroplets(ListApplicationDropletsRequest.builder()
+                .applicationId(applicationId)
+                .page(1)
+                .build())
+            .flatMap(response -> Flux.fromIterable(response.getResources()));
+    }
+
+    private static Mono<String> waitForDropletProcessing(CloudFoundryClient cloudFoundryClient, String dropletId) {
+        return cloudFoundryClient.droplets()
+            .get(GetDropletRequest.builder()
+                .dropletId(dropletId)
+                .build())
+            .log("stream.waitingForDroplet")
+            .filter(response -> !response.getState().equals(org.cloudfoundry.client.v3.droplets.State.PENDING))
+            .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(10), Duration.ofMinutes(1), Duration.ofMinutes(10)))
+            .map(response -> dropletId);
+    }
+
+    private static Mono<String> waitForPackageProcessing(CloudFoundryClient cloudFoundryClient, String packageId) {
+        return cloudFoundryClient.packages()
+            .get(GetPackageRequest.builder()
+                .packageId(packageId)
+                .build())
+            .filter(response -> response.getState().equals(State.READY))
+            .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1), Duration.ofMinutes(10)))
+            .map(response -> packageId);
+    }
+//
+//    private static Mono<Void> requestDeleteApplication(CloudFoundryClient client, String applicationId) {
+//        return client.applicationsV3()
+//            .delete(DeleteApplicationRequest.builder()
+//                .applicationId(applicationId)
+//                .build());
+//    }
+
+    /**
+     * List ALL application entries filtered to the provided name
+     *
+     * @param client {@link CloudFoundryClient} to interact with
+     * @param name the name of the applications to obtain
+     * @return {@link Flux} of application resources {@link ApplicationResource}
+     */
+    private static Flux<ApplicationResource> requestListApplications(
+        CloudFoundryClient client, String name) {
+
+        return client.applicationsV3()
+            .list(ListApplicationsRequest.builder()
+                .name(name)
+                .page(1)
+                .build())
+            .log("stream.listApplications")
+            .flatMap(response -> Flux.fromIterable(response.getResources()))
+            .log("stream.applications");
+    }
 }
