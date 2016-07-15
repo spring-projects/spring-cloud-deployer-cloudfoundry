@@ -15,17 +15,6 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static java.util.stream.Stream.concat;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
@@ -39,13 +28,23 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static java.util.stream.Stream.concat;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -123,7 +122,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
 				.doOnError(e -> logger.error(String.format("Error creating app %s", name), e))
 				// TODO: GH-34: Replace the following clause with an -operations API call
-				.after(() -> getApplicationId(name)
+				.then(() -> getApplicationId(name)
 					.then(applicationId -> client.applicationsV2()
 						.update(UpdateApplicationRequest.builder()
 							.applicationId(applicationId)
@@ -132,7 +131,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.doOnSuccess(v -> logger.debug(String.format("Setting individual env variables to %s for app %s", envVariables, name)))
 					.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", name)))
 				)
-				.after(() -> servicesToBind(request)
+				.then(() -> servicesToBind(request)
 					.flatMap(service -> operations.services()
 						.bind(BindServiceInstanceRequest.builder()
 							.applicationName(name)
@@ -143,8 +142,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 						})
 						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
 					)
-					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
-				.after(() -> operations.applications()
+					.then() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
+				.then(() -> operations.applications()
 					.start(StartApplicationRequest.builder()
 						.name(name)
 						.build())
