@@ -104,7 +104,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			// Remove server.port as CF assigns a port for us, and we don't want to override that
 			String port = properties.remove("server.port");
 			if (port != null) {
-				logger.info(String.format("Ignoring server.port=%s property for app %s, as Cloud Foundry will assign a dynamic port", name, port));
+				logger.warn(String.format("Ignoring 'server.port=%s' for app %s, as Cloud Foundry will assign a local dynamic port. Route to the app will use port 80.", name, port));
 			}
 
 			envVariables.put("SPRING_APPLICATION_JSON",
