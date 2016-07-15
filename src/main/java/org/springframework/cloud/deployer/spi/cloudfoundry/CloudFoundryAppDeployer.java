@@ -15,57 +15,68 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.applications.ApplicationDetail;
-import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
-import org.cloudfoundry.operations.applications.GetApplicationRequest;
-import org.cloudfoundry.operations.applications.PushApplicationRequest;
-import org.cloudfoundry.operations.applications.SetEnvironmentVariableApplicationRequest;
-import org.cloudfoundry.operations.applications.StartApplicationRequest;
-import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.app.AppStatus;
-import org.springframework.cloud.deployer.spi.app.DeploymentState;
-import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.util.Map;
-
 import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
 import static java.util.stream.Stream.concat;
 import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
+import org.cloudfoundry.operations.CloudFoundryOperations;
+import org.cloudfoundry.operations.applications.ApplicationDetail;
+import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
+import org.cloudfoundry.operations.applications.GetApplicationRequest;
+import org.cloudfoundry.operations.applications.PushApplicationRequest;
+import org.cloudfoundry.operations.applications.StartApplicationRequest;
+import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.AppStatus;
+import org.springframework.cloud.deployer.spi.app.DeploymentState;
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+
 /**
  * A deployer that targets Cloud Foundry using the public API.
- * 
+ *
  * @author Eric Bottard
  * @author Greg Turnquist
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
 
+	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
 
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.memory";
+	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
 
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.disk";
-
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.defaults.services";
+	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
 
 	private final CloudFoundryDeployerProperties properties;
 
 	private final CloudFoundryOperations operations;
 
+	private final CloudFoundryClient client;
+
+	private final AppNameGenerator appDeploymentCustomizer;
+
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeployer.class);
 
-	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations) {
+	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations,
+								   CloudFoundryClient client, AppNameGenerator appDeploymentCustomizer) {
 		this.properties = properties;
 		this.operations = operations;
+		this.client = client;
+		this.appDeploymentCustomizer = appDeploymentCustomizer;
 	}
 
 	@Override
@@ -74,24 +85,29 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		DeploymentState state = status(deploymentId).getState();
 		if (state != DeploymentState.unknown) {
 			throw new IllegalStateException(String.format("App %s is already deployed with state %s",
-					deploymentId, state));
+				deploymentId, state));
 		}
 
 		asyncDeploy(request)
-				.subscribe();
+			.subscribe();
 
 		return deploymentId;
 	}
 
 	Mono<Void> asyncDeploy(AppDeploymentRequest request) {
 		String name = deploymentId(request);
-		final String argsAsJson;
+
+		Map<String, String> envVariables = new HashMap<>();
+
 		try {
-			argsAsJson = new ObjectMapper().writeValueAsString(request.getDefinition().getProperties());
-		}
-		catch (JsonProcessingException e) {
+			envVariables.put("SPRING_APPLICATION_JSON",
+				new ObjectMapper().writeValueAsString(
+					Optional.ofNullable(request.getDefinition().getProperties())
+						.orElse(Collections.emptyMap())));
+		} catch (JsonProcessingException e) {
 			throw new RuntimeException(e);
 		}
+
 		try {
 			return operations.applications()
 				.push(PushApplicationRequest.builder()
@@ -106,32 +122,35 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.build())
 				.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
 				.doOnError(e -> logger.error(String.format("Error creating app %s", name), e))
-				.then(() -> operations.applications().setEnvironmentVariable(
-					SetEnvironmentVariableApplicationRequest.builder()
-						.name(name)
-						.variableName("SPRING_APPLICATION_JSON")
-						.variableValue(argsAsJson)
-						.build())
-					.doOnSuccess(v -> logger.debug(String.format("Setting env for app %s as %s", name, argsAsJson)))
-					.doOnError(e -> logger.error(String.format("Error setting environment for app %s", name), e))
+				// TODO: GH-34: Replace the following clause with an -operations API call
+				.after(() -> getApplicationId(name)
+					.then(applicationId -> client.applicationsV2()
+						.update(UpdateApplicationRequest.builder()
+							.applicationId(applicationId)
+							.environmentJsons(envVariables)
+							.build()))
+					.doOnSuccess(v -> logger.debug(String.format("Setting individual env variables to %s for app %s", envVariables, name)))
+					.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", name)))
 				)
-				.then(() -> servicesToBind(request)
+				.after(() -> servicesToBind(request)
 					.flatMap(service -> operations.services()
 						.bind(BindServiceInstanceRequest.builder()
 							.applicationName(name)
 							.serviceInstanceName(service)
 							.build())
-							.doOnSuccess(v -> logger.debug(String.format("Binding service %s to app %s", service, name)))
-							.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
+						.doOnSuccess(v -> {
+							logger.debug(String.format("Binding service %s to app %s", service, name));
+						})
+						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
 					)
-					.then() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
-                .then(() -> operations.applications()
-                    .start(StartApplicationRequest.builder()
-                        .name(name)
-                        .build())
-		                .doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
-		                .doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
-                );
+					.after() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
+				.after(() -> operations.applications()
+					.start(StartApplicationRequest.builder()
+						.name(name)
+						.build())
+					.doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
+					.doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))
+				);
 		} catch (IOException e) {
 			return Mono.error(e);
 		}
@@ -145,10 +164,10 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	Mono<Void> asyncUndeploy(String id) {
 		return operations.applications()
 			.delete(
-					DeleteApplicationRequest.builder()
-							.deleteRoutes(true)
-							.name(id)
-							.build()
+				DeleteApplicationRequest.builder()
+					.deleteRoutes(true)
+					.name(id)
+					.build()
 			)
 			.doOnSuccess(v -> logger.info(String.format("Sucessfully undeployed app %s", id)))
 			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e));
@@ -163,22 +182,30 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	Mono<AppStatus> asyncStatus(String id) {
 		return operations.applications()
 			.get(GetApplicationRequest.builder()
-					.name(id)
-					.build())
+				.name(id)
+				.build())
 			.then(ad -> createAppStatusBuilder(id, ad))
 			.otherwise(e -> emptyAppStatusBuilder(id))
 			.map(AppStatus.Builder::build);
 	}
 
-
-	private Flux<Map.Entry<String, String>> environmenVariables(AppDeploymentRequest request) {
-		return Flux.fromStream(request.getDefinition().getProperties().entrySet().stream());
+	public CloudFoundryDeployerProperties getProperties() {
+		return properties;
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
-		return String.format("%s-%s",
-			request.getDeploymentProperties().get(GROUP_PROPERTY_KEY),
-			request.getDefinition().getName());
+		String appName = Optional.ofNullable(request.getDeploymentProperties().get(GROUP_PROPERTY_KEY))
+			.map(groupName -> String.format("%s-", groupName))
+			.orElse("") + request.getDefinition().getName();
+		return appDeploymentCustomizer.generateAppName(appName);
+	}
+
+	private Mono<String> getApplicationId(String name) {
+		return operations.applications()
+			.get(GetApplicationRequest.builder()
+				.name(name)
+				.build())
+			.map(applicationDetail -> applicationDetail.getId());
 	}
 
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {
@@ -214,8 +241,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private Mono<AppStatus.Builder> addInstances(AppStatus.Builder initial, ApplicationDetail ad) {
 		return Flux.fromIterable(ad.getInstanceDetails())
-				.zipWith(Flux.range(0, ad.getRunningInstances()))
-				.reduce(initial, (b, inst) -> b.with(new CloudFoundryAppInstanceStatus(ad, inst.t1, inst.t2)));
+			.zipWith(Flux.range(0, ad.getRunningInstances()))
+			.reduce(initial, (b, inst) -> b.with(new CloudFoundryAppInstanceStatus(ad, inst.t1, inst.t2)));
 	}
 
 }
