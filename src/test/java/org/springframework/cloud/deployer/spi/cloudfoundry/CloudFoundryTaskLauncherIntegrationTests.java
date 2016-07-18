@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -58,6 +59,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  *
  * @author Eric Bottard
  * @author Greg Turnquist
+ * @author Michael Minella
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = CloudFoundryDeployerProperties.class)
@@ -96,9 +98,10 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
 
-		List<String> commandLineArgs = new ArrayList<>(2);
+		List<String> commandLineArgs = new ArrayList<>(3);
 		commandLineArgs.add("--foo=bar");
 		commandLineArgs.add("--baz=qux");
+		commandLineArgs.add("random=" + UUID.randomUUID().toString());
 
 		request = new AppDeploymentRequest(
 			new AppDefinition("timestamp", Collections.emptyMap()),
@@ -124,7 +127,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleLaunch() throws InterruptedException {
 
-		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(60, ChronoUnit.SECONDS));
+		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(5, ChronoUnit.MINUTES));
 
 		System.out.println(">> taskId = " + taskId);
 

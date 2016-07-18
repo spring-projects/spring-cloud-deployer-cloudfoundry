@@ -6,11 +6,17 @@ spring:
     deployer:
       cloudfoundry:
         domain: api.sys.crane.wild.cf-app.com
-        organization: system
+        org: system
         space: system
-        apiEndpoint: https://api.sys.crane.wild.cf-app.com
+        url: https://api.sys.crane.wild.cf-app.com
         username: mminella
         password: passmminella
+#        domain: navy.springapps.io
+#        org : mpollack-org
+#        space: development
+#        url : https://api.navy.springapps.io
+#        username: mpollack
+#        password: metrocard
         skipSslValidation: true
         services: my_mysql
         defaults:
