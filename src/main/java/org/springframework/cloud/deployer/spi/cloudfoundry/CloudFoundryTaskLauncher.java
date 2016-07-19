@@ -28,6 +28,7 @@ import org.cloudfoundry.client.v3.applications.Application;
 import org.cloudfoundry.client.v3.applications.ApplicationResource;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
+import org.cloudfoundry.client.v3.applications.ListApplicationDropletsResponse;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationsResponse;
 import org.cloudfoundry.client.v3.droplets.Droplet;
@@ -181,9 +182,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("appsFound")
             .doOnError(e -> logger.error(String.format("Error obtaining app %s", request.getDefinition().getName()), e))
             .log("processApps")
-            .flatMap(applicationsResponse -> processApplication(request, applicationsResponse))
-            .log("process apps done")
-            .single();
+            .then(applicationsResponse -> processApplication(request, applicationsResponse))
+            .log("process apps done");
     }
 
     /**
@@ -294,7 +294,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     protected Mono<String> createApplication(String name, Mono<String> spaceId) {
 
         return spaceId
-            .flatMap(spaceId2 -> client.applicationsV3()
+            .then(spaceId2 -> client.applicationsV3()
                 .create(CreateApplicationRequest.builder()
                     .name(name)
                     .lifecycle(Lifecycle.builder()
@@ -310,7 +310,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                             .build())
                         .build())
                     .build()))
-            .single()
             .log("stream.createApplication")
             .map(Application::getId)
             .log("stream.getApplicationId");
@@ -414,7 +413,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         StringBuilder command = new StringBuilder(((StagedResult) resource.getResult()).getProcessTypes().get("web"));
 
         String commandLineArgs = request.getCommandlineArguments().stream()
-//            .map(i -> i)
             .collect(Collectors.joining(" "));
 
         command.append(" ");
@@ -430,10 +428,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .log("Task created")
             .map(CreateTaskResponse::getId);
     }
-//
-//    protected String getTaskId(CreateTaskResponse response) {
-//        return response.getId();
-//    }
 
     /**
      * Obtain the droplet associated with the application id
@@ -447,7 +441,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                 .applicationId(applicationId)
                 .build())
             .log("stream.listDroplet")
-            .flatMap(response -> Flux.fromIterable(response.getResources()))
+            .flatMapIterable(ListApplicationDropletsResponse::getResources)
             .single();
     }
 
@@ -590,13 +584,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
             .repeatWhenEmpty(50, exponentialBackOff(Duration.ofSeconds(5), Duration.ofMinutes(1), Duration.ofMinutes(10)))
             .map(response -> packageId);
     }
-//
-//    private static Mono<Void> requestDeleteApplication(CloudFoundryClient client, String applicationId) {
-//        return client.applicationsV3()
-//            .delete(DeleteApplicationRequest.builder()
-//                .applicationId(applicationId)
-//                .build());
-//    }
 
     /**
      * List ALL application entries filtered to the provided name

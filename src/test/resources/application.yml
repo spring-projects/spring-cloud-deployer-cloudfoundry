@@ -5,10 +5,10 @@ spring:
   cloud:
     deployer:
       cloudfoundry:
-        domain: api.sys.crane.wild.cf-app.com
+        domain: api.sys.jackal.wild.cf-app.com
         org: system
         space: system
-        url: https://api.sys.crane.wild.cf-app.com
+        url: https://api.sys.jackal.wild.cf-app.com
         username: mminella
         password: passmminella
 #        domain: navy.springapps.io
