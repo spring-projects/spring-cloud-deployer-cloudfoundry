@@ -129,7 +129,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     @Override
     public void cancel(String id) {
 
-        asyncCancel(id).subscribe();
+        asyncCancel(id).block(Duration.ofSeconds(this.timeout));
     }
 
     /**
@@ -551,7 +551,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     private static Mono<String> getReadyApplicationId(CloudFoundryClient client, String applicationId) {
         return requestApplicationDroplets(client, applicationId)
             .filter(resource -> org.cloudfoundry.client.v3.droplets.State.STAGED.equals(resource.getState()))
-            .next()
+            .single()
             .map(resource -> applicationId);
     }
 

@@ -92,8 +92,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "system");
-		envProperties.put("space", "system");
+		envProperties.put("organization", "scdf-org");
+		envProperties.put("space", "dev");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
@@ -111,8 +111,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		CloudFoundryOperations cloudFoundryOperations = DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cfAvailable.getResource())
-			.organization("system")
-			.space("system")
+			.organization("scdf-org")
+			.space("dev")
 			.build();
 
 		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
@@ -145,8 +145,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "system");
-		envProperties.put("space", "system");
+		envProperties.put("organization", "scdf-org");
+		envProperties.put("space", "dev");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
 		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
@@ -186,7 +186,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		CloudFoundryClient client = cfAvailable.getResource();
 
 		client.applicationsV3().list(ListApplicationsRequest.builder()
-				.name("timestamp")
+				.name("long-runner")
 				.page(1)
 				.build())
 			.log("applicationlist")
