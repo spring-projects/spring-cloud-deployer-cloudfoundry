@@ -23,6 +23,7 @@ import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
 import org.cloudfoundry.util.PaginationUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -95,9 +96,9 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		Map<String, String> envProperties = new HashMap<>();
 		envProperties.put("organization", "scdf-org");
 		envProperties.put("space", "dev");
-		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
-		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
-		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
+		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
+		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
 
 		List<String> commandLineArgs = new ArrayList<>(3);
 		commandLineArgs.add("--foo=bar");
@@ -124,7 +125,6 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		assertThat(taskLauncher.status("foo").getState(), is(LaunchState.unknown));
 	}
 
-
 	@Test
 	public void testSimpleLaunch() throws InterruptedException {
 
@@ -148,9 +148,9 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		Map<String, String> envProperties = new HashMap<>();
 		envProperties.put("organization", "scdf-org");
 		envProperties.put("space", "dev");
-		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
-		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.memory", "1024");
-		envProperties.put("spring.cloud.deployer.cloudfoundry.defaults.disk", "2048");
+		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
+		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
 
 		List<String> commandLineArgs = new ArrayList<>(2);
 		commandLineArgs.add("30000");
@@ -182,16 +182,21 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		assertThat(status.getState(), is(LaunchState.failed));
 	}
 
-	@Test
+	@After
 	public void cleanUp() throws InterruptedException {
 		CloudFoundryClient client = cfAvailable.getResource();
 
+		unbindServices(client, "timestamp");
+		unbindServices(client, "long-runner");
+	}
+
+	private void unbindServices(CloudFoundryClient client, String applicationName) {
 		PaginationUtils.requestClientV3Resources(page -> client.applicationsV3().list(ListApplicationsRequest.builder()
-				.name("timestamp")
+				.name(applicationName)
 				.page(page)
 				.build()))
 			.log("applicationResponses")
-			.single()
+			.singleOrEmpty()
 			.log("single")
 			.then(applicationResource -> client.serviceBindingsV3().list(ListServiceBindingsRequest.builder()
 				.applicationId(applicationResource.getId())

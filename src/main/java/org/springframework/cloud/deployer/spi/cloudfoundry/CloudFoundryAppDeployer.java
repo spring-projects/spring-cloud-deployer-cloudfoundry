@@ -54,12 +54,6 @@ import static org.springframework.util.StringUtils.commaDelimitedListToSet;
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
 
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
-
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
-
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
-
 	private final CloudFoundryDeployerProperties properties;
 
 	private final CloudFoundryOperations operations;
@@ -211,12 +205,12 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		return Flux.fromStream(
 			concat(
 				properties.getServices().stream(),
-				commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
+				commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
@@ -226,7 +220,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {
