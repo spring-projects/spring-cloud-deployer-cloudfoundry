@@ -63,7 +63,6 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -175,14 +174,16 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @return A Mono that will return the id of the task launched
      */
     protected Mono<String> asyncLaunch(AppDeploymentRequest request) {
-        return client.applicationsV3().list(ListApplicationsRequest.builder()
+        return PaginationUtils.requestClientV3Resources(page -> client.applicationsV3().list(ListApplicationsRequest.builder()
                 .name(request.getDefinition().getName())
-                .page(1)
-                .build())
+                .page(page)
+                .build()))
+            .singleOrEmpty()
             .log("appsFound")
             .doOnError(e -> logger.error(String.format("Error obtaining app %s", request.getDefinition().getName()), e))
             .log("processApps")
-            .then(applicationsResponse -> processApplication(request, applicationsResponse))
+            .then(applicationResource -> processApplication(request, applicationResource))
+                .otherwiseIfEmpty(processApplication(request))
             .log("process apps done");
     }
 
@@ -209,21 +210,37 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * deployed then launched as a task.
      *
      * @param request {@link AppDeploymentRequest} describing app to be deployed
-     * @param response {@link ListApplicationsResponse} with the previously deployed app or empty
+     * @param resource {@link ListApplicationsResponse} with the previously deployed app or empty
      * @return A Mono that will return the task's id
      */
-    protected Mono<String> processApplication(AppDeploymentRequest request, ListApplicationsResponse response) {
-        if(CollectionUtils.isEmpty(response.getResources())) {
-            return deploy(request)
-                .log("processApp1")
-                .then(applicationId -> bindServices(request, applicationId))
-                .log("processApp2")
-                .then(applicationId -> launchTask(applicationId, request))
-                .log("processApp3");
-        }
-        else {
-            return launchTask(response.getResources().get(0).getId(), request);
-        }
+    protected Mono<String> processApplication(AppDeploymentRequest request, ApplicationResource resource) {
+//        if(CollectionUtils.isEmpty(resource.getResources())) {
+//            return deploy(request)
+//                .log("processApp1")
+//                .then(applicationId -> bindServices(request, applicationId))
+//                .log("processApp2")
+//                .then(applicationId -> launchTask(applicationId, request))
+//                .log("processApp3");
+//        }
+//        else {
+            return launchTask(resource.getId(), request);
+//        }
+    }
+
+    /**
+     * If an app has been deployed before, the task is launched.  If not, the app is
+     * deployed then launched as a task.
+     *
+     * @param request {@link AppDeploymentRequest} describing app to be deployed
+     * @return A Mono that will return the task's id
+     */
+    protected Mono<String> processApplication(AppDeploymentRequest request) {
+        return deploy(request)
+            .log("processApp1")
+            .then(applicationId -> bindServices(request, applicationId))
+            .log("processApp2")
+            .then(applicationId -> launchTask(applicationId, request))
+            .log("processApp3");
     }
 
     /**
@@ -556,12 +573,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     }
 
     private static Flux<DropletResource> requestApplicationDroplets(CloudFoundryClient client, String applicationId) {
-        return client.applicationsV3()
+        return PaginationUtils.requestClientV3Resources(page -> client.applicationsV3()
             .listDroplets(ListApplicationDropletsRequest.builder()
                 .applicationId(applicationId)
-                .page(1)
-                .build())
-            .flatMap(response -> Flux.fromIterable(response.getResources()));
+                .page(page)
+                .build()));
     }
 
     private static Mono<String> waitForDropletProcessing(CloudFoundryClient cloudFoundryClient, String dropletId) {
@@ -595,13 +611,10 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     private static Flux<ApplicationResource> requestListApplications(
         CloudFoundryClient client, String name) {
 
-        return client.applicationsV3()
+        return PaginationUtils.requestClientV3Resources(page -> client.applicationsV3()
             .list(ListApplicationsRequest.builder()
                 .name(name)
-                .page(1)
-                .build())
-            .log("stream.listApplications")
-            .flatMap(response -> Flux.fromIterable(response.getResources()))
-            .log("stream.applications");
+                .page(page)
+                .build()));
     }
 }

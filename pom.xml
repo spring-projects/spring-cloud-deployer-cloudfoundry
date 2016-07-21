@@ -17,15 +17,10 @@
 
 	<properties>
 		<java.version>1.8</java.version>
-<<<<<<< 1170b36d6d216e9e37f7f608ae3850beb4ad6406
 		<spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.0.0.M9</cloudfoundry-java-lib.version>
 		<reactor-core.version>3.0.0.RC1</reactor-core.version>
-=======
-		<spring-cloud-deployer-spi.version>1.0.1.RELEASE</spring-cloud-deployer-spi.version>
-		<cloudfoundry-java-lib.version>2.0.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
-		<reactor.version>3.0.0.BUILD-SNAPSHOT</reactor.version>
->>>>>>> Updated to work with the latest reactor and cloud foundry client
+		<spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
 		<reactor-netty.version>0.5.0.BUILD-SNAPSHOT</reactor-netty.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
 		<groovy-all.version>2.4.4</groovy-all.version>
@@ -73,7 +68,6 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-<<<<<<< 1170b36d6d216e9e37f7f608ae3850beb4ad6406
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-core</artifactId>
 			<version>${reactor-core.version}</version>
@@ -84,8 +78,6 @@
 			<version>${reactor-netty.version}</version>
 		</dependency>
 		<dependency>
-=======
->>>>>>> Updated to work with the latest reactor and cloud foundry client
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-stream-test-support-internal</artifactId>
 			<scope>test</scope>

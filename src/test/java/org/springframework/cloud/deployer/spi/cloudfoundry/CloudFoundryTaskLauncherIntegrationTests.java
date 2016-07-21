@@ -22,6 +22,7 @@ import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
+import org.cloudfoundry.util.PaginationUtils;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -185,12 +186,10 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	public void cleanUp() throws InterruptedException {
 		CloudFoundryClient client = cfAvailable.getResource();
 
-		client.applicationsV3().list(ListApplicationsRequest.builder()
-				.name("long-runner")
-				.page(1)
-				.build())
-			.log("applicationlist")
-			.flatMap(applicationsResponse -> Flux.fromIterable(applicationsResponse.getResources()))
+		PaginationUtils.requestClientV3Resources(page -> client.applicationsV3().list(ListApplicationsRequest.builder()
+				.name("timestamp")
+				.page(page)
+				.build()))
 			.log("applicationResponses")
 			.single()
 			.log("single")
