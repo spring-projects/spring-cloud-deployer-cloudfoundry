@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.cloudfoundry.operations.applications.ApplicationDetail;
+import org.cloudfoundry.operations.applications.InstanceDetail;
 
 import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
@@ -31,13 +32,13 @@ import org.springframework.cloud.deployer.spi.app.DeploymentState;
  */
 public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 
-	private final ApplicationDetail.InstanceDetail instanceDetail;
+	private final InstanceDetail instanceDetail;
 
 	private final ApplicationDetail applicationDetail;
 
 	private final int index;
 
-	public CloudFoundryAppInstanceStatus(ApplicationDetail applicationDetail, ApplicationDetail.InstanceDetail instanceDetail, int index) {
+	public CloudFoundryAppInstanceStatus(ApplicationDetail applicationDetail, InstanceDetail instanceDetail, int index) {
 		this.applicationDetail = applicationDetail;
 		this.instanceDetail = instanceDetail;
 		this.index = index;

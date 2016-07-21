@@ -18,11 +18,16 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
-import org.cloudfoundry.spring.client.SpringCloudFoundryClient;
+import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
+import org.cloudfoundry.reactor.ConnectionContext;
+import org.cloudfoundry.reactor.DefaultConnectionContext;
+import org.cloudfoundry.reactor.TokenProvider;
+import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
+import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.test.junit.AbstractExternalResourceTestSupport;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -59,22 +64,37 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 	public static class Config {
 
 		@Bean
-		public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties) {
-			return SpringCloudFoundryClient.builder()
-				.username(properties.getUsername())
-				.password(properties.getPassword())
-				.host(properties.getUrl().getHost())
-				.port(properties.getUrl().getPort())
-				.skipSslValidation(properties.isSkipSslValidation())
-				.build();
+		@ConditionalOnMissingBean
+		public ConnectionContext connectionContext(CloudFoundryDeployerProperties properties) {
+			return DefaultConnectionContext.builder()
+					.apiHost(properties.getUrl().getHost())
+					.skipSslValidation(properties.isSkipSslValidation())
+					.build();
+		}
+
+		@Bean
+		@ConditionalOnMissingBean
+		public TokenProvider tokenProvider(CloudFoundryDeployerProperties properties) {
+			return PasswordGrantTokenProvider.builder()
+					.username(properties.getUsername())
+					.password(properties.getPassword())
+					.build();
+		}
+		@Bean
+		public CloudFoundryClient cloudFoundryClient(ConnectionContext connectionContext, TokenProvider tokenProvider) {
+			return ReactorCloudFoundryClient.builder()
+					.connectionContext(connectionContext)
+					.tokenProvider(tokenProvider)
+					.build();
 		}
 
 		@Bean
 		public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient,
 															 CloudFoundryDeployerProperties properties) {
-			return new CloudFoundryOperationsBuilder()
+			return DefaultCloudFoundryOperations.builder()
 				.cloudFoundryClient(cloudFoundryClient)
-				.target(properties.getOrg(), properties.getSpace())
+				.organization(properties.getOrg())
+				.space(properties.getSpace())
 				.build();
 		}
 

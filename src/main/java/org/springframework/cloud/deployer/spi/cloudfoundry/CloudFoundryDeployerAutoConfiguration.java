@@ -20,8 +20,12 @@ import java.net.URL;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.CloudFoundryOperationsBuilder;
-import org.cloudfoundry.spring.client.SpringCloudFoundryClient;
+import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
+import org.cloudfoundry.reactor.ConnectionContext;
+import org.cloudfoundry.reactor.DefaultConnectionContext;
+import org.cloudfoundry.reactor.TokenProvider;
+import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
+import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -43,24 +47,38 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties) {
-		URL apiEndpoint = properties.getUrl();
-
-		return SpringCloudFoundryClient.builder()
-				.host(apiEndpoint.getHost())
-				.port(apiEndpoint.getPort())
-				.username(properties.getUsername())
-				.password(properties.getPassword())
+	public ConnectionContext connectionContext(CloudFoundryDeployerProperties properties) {
+		return DefaultConnectionContext.builder()
+				.apiHost(properties.getUrl().getHost())
 				.skipSslValidation(properties.isSkipSslValidation())
 				.build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
+	public TokenProvider tokenProvider(CloudFoundryDeployerProperties properties) {
+		return PasswordGrantTokenProvider.builder()
+				.username(properties.getUsername())
+				.password(properties.getPassword())
+				.build();
+	}
+
+	@Bean
+	@ConditionalOnMissingBean
+	public CloudFoundryClient cloudFoundryClient(ConnectionContext connectionContext, TokenProvider tokenProvider) {
+		return ReactorCloudFoundryClient.builder()
+				.connectionContext(connectionContext)
+				.tokenProvider(tokenProvider)
+				.build();
+	}
+
+	@Bean
+	@ConditionalOnMissingBean
 	CloudFoundryOperations cloudFoundryOperations(CloudFoundryDeployerProperties properties, CloudFoundryClient cloudFoundryClient) {
-		return new CloudFoundryOperationsBuilder()
+		return DefaultCloudFoundryOperations.builder()
 				.cloudFoundryClient(cloudFoundryClient)
-				.target(properties.getOrg(), properties.getSpace())
+				.organization(properties.getOrg())
+				.space(properties.getSpace())
 				.build();
 	}
 

@@ -27,6 +27,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,6 +47,7 @@ import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.Applications;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
+import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.Services;
@@ -111,7 +114,16 @@ public class CloudFoundryAppDeployerTests {
 
 		// given
 		given(operations.applications()).willReturn(applications);
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder().build()));
+		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
+				.id("id")
+				.name("time")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
+				.runningInstances(1)
+				.build()));
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
@@ -127,7 +139,16 @@ public class CloudFoundryAppDeployerTests {
 
 		// given
 		given(operations.applications()).willReturn(applications);
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder().build()));
+		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
+				.id("id")
+				.name("time")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
+				.runningInstances(1)
+				.build()));
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
@@ -140,7 +161,7 @@ public class CloudFoundryAppDeployerTests {
 	}
 
 	@Test
-	public void moveAppPropertiesToSAJ() throws InterruptedException, JsonProcessingException {
+	public void moveAppPropertiesToSAJ() throws InterruptedException, IOException {
 
 		// given
 		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
@@ -157,12 +178,21 @@ public class CloudFoundryAppDeployerTests {
 		deploymentProperties.put(fooKey, fooVal);
 		deploymentProperties.put(barKey, barVal);
 
+		final Resource mockResource = mock(Resource.class);
+
 		deployer = new CloudFoundryAppDeployer(properties, operations, client, deploymentCustomizer);
 
 		given(operations.applications()).willReturn(applications);
 
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
+				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
+				.runningInstances(1)
 				.build()));
 		given(applications.push(any())).willReturn(Mono.empty());
 		given(applications.start(any())).willReturn(Mono.empty());
@@ -172,12 +202,14 @@ public class CloudFoundryAppDeployerTests {
 		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
 				.build()));
 
+		given(mockResource.getInputStream()).willReturn(mock(InputStream.class));
+
 		// when
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncDeploy(new AppDeploymentRequest(
 				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
-				mock(Resource.class),
+				mockResource,
 				deploymentProperties))
 			.subscribe(testSubscriber);
 
@@ -209,9 +241,11 @@ public class CloudFoundryAppDeployerTests {
 	}
 
 	@Test
-	public void shouldHandleRoutineDeployment() throws InterruptedException, JsonProcessingException {
+	public void shouldHandleRoutineDeployment() throws InterruptedException, IOException {
 
 		// given
+		final Resource mockResource = mock(Resource.class);
+
 		deployer.getProperties().setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
 
 		given(operations.applications()).willReturn(applications);
@@ -219,6 +253,13 @@ public class CloudFoundryAppDeployerTests {
 
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
+				.name("sample-app")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
+				.runningInstances(1)
 				.build()));
 		given(applications.push(any())).willReturn(Mono.empty());
 		given(applications.start(any())).willReturn(Mono.empty());
@@ -230,12 +271,14 @@ public class CloudFoundryAppDeployerTests {
 
 		given(services.bind(any())).willReturn(Mono.empty());
 
+		given(mockResource.getInputStream()).willReturn(mock(InputStream.class));
+
 		// when
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncDeploy(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
-				mock(Resource.class),
+				mockResource,
 				Collections.emptyMap()))
 				.subscribe(testSubscriber);
 
@@ -282,8 +325,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 			.id("abc123")
 			.name("test")
+			.stack("stack")
+			.diskQuota(1024)
+			.instances(1)
+			.memoryLimit(1024)
+			.requestedState("RUNNING")
 			.runningInstances(1)
-			.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+			.instanceDetail(InstanceDetail.builder()
 				.state("RUNNING")
 				.build())
 			.build()));
@@ -336,8 +384,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("DOWN")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("DOWN")
 						.build())
 				.build()));
@@ -365,8 +418,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("STARTING")
 						.build())
 				.build()));
@@ -393,8 +451,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("CRASHED")
 						.build())
 				.build()));
@@ -421,8 +484,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("FLAPPING")
 						.build())
 				.build()));
@@ -449,8 +517,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("RUNNING")
 						.build())
 				.build()));
@@ -479,8 +552,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("UNKNOWN")
 						.build())
 				.build()));
@@ -507,8 +585,13 @@ public class CloudFoundryAppDeployerTests {
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
 				.id("abc123")
 				.name("test")
+				.stack("stack")
+				.diskQuota(1024)
+				.instances(1)
+				.memoryLimit(1024)
+				.requestedState("RUNNING")
 				.runningInstances(1)
-				.instanceDetail(ApplicationDetail.InstanceDetail.builder()
+				.instanceDetail(InstanceDetail.builder()
 						.state("some code never before seen")
 						.build())
 				.build()));
