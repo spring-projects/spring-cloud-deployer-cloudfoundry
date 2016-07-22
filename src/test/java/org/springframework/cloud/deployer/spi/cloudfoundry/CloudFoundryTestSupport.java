@@ -23,7 +23,9 @@ import org.cloudfoundry.reactor.ConnectionContext;
 import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
+import org.cloudfoundry.reactor.doppler.ReactorDopplerClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
+import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -80,8 +82,10 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 					.password(properties.getPassword())
 					.build();
 		}
+
 		@Bean
-		public CloudFoundryClient cloudFoundryClient(ConnectionContext connectionContext, TokenProvider tokenProvider) {
+		public CloudFoundryClient cloudFoundryClient(ConnectionContext connectionContext,
+													 TokenProvider tokenProvider) {
 			return ReactorCloudFoundryClient.builder()
 					.connectionContext(connectionContext)
 					.tokenProvider(tokenProvider)
@@ -90,7 +94,19 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 		@Bean
 		public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient,
+															 ConnectionContext connectionContext,
+															 TokenProvider tokenProvider,
 															 CloudFoundryDeployerProperties properties) {
+			ReactorDopplerClient.builder()
+				.connectionContext(connectionContext)
+				.tokenProvider(tokenProvider)
+				.build();
+
+			ReactorUaaClient.builder()
+				.connectionContext(connectionContext)
+				.tokenProvider(tokenProvider)
+				.build();
+
 			return DefaultCloudFoundryOperations.builder()
 				.cloudFoundryClient(cloudFoundryClient)
 				.organization(properties.getOrg())
