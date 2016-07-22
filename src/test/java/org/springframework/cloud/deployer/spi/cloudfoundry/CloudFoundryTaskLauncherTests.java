@@ -511,7 +511,7 @@ public class CloudFoundryTaskLauncherTests {
         Map<String,String> environmentProperties = new HashMap<>();
         environmentProperties.put("organization", "org");
         environmentProperties.put("space", "dev");
-        environmentProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_mysql");
+        environmentProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
 
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
@@ -598,7 +598,7 @@ public class CloudFoundryTaskLauncherTests {
         Map<String,String> environmentProperties = new HashMap<>();
         environmentProperties.put("organization", "org");
         environmentProperties.put("space", "dev");
-        environmentProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_service1,my_service2,my_service3");
+        environmentProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
 
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
@@ -687,7 +687,7 @@ public class CloudFoundryTaskLauncherTests {
         Map<String,String> environmentProperties = new HashMap<>();
         environmentProperties.put("organization", "org");
         environmentProperties.put("space", "dev");
-        environmentProperties.put("spring.cloud.deployer.cloudfoundry.defaults.services", "my_service1,my_service2,my_service3");
+        environmentProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
 
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),

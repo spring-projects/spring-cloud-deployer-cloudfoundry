@@ -94,8 +94,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "scdf-org");
-		envProperties.put("space", "dev");
+		envProperties.put("organization", "spring");
+		envProperties.put("space", "development");
 		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
 		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
 		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
@@ -113,8 +113,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		CloudFoundryOperations cloudFoundryOperations = DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cfAvailable.getResource())
-			.organization("scdf-org")
-			.space("dev")
+			.organization("spring")
+			.space("development")
 			.build();
 
 		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
@@ -146,8 +146,8 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "scdf-org");
-		envProperties.put("space", "dev");
+		envProperties.put("organization", "spring");
+		envProperties.put("space", "development");
 		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
 		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
 		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
