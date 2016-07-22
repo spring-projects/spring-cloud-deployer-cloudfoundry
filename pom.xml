@@ -55,7 +55,7 @@
 			<artifactId>cloudfoundry-operations</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>

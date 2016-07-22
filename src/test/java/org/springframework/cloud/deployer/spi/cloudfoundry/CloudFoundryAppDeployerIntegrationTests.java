@@ -70,7 +70,8 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	}
 
 	/**
-	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if running in an environment that is known to be slow.
+	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if
+	 * running in an environment that is known to be slow.
 	 */
 	protected double timeoutMultiplier = 1.0D;
 
@@ -105,7 +106,8 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 
 
 	/**
-	 * Return the timeout to use for repeatedly querying a module while it is being deployed. Default value is one minute, being queried every 5 seconds.
+	 * Return the timeout to use for repeatedly querying a module while it is being deployed.
+	 * Default value is one minute, being queried every 5 seconds.
 	 */
 	@Override
 	protected Timeout deploymentTimeout() {
@@ -113,7 +115,8 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	}
 
 	/**
-	 * Return the timeout to use for repeatedly querying a module while it is being un-deployed. Default value is one minute, being queried every 5 seconds.
+	 * Return the timeout to use for repeatedly querying a module while it is being un-deployed.
+	 * Default value is one minute, being queried every 5 seconds.
 	 */
 	@Autowired
 	protected Timeout undeploymentTimeout() {
