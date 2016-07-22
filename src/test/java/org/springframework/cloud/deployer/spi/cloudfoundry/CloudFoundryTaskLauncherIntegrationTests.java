@@ -16,6 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
@@ -28,8 +37,8 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.IntegrationTest;
 import org.springframework.boot.test.SpringApplicationConfiguration;
@@ -39,16 +48,6 @@ import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import reactor.core.publisher.Flux;
-
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -67,8 +66,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 @SpringApplicationConfiguration(classes = CloudFoundryDeployerProperties.class)
 @IntegrationTest
 public class CloudFoundryTaskLauncherIntegrationTests {
-
-	private static final Logger log = LoggerFactory.getLogger(CloudFoundryTaskLauncherIntegrationTests.class);
 
 	private CloudFoundryTaskLauncher taskLauncher;
 

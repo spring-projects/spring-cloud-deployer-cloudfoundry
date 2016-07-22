@@ -26,6 +26,7 @@ import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.doppler.ReactorDopplerClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;

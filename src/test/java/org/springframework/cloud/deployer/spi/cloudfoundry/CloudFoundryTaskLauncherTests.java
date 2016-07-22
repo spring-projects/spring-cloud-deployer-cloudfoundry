@@ -16,6 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.Metadata;
 import org.cloudfoundry.client.v2.spaces.ListSpacesResponse;
@@ -54,22 +63,14 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.core.io.ClassPathResource;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;

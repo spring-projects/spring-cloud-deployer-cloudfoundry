@@ -20,7 +20,6 @@
 		<spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.0.0.M9</cloudfoundry-java-lib.version>
 		<reactor-core.version>3.0.0.RC1</reactor-core.version>
-		<spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
 		<reactor-netty.version>0.5.0.BUILD-SNAPSHOT</reactor-netty.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
 		<groovy-all.version>2.4.4</groovy-all.version>
@@ -41,6 +40,11 @@
 			<artifactId>spring-boot-loader</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
 			<groupId>org.cloudfoundry</groupId>
 			<artifactId>cloudfoundry-client-reactor</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
@@ -50,17 +54,6 @@
 			<artifactId>cloudfoundry-operations</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>io.projectreactor</groupId>
-			<artifactId>reactor-core</artifactId>
-			<version>${reactor.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.projectreactor</groupId>
-			<artifactId>reactor-netty</artifactId>
-			<version>${reactor-netty.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>

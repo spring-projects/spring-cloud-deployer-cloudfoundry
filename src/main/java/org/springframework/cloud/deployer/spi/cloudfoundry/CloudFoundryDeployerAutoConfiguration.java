@@ -26,6 +26,7 @@ import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.doppler.ReactorDopplerClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
+
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -70,18 +71,6 @@ public class CloudFoundryDeployerAutoConfiguration {
 				.connectionContext(connectionContext)
 				.tokenProvider(tokenProvider)
 				.build();
-	}
-
-	@Bean
-	@ConditionalOnMissingBean
-	public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties,
-												 ConnectionContext connectionContext,
-												 TokenProvider tokenProvider) {
-
-		return ReactorCloudFoundryClient.builder()
-			.connectionContext(connectionContext)
-			.tokenProvider(tokenProvider)
-			.build();
 	}
 
 	@Bean

@@ -16,6 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.io.IOException;
+import java.io.StringBufferInputStream;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
@@ -36,6 +45,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
@@ -43,16 +54,6 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.io.StringBufferInputStream;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -114,15 +115,15 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-			.id("dataflow-server-time")
-			.name("dataflow-server-time")
-			.runningInstances(1)
-			.instances(1)
-			.diskQuota(256)
-			.memoryLimit(256)
-			.stack("java")
-			.requestedState("RUNNING")
-			.build()));
+				.id("dataflow-server-time")
+				.name("dataflow-server-time")
+				.runningInstances(1)
+				.instances(1)
+				.diskQuota(256)
+				.memoryLimit(256)
+				.stack("java")
+				.requestedState("RUNNING")
+				.build()));
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
@@ -139,15 +140,15 @@ public class CloudFoundryAppDeployerTests {
 		// given
 		given(operations.applications()).willReturn(applications);
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-			.id("abc123")
-			.name("time")
-			.runningInstances(1)
-			.instances(1)
-			.diskQuota(256)
-			.memoryLimit(256)
-			.stack("java")
-			.requestedState("RUNNING")
-			.build()));
+				.id("abc123")
+				.name("time")
+				.runningInstances(1)
+				.instances(1)
+				.diskQuota(256)
+				.memoryLimit(256)
+				.stack("java")
+				.requestedState("RUNNING")
+				.build()));
 
 		// when
 		String deploymentId = deployer.deploy(new AppDeploymentRequest(
@@ -208,7 +209,7 @@ public class CloudFoundryAppDeployerTests {
 				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
 				resource,
 				deploymentProperties))
-			.subscribe(testSubscriber);
+				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
 
@@ -319,18 +320,18 @@ public class CloudFoundryAppDeployerTests {
 		given(operations.applications()).willReturn(applications);
 
 		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-			.id("abc123")
-			.name("test")
-			.runningInstances(1)
-			.instances(1)
-			.stack("java")
-			.diskQuota(256)
-			.memoryLimit(256)
-			.requestedState("RUNNING")
-			.instanceDetail(InstanceDetail.builder()
-				.state("RUNNING")
-				.build())
-			.build()));
+				.id("abc123")
+				.name("test")
+				.runningInstances(1)
+				.instances(1)
+				.stack("java")
+				.diskQuota(256)
+				.memoryLimit(256)
+				.requestedState("RUNNING")
+				.instanceDetail(InstanceDetail.builder()
+						.state("RUNNING")
+						.build())
+				.build()));
 
 		thrown.expect(IllegalStateException.class);
 		thrown.expectMessage(containsString("already deployed"));
@@ -356,7 +357,7 @@ public class CloudFoundryAppDeployerTests {
 		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
 
 		deployer.asyncUndeploy("test")
-			.subscribe(testSubscriber);
+				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
 
@@ -365,9 +366,9 @@ public class CloudFoundryAppDeployerTests {
 		verifyNoMoreInteractions(operations);
 
 		then(applications).should().delete(DeleteApplicationRequest.builder()
-			.name("test")
-			.deleteRoutes(true)
-			.build());
+				.name("test")
+				.deleteRoutes(true)
+				.build());
 		verifyNoMoreInteractions(applications);
 	}
 

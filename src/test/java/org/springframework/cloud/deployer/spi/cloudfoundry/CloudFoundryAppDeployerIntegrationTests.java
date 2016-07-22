@@ -16,10 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.IntegrationTest;
@@ -32,10 +37,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.util.Assert;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Integration tests for CloudFoundryAppDeployer.

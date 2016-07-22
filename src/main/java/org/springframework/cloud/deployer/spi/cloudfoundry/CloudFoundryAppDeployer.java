@@ -15,6 +15,12 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
@@ -28,18 +34,13 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
 import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
@@ -136,7 +137,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 						})
 						.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, name), e))
 					)
-					.then() /* this after() merges all the bindServices Mono<Void>'s into 1 */)
+					.then() /* this then() merges all the bindServices Mono<Void>'s into 1 */)
 				.then(() -> operations.applications()
 					.start(StartApplicationRequest.builder()
 						.name(name)
