@@ -22,8 +22,6 @@ import java.util.Map;
 
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -48,91 +46,89 @@ import org.springframework.util.Assert;
 @IntegrationTest("spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false")
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
-    private static final Logger log = LoggerFactory.getLogger(CloudFoundryAppDeployerIntegrationTests.class);
+	@ClassRule
+	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
 
-    @ClassRule
-    public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+	@Autowired
+	ApplicationContext context;
 
-    @Autowired
-    ApplicationContext context;
+	@Autowired
+	private AppDeployer appDeployer;
 
-    @Autowired
-    private AppDeployer appDeployer;
+	AppDeploymentRequest request;
 
-    AppDeploymentRequest request;
+	CloudFoundryAppDeployer cloudFoundryAppDeployer;
 
-    CloudFoundryAppDeployer cloudFoundryAppDeployer;
+	@Override
+	protected AppDeployer appDeployer() {
+		return appDeployer;
+	}
 
-    @Override
-    protected AppDeployer appDeployer() {
-        return appDeployer;
-    }
+	@Override
+	protected Resource integrationTestProcessor() {
+		return context.getResource("classpath:demo-0.0.1-SNAPSHOT.jar");
+	}
 
-    @Override
-    protected Resource integrationTestProcessor() {
-        return context.getResource("classpath:demo-0.0.1-SNAPSHOT.jar");
-    }
+	/**
+	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if running in an environment that is known to be slow.
+	 */
+	protected double timeoutMultiplier = 1.0D;
 
-    /**
-     * Execution environments may override this default value to have tests wait longer for a deployment, for example if running in an environment that is known to be slow.
-     */
-    protected double timeoutMultiplier = 1.0D;
+	protected int maxRetries = 1000;
 
-    protected int maxRetries = 1000;
+	@Before
+	public void init() {
+		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
+		if (multiplier != null) {
+			timeoutMultiplier = Double.parseDouble(multiplier);
+		}
 
-    @Before
-    public void init() {
-        String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
-        if (multiplier != null) {
-            timeoutMultiplier = Double.parseDouble(multiplier);
-        }
+		Map<String, String> envProperties = new HashMap<>();
+		envProperties.put("organization", "spring-cloud");
+		envProperties.put("space", "production");
 
-        Map<String, String> envProperties = new HashMap<>();
-        envProperties.put("organization", "spring-cloud");
-        envProperties.put("space", "production");
+		request = new AppDeploymentRequest(
+				new AppDefinition("sdrdemo", Collections.emptyMap()),
+				context.getResource("classpath:spring-data-rest-demo-0.0.1-SNAPSHOT.jar"),
+				envProperties);
 
-        request = new AppDeploymentRequest(
-            new AppDefinition("sdrdemo", Collections.emptyMap()),
-            context.getResource("classpath:spring-data-rest-demo-0.0.1-SNAPSHOT.jar"),
-            envProperties);
+		cloudFoundryAppDeployer = (CloudFoundryAppDeployer) appDeployer;
+	}
 
-        cloudFoundryAppDeployer = (CloudFoundryAppDeployer) appDeployer;
-    }
-
-    /**
-     * Doesn't appear like we can enter the failed state, tried for about 3 hrs.
-     */
-    @Override
-    public void testFailedDeployment() {
-        Assert.isTrue(true);
-    }
+	/**
+	 * Doesn't appear like we can enter the failed state, tried for about 3 hrs.
+	 */
+	@Override
+	public void testFailedDeployment() {
+		Assert.isTrue(true);
+	}
 
 
-    /**
-     * Return the timeout to use for repeatedly querying a module while it is being deployed. Default value is one minute, being queried every 5 seconds.
-     */
-    @Override
-    protected Timeout deploymentTimeout() {
-        return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
-    }
+	/**
+	 * Return the timeout to use for repeatedly querying a module while it is being deployed. Default value is one minute, being queried every 5 seconds.
+	 */
+	@Override
+	protected Timeout deploymentTimeout() {
+		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
+	}
 
-    /**
-     * Return the timeout to use for repeatedly querying a module while it is being un-deployed. Default value is one minute, being queried every 5 seconds.
-     */
-    @Autowired
-    protected Timeout undeploymentTimeout() {
-        return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
-    }
+	/**
+	 * Return the timeout to use for repeatedly querying a module while it is being un-deployed. Default value is one minute, being queried every 5 seconds.
+	 */
+	@Autowired
+	protected Timeout undeploymentTimeout() {
+		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
+	}
 
-    /**
-     * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.
-     *
-     * @author Eric Bottard
-     */
-    @Configuration
-    @EnableAutoConfiguration
-    public static class Config {
+	/**
+	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.
+	 *
+	 * @author Eric Bottard
+	 */
+	@Configuration
+	@EnableAutoConfiguration
+	public static class Config {
 
-    }
+	}
 
 }
