@@ -81,31 +81,14 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 					.password(properties.getPassword())
 					.build();
 		}
+
 		@Bean
-		public CloudFoundryClient cloudFoundryClient(ConnectionContext connectionContext, TokenProvider tokenProvider) {
+		public CloudFoundryClient cloudFoundryClient(ConnectionContext connectionContext,
+													 TokenProvider tokenProvider) {
 			return ReactorCloudFoundryClient.builder()
 					.connectionContext(connectionContext)
 					.tokenProvider(tokenProvider)
 					.build();
-		}
-
-		@Bean
-		public TokenProvider tokenProvider(CloudFoundryDeployerProperties properties) {
-			return PasswordGrantTokenProvider.builder()
-				.password(properties.getPassword())
-				.username(properties.getUsername())
-				.build();
-		}
-
-		@Bean
-		public CloudFoundryClient cloudFoundryClient(CloudFoundryDeployerProperties properties,
-													 ConnectionContext connectionContext,
-													 TokenProvider tokenProvider) {
-
-			return ReactorCloudFoundryClient.builder()
-				.connectionContext(connectionContext)
-				.tokenProvider(tokenProvider)
-				.build();
 		}
 
 		@Bean

@@ -323,7 +323,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     protected Mono<String> deploy(AppDeploymentRequest request) {
         return getApplicationId(this.client, request.getDefinition().getName())
             .then(applicationId -> getReadyApplicationId(this.client, applicationId))
-            .otherwiseIfEmpty(createAndUploadApplication(request));
+                .otherwiseIfEmpty(createAndUploadApplication(request));
     }
 
     /**

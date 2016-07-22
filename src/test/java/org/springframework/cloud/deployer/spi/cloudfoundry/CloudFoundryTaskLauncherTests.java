@@ -22,6 +22,7 @@ import org.cloudfoundry.client.v2.spaces.ListSpacesResponse;
 import org.cloudfoundry.client.v2.spaces.SpaceEntity;
 import org.cloudfoundry.client.v2.spaces.SpaceResource;
 import org.cloudfoundry.client.v2.spaces.Spaces;
+import org.cloudfoundry.client.v3.Pagination;
 import org.cloudfoundry.client.v3.applications.ApplicationResource;
 import org.cloudfoundry.client.v3.applications.ApplicationsV3;
 import org.cloudfoundry.client.v3.applications.CreateApplicationResponse;
@@ -62,6 +63,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -168,7 +170,11 @@ public class CloudFoundryTaskLauncherTests {
         // when
         AppDefinition definition = new AppDefinition("foo", null);
 
-        AppDeploymentRequest request = new AppDeploymentRequest(definition, new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"));
+        Map<String, String> deploymentProperties = new HashMap<>(1);
+        deploymentProperties.put("organization", "org");
+        deploymentProperties.put("space", "the final frontier");
+
+        AppDeploymentRequest request = new AppDeploymentRequest(definition, new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"), deploymentProperties);
         String launch = this.launcher.launch(request);
 
         // then
@@ -198,7 +204,7 @@ public class CloudFoundryTaskLauncherTests {
         CreateTaskResponse createTaskResponse = getCreateTaskResponse(taskletId);
 
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
+        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
         given(this.client.spaces()).willReturn(this.spaces);
         given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
@@ -482,7 +488,7 @@ public class CloudFoundryTaskLauncherTests {
             .build();
 
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
+        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
         given(this.client.spaces()).willReturn(this.spaces);
         given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
@@ -569,7 +575,7 @@ public class CloudFoundryTaskLauncherTests {
             .build();
 
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
+        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
         given(this.client.spaces()).willReturn(this.spaces);
         given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
@@ -768,6 +774,10 @@ public class CloudFoundryTaskLauncherTests {
             .resource(DropletResource.builder()
                 .id(dropletId.toString())
                 .build())
+            .pagination(Pagination.builder()
+                .totalResults(1)
+                .totalPages(1)
+                .build())
             .build();
     }
 
@@ -776,11 +786,18 @@ public class CloudFoundryTaskLauncherTests {
             .resource(ApplicationResource.builder()
                 .id(applicationId.toString())
                 .build())
+            .pagination(Pagination.builder()
+                .totalPages(1)
+                .build())
             .build();
     }
 
     private ListApplicationsResponse getListApplicationsResponse() {
         return ListApplicationsResponse.builder()
+            .resources(Collections.emptyList())
+            .pagination(Pagination.builder()
+                .totalPages(1)
+                .build())
             .build();
     }
 
