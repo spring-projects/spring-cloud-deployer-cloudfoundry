@@ -115,7 +115,12 @@ public class CloudFoundryTaskLauncherTests {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        this.launcher = new CloudFoundryTaskLauncher(this.client, this.operations, new CloudFoundryDeployerProperties());
+        CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+
+        properties.setOrg("org");
+        properties.setSpace("space");
+
+        this.launcher = new CloudFoundryTaskLauncher(this.client, this.operations, properties);
     }
 
     @Test
