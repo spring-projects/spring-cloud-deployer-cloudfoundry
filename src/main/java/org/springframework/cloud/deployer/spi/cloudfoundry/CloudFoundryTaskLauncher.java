@@ -336,11 +336,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     protected Mono<String> getSpaceId(AppDeploymentRequest request) {
 
         return Mono
-            .just(request.getDeploymentProperties().get("organization"))
+            .just(this.properties.getOrg())
             .flatMap(organization -> PaginationUtils
                 .requestClientV2Resources(page -> this.client.spaces()
                     .list(ListSpacesRequest.builder()
-                        .name(request.getDeploymentProperties().get("space"))
+                        .name(this.properties.getSpace())
                         .page(page)
                         .build())))
             .single()

@@ -40,6 +40,7 @@ import org.junit.runner.RunWith;
 import reactor.core.publisher.Flux;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.IntegrationTest;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
@@ -47,6 +48,7 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -63,7 +65,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Michael Minella
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(classes = CloudFoundryDeployerProperties.class)
+@SpringApplicationConfiguration(classes = CloudFoundryTaskLauncherIntegrationTests.Config.class)
 @IntegrationTest
 public class CloudFoundryTaskLauncherIntegrationTests {
 
@@ -91,8 +93,6 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "spring");
-		envProperties.put("space", "development");
 		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
 		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
 		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
@@ -110,7 +110,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		CloudFoundryOperations cloudFoundryOperations = DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cfAvailable.getResource())
-			.organization("spring")
+			.organization("FrameworksAndRuntimes")
 			.space("development")
 			.build();
 
@@ -143,8 +143,6 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put("organization", "spring");
-		envProperties.put("space", "development");
 		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
 		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
 		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
@@ -244,5 +242,16 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 	@ClassRule
 	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+
+	/**
+	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.
+	 *
+	 * @author Eric Bottard
+	 */
+	@Configuration
+	@EnableAutoConfiguration
+	public static class Config {
+
+	}
 
 }

@@ -110,6 +110,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 		return new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
 	}
 
+	@Bean
 	@ConditionalOnMissingBean(TaskLauncher.class)
 	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryDeployerProperties properties, CloudFoundryOperations operations) {
 		return new CloudFoundryTaskLauncher(client, operations, properties);

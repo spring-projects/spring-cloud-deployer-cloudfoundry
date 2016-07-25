@@ -11,12 +11,18 @@ spring:
 #        url: https://api.sys.jackal.wild.cf-app.com
 #        username: mminella
 #        password: passmminella
-        domain: api.ivory.springapps.io
-        org: spring
+        domain: api.run.pivotal.io
+        org: FrameworksAndRuntimes
         space: development
-        url: https://api.ivory.springapps.io
-        username: mminella
-        password: passmminella
+        url: https://api.run.pivotal.io
+        username: mminella@gopivotal.com
+        password: mminella1
+#        domain: api.ivory.springapps.io
+#        org: spring
+#        space: development
+#        url: https://api.ivory.springapps.io
+#        username: mminella
+#        password: passmminella
 #        domain: api.a1.cf-app.com
 #        org: scdf-org
 #        space: dev
