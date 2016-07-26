@@ -29,10 +29,7 @@ import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
-import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
 import org.cloudfoundry.util.PaginationUtils;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -69,13 +66,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 @IntegrationTest
 public class CloudFoundryTaskLauncherIntegrationTests {
 
+	@ClassRule
+	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+
+	@Autowired
 	private CloudFoundryTaskLauncher taskLauncher;
 
 	@Autowired
 	ApplicationContext context;
-
-	@Autowired
-	CloudFoundryDeployerProperties properties;
 
 	AppDeploymentRequest request;
 
@@ -107,14 +105,6 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 			context.getResource("classpath:batch-job-1.0.0.BUILD-SNAPSHOT.jar"),
 			envProperties,
 			commandLineArgs);
-
-		CloudFoundryOperations cloudFoundryOperations = DefaultCloudFoundryOperations.builder()
-			.cloudFoundryClient(cfAvailable.getResource())
-			.organization("FrameworksAndRuntimes")
-			.space("development")
-			.build();
-
-		taskLauncher = new CloudFoundryTaskLauncher(cfAvailable.getResource(), cloudFoundryOperations, properties);
 	}
 
 	@Test
@@ -160,13 +150,17 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 
 		System.out.println(">> taskId = " + taskId);
 
-		Thread.sleep(10000L);
+		TaskStatus status = taskLauncher.asyncStatus(taskId).block();
 
-		System.out.println(">> About to cancel the task");
+		while (!status.getState().equals(LaunchState.running)) {
+			System.out.println(">> state = " + status.getState());
+			Thread.sleep(5000);
+			status = taskLauncher.asyncStatus(taskId).block();
+		}
 
 		taskLauncher.cancel(taskId);
 
-		TaskStatus status = taskLauncher.asyncStatus(taskId).block();
+		status = taskLauncher.asyncStatus(taskId).block();
 
 		while (!status.getState().equals(LaunchState.failed)) {
 			System.out.println(">> state = " + status.getState());
@@ -177,7 +171,7 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		assertThat(status.getState(), is(LaunchState.failed));
 	}
 
-	@After
+	@Test
 	public void cleanUp() throws InterruptedException {
 		CloudFoundryClient client = cfAvailable.getResource();
 
@@ -206,42 +200,6 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 			.singleOrEmpty()
 			.block();
 	}
-
-	/**
-	 * Return the timeout to use for repeatedly querying a module while it is being deployed.
-	 * Default value is one minute, being queried every 5 seconds.
-	 */
-	protected Attempts deploymentTimeout() {
-		return new Attempts(12, (int) (5000 * timeoutMultiplier));
-	}
-
-	/**
-	 * Return the timeout to use for repeatedly querying a module while it is being un-deployed.
-	 * Default value is one minute, being queried every 5 seconds.
-	 */
-	protected Attempts undeploymentTimeout() {
-		return new Attempts(20, (int) (5000 * timeoutMultiplier));
-	}
-
-
-	/**
-	 * Represents a timeout for querying status, with repetitive queries until a certain number have been made.
-	 * @author Eric Bottard
-	 */
-	protected static class Attempts {
-
-		public final int noAttempts;
-
-		public final int pause;
-
-		public Attempts(int noAttempts, int pause) {
-			this.noAttempts = noAttempts;
-			this.pause = pause;
-		}
-	}
-
-	@ClassRule
-	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
 
 	/**
 	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.

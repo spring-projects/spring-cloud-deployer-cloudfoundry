@@ -111,13 +111,6 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     }
 
     /**
-     * @param timeout timeout in seconds for blocking events (status and launch).
-     */
-    public void setTimeout(long timeout) {
-        this.timeout = timeout;
-    }
-
-    /**
      * Setup a reactor pipeline to cancel a running task.
      *
      * @param id the task's id to be cancled as returned from the {@link TaskLauncher#launch(AppDeploymentRequest)}
