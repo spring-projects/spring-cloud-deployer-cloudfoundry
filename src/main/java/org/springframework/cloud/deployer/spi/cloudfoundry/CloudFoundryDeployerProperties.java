@@ -15,13 +15,13 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
-import javax.validation.constraints.NotNull;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+import javax.validation.constraints.NotNull;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
@@ -109,6 +109,11 @@ public class CloudFoundryDeployerProperties {
 	 * Flag to enable prefixing the app name with a random prefix
 	 */
 	private boolean enableRandomAppNamePrefix = true;
+
+	/**
+	 * Timeout for blocking task launches
+	 */
+	private long taskTimeout = 30L;
 
 	/**
 	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
@@ -226,5 +231,13 @@ public class CloudFoundryDeployerProperties {
 
 	public void setAppNamePrefix(String appNamePrefix) {
 		this.appNamePrefix = appNamePrefix;
+	}
+
+	public long getTaskTimeout() {
+		return taskTimeout;
+	}
+
+	public void setTaskTimeout(long taskTimeout) {
+		this.taskTimeout = taskTimeout;
 	}
 }

@@ -79,18 +79,20 @@ public class CloudFoundryDeployerAutoConfiguration {
 														 ConnectionContext connectionContext,
 														 TokenProvider tokenProvider,
 														 CloudFoundryDeployerProperties properties) {
-		ReactorDopplerClient.builder()
-			.connectionContext(connectionContext)
-			.tokenProvider(tokenProvider)
-			.build();
+		ReactorDopplerClient dopplerClient = ReactorDopplerClient.builder()
+				.connectionContext(connectionContext)
+				.tokenProvider(tokenProvider)
+				.build();
 
-		ReactorUaaClient.builder()
-			.connectionContext(connectionContext)
-			.tokenProvider(tokenProvider)
-			.build();
+		ReactorUaaClient uaaClient = ReactorUaaClient.builder()
+				.connectionContext(connectionContext)
+				.tokenProvider(tokenProvider)
+				.build();
 
 		return DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cloudFoundryClient)
+			.dopplerClient(dopplerClient)
+			.uaaClient(uaaClient)
 			.organization(properties.getOrg())
 			.space(properties.getSpace())
 			.build();

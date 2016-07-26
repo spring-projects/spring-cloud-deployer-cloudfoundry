@@ -106,6 +106,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
         this.client = client;
         this.operations = operations;
         this.properties = properties;
+
+        this.timeout = this.properties.getTaskTimeout();
     }
 
     /**
