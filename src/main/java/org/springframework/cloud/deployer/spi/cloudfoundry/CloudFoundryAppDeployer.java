@@ -106,7 +106,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			return operations.applications()
 				.push(PushApplicationRequest.builder()
 					.name(name)
-					.application(request.getResource().getInputStream())
+					.application(request.getResource().getFile().toPath())
 					.domain(properties.getDomain())
 					.buildpack(properties.getBuildpack())
 					.diskQuota(diskQuota(request))
