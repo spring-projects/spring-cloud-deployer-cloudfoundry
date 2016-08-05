@@ -62,12 +62,12 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 	@Configuration
 	@EnableAutoConfiguration
-	@EnableConfigurationProperties(CloudFoundryDeployerProperties.class)
+	@EnableConfigurationProperties(CloudFoundryConnectionProperties.class)
 	public static class Config {
 
 		@Bean
 		@ConditionalOnMissingBean
-		public ConnectionContext connectionContext(CloudFoundryDeployerProperties properties) {
+		public ConnectionContext connectionContext(CloudFoundryConnectionProperties properties) {
 			return DefaultConnectionContext.builder()
 					.apiHost(properties.getUrl().getHost())
 					.skipSslValidation(properties.isSkipSslValidation())
@@ -76,7 +76,7 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 		@Bean
 		@ConditionalOnMissingBean
-		public TokenProvider tokenProvider(CloudFoundryDeployerProperties properties) {
+		public TokenProvider tokenProvider(CloudFoundryConnectionProperties properties) {
 			return PasswordGrantTokenProvider.builder()
 					.username(properties.getUsername())
 					.password(properties.getPassword())
@@ -96,7 +96,7 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 		public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient,
 															 ConnectionContext connectionContext,
 															 TokenProvider tokenProvider,
-															 CloudFoundryDeployerProperties properties) {
+															 CloudFoundryConnectionProperties properties) {
 			ReactorDopplerClient.builder()
 				.connectionContext(connectionContext)
 				.tokenProvider(tokenProvider)

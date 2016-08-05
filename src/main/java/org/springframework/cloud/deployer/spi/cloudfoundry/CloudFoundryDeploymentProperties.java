@@ -15,75 +15,34 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.net.URL;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
+
 import java.util.HashSet;
 import java.util.Set;
-import javax.validation.constraints.NotNull;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Holds configuration properties for connecting to a Cloud Foundry runtime.
+ * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
+ * will get.
  *
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
-public class CloudFoundryDeployerProperties {
+public class CloudFoundryDeploymentProperties {
 
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
+	public static final String MEMORY_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".memory";
 
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
+	public static final String DISK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".disk";
 
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
+	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
 	 * This should typically contain a service capable of playing the role of a binding transport.
 	 */
 	private Set<String> services = new HashSet<>();
-
-	/**
-	 * The domain to use when mapping routes for applications.
-	 */
-	@NotNull
-	private String domain;
-
-	/**
-	 * The organization to use when registering new applications.
-	 */
-	@NotNull
-	private String org;
-
-	/**
-	 * The space to use when registering new applications.
-	 */
-	@NotNull
-	private String space;
-
-	/**
-	 * Location of the CloudFoundry REST API endpoint to use.
-	 */
-	@NotNull
-	private URL url;
-
-	/**
-	 * Username to use to authenticate against the Cloud Foundry API.
-	 */
-	@NotNull
-	private String username;
-
-	/**
-	 * Password to use to authenticate against the Cloud Foundry API.
-	 */
-	@NotNull
-	private String password;
-
-	/**
-	 * Allow operation using self-signed certificates.
-	 */
-	private boolean skipSslValidation = false;
 
 	/**
 	 * The buildpack to use for deploying the application.
@@ -127,62 +86,6 @@ public class CloudFoundryDeployerProperties {
 
 	public void setServices(Set<String> services) {
 		this.services = services;
-	}
-
-	public String getDomain() {
-		return domain;
-	}
-
-	public void setDomain(String domain) {
-		this.domain = domain;
-	}
-
-	public String getOrg() {
-		return org;
-	}
-
-	public void setOrg(String org) {
-		this.org = org;
-	}
-
-	public String getSpace() {
-		return space;
-	}
-
-	public void setSpace(String space) {
-		this.space = space;
-	}
-
-	public URL getUrl() {
-		return url;
-	}
-
-	public void setUrl(URL url) {
-		this.url = url;
-	}
-
-	public String getUsername() {
-		return username;
-	}
-
-	public void setUsername(String username) {
-		this.username = username;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
-	public boolean isSkipSslValidation() {
-		return skipSslValidation;
-	}
-
-	public void setSkipSslValidation(boolean skipSslValidation) {
-		this.skipSslValidation = skipSslValidation;
 	}
 
 	public String getBuildpack() {
