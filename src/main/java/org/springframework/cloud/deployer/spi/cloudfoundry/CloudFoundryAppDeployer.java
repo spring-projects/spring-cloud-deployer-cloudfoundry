@@ -55,7 +55,7 @@ import static org.springframework.util.StringUtils.commaDelimitedListToSet;
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
 
-	private final CloudFoundryDeployerProperties properties;
+	private final CloudFoundryConnectionProperties properties;
 
 	private final CloudFoundryOperations operations;
 
@@ -65,7 +65,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeployer.class);
 
-	public CloudFoundryAppDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations,
+	public CloudFoundryAppDeployer(CloudFoundryConnectionProperties properties, CloudFoundryOperations operations,
 								   CloudFoundryClient client, AppNameGenerator appDeploymentCustomizer) {
 		this.properties = properties;
 		this.operations = operations;
@@ -183,7 +183,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			.map(AppStatus.Builder::build);
 	}
 
-	public CloudFoundryDeployerProperties getProperties() {
+	public CloudFoundryConnectionProperties getProperties() {
 		return properties;
 	}
 
@@ -206,12 +206,12 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		return Flux.fromStream(
 			concat(
 				properties.getServices().stream(),
-				commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY)).stream()));
+				commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+			request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
@@ -221,7 +221,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+			request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {

@@ -1,0 +1,145 @@
+/*
+ * Copyright 2016 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.springframework.cloud.deployer.spi.cloudfoundry;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+/**
+ * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
+ * will get.
+ *
+ * @author Eric Bottard
+ * @author Greg Turnquist
+ */
+@ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
+public class CloudFoundryDeploymentProperties {
+
+	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
+
+	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
+
+	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
+
+	/**
+	 * The names of services to bind to all applications deployed as a module.
+	 * This should typically contain a service capable of playing the role of a binding transport.
+	 */
+	private Set<String> services = new HashSet<>();
+
+	/**
+	 * The buildpack to use for deploying the application.
+	 */
+	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git";
+
+	/**
+	 * The amount of memory (MB) to allocate, if not overridden per-module.
+	 */
+	private int memory = 1024;
+
+	/**
+	 * The amount of disk space (MB) to allocate, if not overridden per-module.
+	 */
+	private int disk = 1024;
+
+	/**
+	 * The number of instances to run.
+	 */
+	private int instances = 1;
+
+	/**
+	 * Flag to enable prefixing the app name with a random prefix
+	 */
+	private boolean enableRandomAppNamePrefix = true;
+
+	/**
+	 * Timeout for blocking task launches
+	 */
+	private long taskTimeout = 30L;
+
+	/**
+	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
+	 */
+	@Value("${spring.application.name:}")
+	private String appNamePrefix;
+
+	public Set<String> getServices() {
+		return services;
+	}
+
+	public void setServices(Set<String> services) {
+		this.services = services;
+	}
+
+	public String getBuildpack() {
+		return buildpack;
+	}
+
+	public void setBuildpack(String buildpack) {
+		this.buildpack = buildpack;
+	}
+
+	public int getMemory() {
+		return memory;
+	}
+
+	public void setMemory(int memory) {
+		this.memory = memory;
+	}
+
+	public int getDisk() {
+		return disk;
+	}
+
+	public void setDisk(int disk) {
+		this.disk = disk;
+	}
+
+	public int getInstances() {
+		return instances;
+	}
+
+	public void setInstances(int instances) {
+		this.instances = instances;
+	}
+
+	public boolean isEnableRandomAppNamePrefix() {
+		return enableRandomAppNamePrefix;
+	}
+
+	public void setEnableRandomAppNamePrefix(boolean enableRandomAppNamePrefix) {
+		this.enableRandomAppNamePrefix = enableRandomAppNamePrefix;
+	}
+
+	public String getAppNamePrefix() {
+		return appNamePrefix;
+	}
+
+	public void setAppNamePrefix(String appNamePrefix) {
+		this.appNamePrefix = appNamePrefix;
+	}
+
+	public long getTaskTimeout() {
+		return taskTimeout;
+	}
+
+	public void setTaskTimeout(long taskTimeout) {
+		this.taskTimeout = taskTimeout;
+	}
+}

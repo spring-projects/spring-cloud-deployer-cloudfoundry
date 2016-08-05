@@ -97,7 +97,7 @@ public class CloudFoundryAppDeployerTests {
 		applicationsV2 = mock(ApplicationsV2.class);
 		services = mock(Services.class);
 
-		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
 		properties.setAppNamePrefix("dataflow-server");
 		//Tests are setup not to handle random name prefix = true;
 		properties.setEnableRandomAppNamePrefix(false);
@@ -137,7 +137,7 @@ public class CloudFoundryAppDeployerTests {
 	public void moveAppPropertiesToSAJ() throws InterruptedException, IOException {
 
 		// given
-		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
 
 		// Define the deployment properties for the app
 		Map<String, String> deploymentProperties = new HashMap<>();

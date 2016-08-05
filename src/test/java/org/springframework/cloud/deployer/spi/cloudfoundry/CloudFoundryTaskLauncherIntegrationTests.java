@@ -53,7 +53,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
- * that may be configured via {@link CloudFoundryDeployerProperties}.
+ * that may be configured via {@link CloudFoundryConnectionProperties}.
  *
  * Tests are only run if a successful connection can be made at startup.
  *
@@ -91,9 +91,9 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
-		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
-		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
+		envProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+		envProperties.put(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, "1024");
+		envProperties.put(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, "2048");
 
 		List<String> commandLineArgs = new ArrayList<>(3);
 		commandLineArgs.add("--foo=bar");
@@ -133,9 +133,9 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY, "my_mysql");
-		envProperties.put(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, "1024");
-		envProperties.put(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, "2048");
+		envProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+		envProperties.put(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, "1024");
+		envProperties.put(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, "2048");
 
 		List<String> commandLineArgs = new ArrayList<>(2);
 		commandLineArgs.add("30000");

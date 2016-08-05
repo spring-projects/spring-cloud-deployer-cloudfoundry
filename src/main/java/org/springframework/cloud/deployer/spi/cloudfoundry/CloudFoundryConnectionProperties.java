@@ -30,7 +30,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author Greg Turnquist
  */
 @ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
-public class CloudFoundryDeployerProperties {
+public class CloudFoundryConnectionProperties {
 
 	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
 

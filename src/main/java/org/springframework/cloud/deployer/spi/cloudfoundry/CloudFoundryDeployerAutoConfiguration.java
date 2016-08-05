@@ -42,13 +42,13 @@ import org.springframework.core.Ordered;
  * @author Eric Bottard
  */
 @Configuration
-@EnableConfigurationProperties(CloudFoundryDeployerProperties.class)
+@EnableConfigurationProperties(CloudFoundryConnectionProperties.class)
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public ConnectionContext connectionContext(CloudFoundryDeployerProperties properties) {
+	public ConnectionContext connectionContext(CloudFoundryConnectionProperties properties) {
 		return DefaultConnectionContext.builder()
 				.apiHost(properties.getUrl().getHost())
 				.skipSslValidation(properties.isSkipSslValidation())
@@ -57,7 +57,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public TokenProvider tokenProvider(CloudFoundryDeployerProperties properties) {
+	public TokenProvider tokenProvider(CloudFoundryConnectionProperties properties) {
 		return PasswordGrantTokenProvider.builder()
 				.username(properties.getUsername())
 				.password(properties.getPassword())
@@ -78,7 +78,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient,
 														 ConnectionContext connectionContext,
 														 TokenProvider tokenProvider,
-														 CloudFoundryDeployerProperties properties) {
+														 CloudFoundryConnectionProperties properties) {
 		ReactorDopplerClient dopplerClient = ReactorDopplerClient.builder()
 				.connectionContext(connectionContext)
 				.tokenProvider(tokenProvider)
@@ -101,20 +101,20 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(AppDeployer.class)
-	public AppDeployer appDeployer(CloudFoundryDeployerProperties properties, CloudFoundryOperations operations, CloudFoundryClient client,
+	public AppDeployer appDeployer(CloudFoundryConnectionProperties properties, CloudFoundryOperations operations, CloudFoundryClient client,
 								   AppNameGenerator appDeploymentCustomizer) {
 		return new CloudFoundryAppDeployer(properties, operations, client, appDeploymentCustomizer);
 	}
 
 	@Bean
 	@ConditionalOnMissingBean(AppNameGenerator.class)
-	public AppNameGenerator appDeploymentCustomizer(CloudFoundryDeployerProperties properties) {
+	public AppNameGenerator appDeploymentCustomizer(CloudFoundryConnectionProperties properties) {
 		return new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
 	}
 
 	@Bean
 	@ConditionalOnMissingBean(TaskLauncher.class)
-	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryDeployerProperties properties, CloudFoundryOperations operations) {
+	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryConnectionProperties properties, CloudFoundryOperations operations) {
 		return new CloudFoundryTaskLauncher(client, operations, properties);
 	}
 }

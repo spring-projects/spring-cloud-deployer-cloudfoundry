@@ -28,7 +28,7 @@ public class CloudFoundryAppNameGeneratorTest {
 
 	@Test
 	public void testDeploymentIdWithAppNamePrefixAndRandomAppNamePrefixFalse() throws Exception {
-		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
 		properties.setEnableRandomAppNamePrefix(false);
 		properties.setAppNamePrefix("dataflow");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
@@ -40,7 +40,7 @@ public class CloudFoundryAppNameGeneratorTest {
 
 	@Test
 	public void testDeploymentIdWithAppNamePrefixAndRandomAppNamePrefixTrue() throws Exception {
-		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
 		properties.setEnableRandomAppNamePrefix(true);
 		properties.setAppNamePrefix("dataflow-longername");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
@@ -59,7 +59,7 @@ public class CloudFoundryAppNameGeneratorTest {
 
 	@Test
 	public void testDeploymentIdWithoutAppNamePrefixAndRandomAppNamePrefixTrue() throws Exception {
-		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
 		properties.setEnableRandomAppNamePrefix(true);
 		properties.setAppNamePrefix("");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
@@ -74,7 +74,7 @@ public class CloudFoundryAppNameGeneratorTest {
 
 	@Test
 	public void testDeploymentIdWithoutAppNamePrefixAndRandomAppNamePrefixFalse() throws Exception {
-		CloudFoundryDeployerProperties properties = new CloudFoundryDeployerProperties();
+		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
 		properties.setEnableRandomAppNamePrefix(false);
 		properties.setAppNamePrefix("");
 		CloudFoundryAppNameGenerator deploymentCustomizer =

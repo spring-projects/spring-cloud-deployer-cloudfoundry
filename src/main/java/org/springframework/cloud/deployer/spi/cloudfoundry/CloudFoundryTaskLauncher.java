@@ -98,11 +98,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private final CloudFoundryOperations operations;
 
-    private final CloudFoundryDeployerProperties properties;
+    private final CloudFoundryConnectionProperties properties;
 
     private long timeout = 30L;
 
-    public CloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryOperations operations, CloudFoundryDeployerProperties properties) {
+    public CloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryOperations operations, CloudFoundryConnectionProperties properties) {
         this.client = client;
         this.operations = operations;
         this.properties = properties;
@@ -438,7 +438,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     private Set<String> servicesToBind(AppDeploymentRequest request) {
         Set<String> services = new HashSet<>();
         services.addAll(this.properties.getServices());
-        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryDeployerProperties.SERVICES_PROPERTY_KEY)));
+        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY)));
 
         return services;
     }
@@ -471,12 +471,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private int diskQuota(AppDeploymentRequest request) {
         return parseInt(
-            request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.DISK_PROPERTY_KEY, valueOf(this.properties.getDisk())));
+            request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, valueOf(this.properties.getDisk())));
     }
 
     private int memory(AppDeploymentRequest request) {
         return parseInt(
-            request.getDeploymentProperties().getOrDefault(CloudFoundryDeployerProperties.MEMORY_PROPERTY_KEY, valueOf(this.properties.getMemory())));
+            request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, valueOf(this.properties.getMemory())));
     }
 
     private TaskStatus mapTaskToStatus(GetTaskResponse getTaskResponse) {
