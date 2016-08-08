@@ -16,6 +16,11 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.BDDMockito.any;
+import static org.mockito.BDDMockito.given;
+
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -72,11 +77,6 @@ import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.core.io.ClassPathResource;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.BDDMockito.any;
-import static org.mockito.BDDMockito.given;
-
 /**
  * @author Michael Minella
  */
@@ -115,12 +115,11 @@ public class CloudFoundryTaskLauncherTests {
     public void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
+        CloudFoundryConnectionProperties connectionProperties = new CloudFoundryConnectionProperties();
+        connectionProperties.setOrg("org");
+        connectionProperties.setSpace("space");
 
-        properties.setOrg("org");
-        properties.setSpace("space");
-
-        this.launcher = new CloudFoundryTaskLauncher(this.client, this.operations, properties);
+        this.launcher = new CloudFoundryTaskLauncher(this.client, this.operations, connectionProperties, new CloudFoundryDeploymentProperties());
     }
 
     @Test
@@ -523,7 +522,7 @@ public class CloudFoundryTaskLauncherTests {
         Map<String,String> environmentProperties = new HashMap<>();
         environmentProperties.put("organization", "org");
         environmentProperties.put("space", "dev");
-        environmentProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+        environmentProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_mysql");
 
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
@@ -610,7 +609,7 @@ public class CloudFoundryTaskLauncherTests {
         Map<String,String> environmentProperties = new HashMap<>();
         environmentProperties.put("organization", "org");
         environmentProperties.put("space", "dev");
-        environmentProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
+        environmentProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
 
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
@@ -699,7 +698,7 @@ public class CloudFoundryTaskLauncherTests {
         Map<String,String> environmentProperties = new HashMap<>();
         environmentProperties.put("organization", "org");
         environmentProperties.put("space", "dev");
-        environmentProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
+        environmentProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
 
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),

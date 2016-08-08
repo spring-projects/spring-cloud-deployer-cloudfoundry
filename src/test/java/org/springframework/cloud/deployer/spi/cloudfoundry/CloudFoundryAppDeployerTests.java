@@ -16,6 +16,17 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.rules.ExpectedException.none;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -54,17 +65,6 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.rules.ExpectedException.none;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
  *
@@ -72,21 +72,22 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
  */
 public class CloudFoundryAppDeployerTests {
 
-	CloudFoundryOperations operations;
+	@Rule
+	public ExpectedException thrown = none();
 
-	CloudFoundryClient client;
+	private CloudFoundryOperations operations;
 
-	Applications applications;
+	private CloudFoundryClient client;
 
-	ApplicationsV2 applicationsV2;
+	private Applications applications;
 
-	Services services;
+	private ApplicationsV2 applicationsV2;
 
-	CloudFoundryAppDeployer deployer;
+	private Services services;
 
-	@Rule public ExpectedException thrown = none();
+	private CloudFoundryAppDeployer deployer;
 
-	AppNameGenerator deploymentCustomizer;
+	private AppNameGenerator deploymentCustomizer;
 
 	@Before
 	public void setUp() throws Exception {
@@ -97,14 +98,16 @@ public class CloudFoundryAppDeployerTests {
 		applicationsV2 = mock(ApplicationsV2.class);
 		services = mock(Services.class);
 
-		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
-		properties.setAppNamePrefix("dataflow-server");
+		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
+		deploymentProperties.setAppNamePrefix("dataflow-server");
 		//Tests are setup not to handle random name prefix = true;
-		properties.setEnableRandomAppNamePrefix(false);
-		deploymentCustomizer = new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+		deploymentProperties.setEnableRandomAppNamePrefix(false);
+		deploymentProperties.setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
+
+		deploymentCustomizer = new CloudFoundryAppNameGenerator(deploymentProperties, new WordListRandomWords());
 		((CloudFoundryAppNameGenerator)deploymentCustomizer).afterPropertiesSet();
 
-		deployer = new CloudFoundryAppDeployer(properties, operations,
+		deployer = new CloudFoundryAppDeployer(new CloudFoundryConnectionProperties(), deploymentProperties, operations,
 				client, deploymentCustomizer);
 	}
 
@@ -138,9 +141,10 @@ public class CloudFoundryAppDeployerTests {
 
 		// given
 		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
+		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
 
 		// Define the deployment properties for the app
-		Map<String, String> deploymentProperties = new HashMap<>();
+		Map<String, String> appDeploymentProperties = new HashMap<>();
 
 		final String fooKey = "spring.cloud.foo";
 		final String fooVal = "this should end up in SPRING_APPLICATION_JSON";
@@ -148,10 +152,10 @@ public class CloudFoundryAppDeployerTests {
 		final String barKey = "another.cloud.bar";
 		final String barVal = "this should too";
 
-		deploymentProperties.put(fooKey, fooVal);
-		deploymentProperties.put(barKey, barVal);
+		appDeploymentProperties.put(fooKey, fooVal);
+		appDeploymentProperties.put(barKey, barVal);
 
-		deployer = new CloudFoundryAppDeployer(properties, operations, client, deploymentCustomizer);
+		deployer = new CloudFoundryAppDeployer(properties, deploymentProperties, operations, client, deploymentCustomizer);
 
 		given(operations.applications()).willReturn(applications);
 
@@ -171,7 +175,7 @@ public class CloudFoundryAppDeployerTests {
 		deployer.asyncDeploy(new AppDeploymentRequest(
 				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
 				resource,
-				deploymentProperties))
+				appDeploymentProperties))
 				.subscribe(testSubscriber);
 
 		testSubscriber.verify(Duration.ofSeconds(10L));
@@ -467,8 +471,6 @@ public class CloudFoundryAppDeployerTests {
 	private void runAsyncFullDeployment(AppDeploymentRequest request) throws InterruptedException {
 
 		// given
-		deployer.getProperties().setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
-
 		given(operations.applications()).willReturn(applications);
 		given(operations.services()).willReturn(services);
 
@@ -495,8 +497,6 @@ public class CloudFoundryAppDeployerTests {
 	private String runFullDeployment(AppDeploymentRequest request) throws InterruptedException {
 
 		// given
-		deployer.getProperties().setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
-
 		given(operations.applications()).willReturn(applications);
 		given(operations.services()).willReturn(services);
 

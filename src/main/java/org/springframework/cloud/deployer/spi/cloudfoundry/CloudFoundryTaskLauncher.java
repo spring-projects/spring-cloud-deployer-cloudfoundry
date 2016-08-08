@@ -16,6 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
+import static org.cloudfoundry.util.tuple.TupleUtils.function;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -75,12 +84,6 @@ import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
-import static org.cloudfoundry.util.tuple.TupleUtils.function;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
-
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
  * deployed, the app is created, the package is uploaded, and the droplet is created before launching the actual
@@ -98,16 +101,18 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private final CloudFoundryOperations operations;
 
-    private final CloudFoundryConnectionProperties properties;
+    private final CloudFoundryConnectionProperties connectionProperties;
 
-    private long timeout = 30L;
+    private final CloudFoundryDeploymentProperties deploymentProperties;
 
-    public CloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryOperations operations, CloudFoundryConnectionProperties properties) {
+    public CloudFoundryTaskLauncher(CloudFoundryClient client,
+            CloudFoundryOperations operations,
+            CloudFoundryConnectionProperties connectionProperties,
+            CloudFoundryDeploymentProperties deploymentProperties) {
         this.client = client;
         this.operations = operations;
-        this.properties = properties;
-
-        this.timeout = this.properties.getTaskTimeout();
+		this.connectionProperties = connectionProperties;
+		this.deploymentProperties = deploymentProperties;
     }
 
     /**
@@ -118,7 +123,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     @Override
     public void cancel(String id) {
 
-        asyncCancel(id).block(Duration.ofSeconds(this.timeout));
+        asyncCancel(id).block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
     }
 
     /**
@@ -129,7 +134,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     @Override
     public String launch(AppDeploymentRequest request) {
-        return asyncLaunch(request).block(Duration.ofSeconds(this.timeout));
+        return asyncLaunch(request).block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
     }
 
     /**
@@ -141,7 +146,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     @Override
     public TaskStatus status(String id) {
 
-        return asyncStatus(id).block(Duration.ofSeconds(this.timeout));
+        return asyncStatus(id).block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
     }
 
     /**
@@ -281,7 +286,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                         .type(Type.BUILDPACK)
                         .data(BuildpackData
                             .builder()
-                            .buildpack(this.properties.getBuildpack())
+                            .buildpack(this.deploymentProperties.getBuildpack())
                             .build())
                         .build())
                     .relationships(org.cloudfoundry.client.v3.applications.Relationships.builder()
@@ -331,11 +336,11 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     protected Mono<String> getSpaceId(AppDeploymentRequest request) {
 
         return Mono
-            .just(this.properties.getOrg())
+            .just(this.connectionProperties.getOrg())
             .flatMap(organization -> PaginationUtils
                 .requestClientV2Resources(page -> this.client.spaces()
                     .list(ListSpacesRequest.builder()
-                        .name(this.properties.getSpace())
+                        .name(this.connectionProperties.getSpace())
                         .page(page)
                         .build())))
             .single()
@@ -437,8 +442,8 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private Set<String> servicesToBind(AppDeploymentRequest request) {
         Set<String> services = new HashSet<>();
-        services.addAll(this.properties.getServices());
-        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY)));
+        services.addAll(this.deploymentProperties.getServices());
+        services.addAll(commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
 
         return services;
     }
@@ -471,12 +476,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
 
     private int diskQuota(AppDeploymentRequest request) {
         return parseInt(
-            request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, valueOf(this.properties.getDisk())));
+            request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(this.deploymentProperties.getDisk())));
     }
 
     private int memory(AppDeploymentRequest request) {
         return parseInt(
-            request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, valueOf(this.properties.getMemory())));
+            request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(this.deploymentProperties.getMemory())));
     }
 
     private TaskStatus mapTaskToStatus(GetTaskResponse getTaskResponse) {

@@ -91,9 +91,9 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 		}
 
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_mysql");
-		envProperties.put(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, "1024");
-		envProperties.put(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, "2048");
+		envProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+		envProperties.put(CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY, "1024");
+		envProperties.put(CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY, "2048");
 
 		List<String> commandLineArgs = new ArrayList<>(3);
 		commandLineArgs.add("--foo=bar");
@@ -133,9 +133,9 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	@Test
 	public void testSimpleCancel() throws InterruptedException {
 		Map<String, String> envProperties = new HashMap<>();
-		envProperties.put(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY, "my_mysql");
-		envProperties.put(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, "1024");
-		envProperties.put(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, "2048");
+		envProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_mysql");
+		envProperties.put(CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY, "1024");
+		envProperties.put(CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY, "2048");
 
 		List<String> commandLineArgs = new ArrayList<>(2);
 		commandLineArgs.add("30000");

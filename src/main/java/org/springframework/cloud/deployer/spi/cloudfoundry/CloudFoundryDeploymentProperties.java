@@ -15,6 +15,8 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -28,14 +30,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
 public class CloudFoundryDeploymentProperties {
 
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
+	public static final String MEMORY_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".memory";
 
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
+	public static final String DISK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".disk";
 
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
+	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.

@@ -43,13 +43,13 @@ public class CloudFoundryAppNameGenerator implements AppNameGenerator, Initializ
 
 	private String prefixToUse = "";
 
-	private final CloudFoundryConnectionProperties properties;
+	private final CloudFoundryDeploymentProperties properties;
 
 	private final WordListRandomWords wordListRandomWords;
 
-	public CloudFoundryAppNameGenerator(CloudFoundryConnectionProperties cloudFoundryConnectionProperties,
+	public CloudFoundryAppNameGenerator(CloudFoundryDeploymentProperties cloudFoundryDeploymentProperties,
 										WordListRandomWords wordListRandomWords) {
-		this.properties = cloudFoundryConnectionProperties;
+		this.properties = cloudFoundryDeploymentProperties;
 		this.wordListRandomWords = wordListRandomWords;
 	}
 

@@ -45,6 +45,9 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
 import static java.util.stream.Stream.concat;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
@@ -55,7 +58,9 @@ import static org.springframework.util.StringUtils.commaDelimitedListToSet;
  */
 public class CloudFoundryAppDeployer implements AppDeployer {
 
-	private final CloudFoundryConnectionProperties properties;
+	private final CloudFoundryConnectionProperties connectionProperties;
+
+	private final CloudFoundryDeploymentProperties deploymentProperties;
 
 	private final CloudFoundryOperations operations;
 
@@ -65,9 +70,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppDeployer.class);
 
-	public CloudFoundryAppDeployer(CloudFoundryConnectionProperties properties, CloudFoundryOperations operations,
-								   CloudFoundryClient client, AppNameGenerator appDeploymentCustomizer) {
-		this.properties = properties;
+	public CloudFoundryAppDeployer(CloudFoundryConnectionProperties connectionProperties,
+			CloudFoundryDeploymentProperties deploymentProperties,
+			CloudFoundryOperations operations,
+			CloudFoundryClient client,
+			AppNameGenerator appDeploymentCustomizer) {
+		this.connectionProperties = connectionProperties;
+		this.deploymentProperties = deploymentProperties;
 		this.operations = operations;
 		this.client = client;
 		this.appDeploymentCustomizer = appDeploymentCustomizer;
@@ -107,8 +116,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.push(PushApplicationRequest.builder()
 					.name(name)
 					.application(request.getResource().getFile().toPath())
-					.domain(properties.getDomain())
-					.buildpack(properties.getBuildpack())
+					.domain(connectionProperties.getDomain())
+					.buildpack(deploymentProperties.getBuildpack())
 					.diskQuota(diskQuota(request))
 					.instances(instances(request))
 					.memory(memory(request))
@@ -183,10 +192,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			.map(AppStatus.Builder::build);
 	}
 
-	public CloudFoundryConnectionProperties getProperties() {
-		return properties;
-	}
-
 	private String deploymentId(AppDeploymentRequest request) {
 		String appName = Optional.ofNullable(request.getDeploymentProperties().get(GROUP_PROPERTY_KEY))
 			.map(groupName -> String.format("%s-", groupName))
@@ -205,13 +210,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	private Flux<String> servicesToBind(AppDeploymentRequest request) {
 		return Flux.fromStream(
 			concat(
-				properties.getServices().stream(),
-				commaDelimitedListToSet(request.getDeploymentProperties().get(CloudFoundryConnectionProperties.SERVICES_PROPERTY_KEY)).stream()));
+				deploymentProperties.getServices().stream(),
+				commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()));
 	}
 
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.MEMORY_PROPERTY_KEY, valueOf(properties.getMemory())));
+			request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(deploymentProperties.getMemory())));
 	}
 
 	private int instances(AppDeploymentRequest request) {
@@ -221,7 +226,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private int diskQuota(AppDeploymentRequest request) {
 		return parseInt(
-			request.getDeploymentProperties().getOrDefault(CloudFoundryConnectionProperties.DISK_PROPERTY_KEY, valueOf(properties.getDisk())));
+			request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(deploymentProperties.getDisk())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {

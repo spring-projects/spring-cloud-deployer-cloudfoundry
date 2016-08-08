@@ -16,11 +16,9 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.net.URL;
-import java.util.HashSet;
-import java.util.Set;
+
 import javax.validation.constraints.NotNull;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -29,20 +27,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@ConfigurationProperties(prefix = "spring.cloud.deployer.cloudfoundry")
+@ConfigurationProperties(prefix = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES)
 public class CloudFoundryConnectionProperties {
 
-	public static final String MEMORY_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.memory";
-
-	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
-
-	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
-
 	/**
-	 * The names of services to bind to all applications deployed as a module.
-	 * This should typically contain a service capable of playing the role of a binding transport.
+	 * Top level prefix for Cloud Foundry related configuration properties.
 	 */
-	private Set<String> services = new HashSet<>();
+	public static final String CLOUDFOUNDRY_PROPERTIES = "spring.cloud.deployer.cloudfoundry";
 
 	/**
 	 * The domain to use when mapping routes for applications.
@@ -84,50 +75,6 @@ public class CloudFoundryConnectionProperties {
 	 * Allow operation using self-signed certificates.
 	 */
 	private boolean skipSslValidation = false;
-
-	/**
-	 * The buildpack to use for deploying the application.
-	 */
-	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git";
-
-	/**
-	 * The amount of memory (MB) to allocate, if not overridden per-module.
-	 */
-	private int memory = 1024;
-
-	/**
-	 * The amount of disk space (MB) to allocate, if not overridden per-module.
-	 */
-	private int disk = 1024;
-
-	/**
-	 * The number of instances to run.
-	 */
-	private int instances = 1;
-
-	/**
-	 * Flag to enable prefixing the app name with a random prefix
-	 */
-	private boolean enableRandomAppNamePrefix = true;
-
-	/**
-	 * Timeout for blocking task launches
-	 */
-	private long taskTimeout = 30L;
-
-	/**
-	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
-	 */
-	@Value("${spring.application.name:}")
-	private String appNamePrefix;
-
-	public Set<String> getServices() {
-		return services;
-	}
-
-	public void setServices(Set<String> services) {
-		this.services = services;
-	}
 
 	public String getDomain() {
 		return domain;
@@ -185,59 +132,4 @@ public class CloudFoundryConnectionProperties {
 		this.skipSslValidation = skipSslValidation;
 	}
 
-	public String getBuildpack() {
-		return buildpack;
-	}
-
-	public void setBuildpack(String buildpack) {
-		this.buildpack = buildpack;
-	}
-
-	public int getMemory() {
-		return memory;
-	}
-
-	public void setMemory(int memory) {
-		this.memory = memory;
-	}
-
-	public int getDisk() {
-		return disk;
-	}
-
-	public void setDisk(int disk) {
-		this.disk = disk;
-	}
-
-	public int getInstances() {
-		return instances;
-	}
-
-	public void setInstances(int instances) {
-		this.instances = instances;
-	}
-
-	public boolean isEnableRandomAppNamePrefix() {
-		return enableRandomAppNamePrefix;
-	}
-
-	public void setEnableRandomAppNamePrefix(boolean enableRandomAppNamePrefix) {
-		this.enableRandomAppNamePrefix = enableRandomAppNamePrefix;
-	}
-
-	public String getAppNamePrefix() {
-		return appNamePrefix;
-	}
-
-	public void setAppNamePrefix(String appNamePrefix) {
-		this.appNamePrefix = appNamePrefix;
-	}
-
-	public long getTaskTimeout() {
-		return taskTimeout;
-	}
-
-	public void setTaskTimeout(long taskTimeout) {
-		this.taskTimeout = taskTimeout;
-	}
 }
