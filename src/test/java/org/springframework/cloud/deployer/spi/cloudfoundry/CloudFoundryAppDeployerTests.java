@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -265,7 +266,7 @@ public class CloudFoundryAppDeployerTests {
 
 		then(applicationsV2).should().update(UpdateApplicationRequest.builder()
 				.applicationId("abc123")
-				.environmentJsons(new HashMap<String, String>() {{
+				.environmentJsons(new LinkedHashMap<String, String>() {{
 					put("some.key", "someValue");
 					// Note that fooKey and barKey are not expected to be in the environment as they are
 					// deployment properties
@@ -569,7 +570,7 @@ public class CloudFoundryAppDeployerTests {
 		given(operations.applications()).willReturn(applications);
 		given(operations.services()).willReturn(services);
 
-		mockGetApplication(request.getDefinition().getName(), "RUNNING");
+		mockGetUnknownApplication(request.getDefinition().getName());
 		given(applications.push(any())).willReturn(Mono.empty());
 		given(applications.start(any())).willReturn(Mono.empty());
 
@@ -582,6 +583,11 @@ public class CloudFoundryAppDeployerTests {
 
 		// when
 		return deployer.deploy(request);
+	}
+
+	private void mockGetUnknownApplication(String applicationName) {
+		given(applications.get(any())).willReturn(Mono.error(new RuntimeException()));
+
 	}
 
 }

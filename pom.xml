@@ -18,10 +18,10 @@
 
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-cloud-deployer-spi.version>1.0.2.RELEASE</spring-cloud-deployer-spi.version>
-		<cloudfoundry-java-lib.version>2.0.0.M10</cloudfoundry-java-lib.version>
-		<reactor-core.version>3.0.0.RC1</reactor-core.version>
-		<reactor-netty.version>0.5.0.M2</reactor-netty.version>
+		<spring-cloud-deployer-spi.version>1.0.3.BUILD-SNAPSHOT</spring-cloud-deployer-spi.version>
+		<cloudfoundry-java-lib.version>2.0.0.RC1</cloudfoundry-java-lib.version>
+		<reactor-core.version>3.0.0.RC2</reactor-core.version>
+		<reactor-netty.version>0.5.0.M3</reactor-netty.version>
 		<spock-core.version>1.0-groovy-2.4</spock-core.version>
 		<groovy-all.version>2.4.4</groovy-all.version>
 	</properties>
@@ -55,7 +55,10 @@
 			<artifactId>cloudfoundry-operations</artifactId>
 			<version>${cloudfoundry-java-lib.version}</version>
 		</dependency>
-
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>

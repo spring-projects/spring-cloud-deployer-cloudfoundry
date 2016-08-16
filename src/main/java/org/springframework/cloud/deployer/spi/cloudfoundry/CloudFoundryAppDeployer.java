@@ -15,11 +15,20 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static java.util.stream.Stream.concat;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,9 +40,11 @@ import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
+import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import org.yaml.snakeyaml.Yaml;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -41,14 +52,6 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static java.util.stream.Stream.concat;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -115,6 +118,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			envVariables.putAll(
 					Optional.ofNullable(request.getDefinition().getProperties())
 							.orElse(Collections.emptyMap()));
+		}
+
+		if (request.getCommandlineArguments() != null && !request.getCommandlineArguments().isEmpty()) {
+			Yaml yaml = new Yaml();
+			String argsAsYaml = yaml.dump(Collections.singletonMap("arguments",
+					request.getCommandlineArguments().stream().collect(Collectors.joining(" "))));
+			envVariables.put("JBP_CONFIG_JAVA_MAIN", argsAsYaml);
 		}
 
 		try {
@@ -194,8 +204,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.name(id)
 				.build())
 			.then(ad -> createAppStatusBuilder(id, ad))
-			.otherwise(e -> emptyAppStatusBuilder(id))
-			.map(AppStatus.Builder::build);
+			.otherwise(e ->  emptyAppStatusBuilder(id))
+			.map(AppStatus.Builder::build)
+			.doOnSuccess(v -> logger.info(String.format("Successfully computed status [%s] for %s", v, id)))
+			.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
+			;
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {
@@ -254,9 +267,17 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private Mono<AppStatus.Builder> addInstances(AppStatus.Builder initial, ApplicationDetail ad) {
-		return Flux.fromIterable(ad.getInstanceDetails())
-			.zipWith(Flux.range(0, ad.getRunningInstances()))
-			.reduce(initial, (b, inst) -> b.with(new CloudFoundryAppInstanceStatus(ad, inst.t1, inst.t2)));
+		logger.trace("Gathering instances for " + ad);
+		logger.trace("InstanceDetails: " + ad.getInstanceDetails());
+
+		int i = 0;
+		for (InstanceDetail instanceDetail : ad.getInstanceDetails()) {
+			initial.with(new CloudFoundryAppInstanceStatus(ad, instanceDetail, i++));
+		}
+		for (; i < ad.getInstances() ; i++) {
+			initial.with(new CloudFoundryAppInstanceStatus(ad, null, i));
+		}
+		return Mono.just(initial);
 	}
 
 }

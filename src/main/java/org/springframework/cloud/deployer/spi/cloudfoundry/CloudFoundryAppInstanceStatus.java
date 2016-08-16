@@ -54,7 +54,6 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 		if (instanceDetail == null) {
 			return DeploymentState.failed;
 		}
-
 		switch (instanceDetail.getState()) {
 			case "STARTING":
 			case "DOWN":
