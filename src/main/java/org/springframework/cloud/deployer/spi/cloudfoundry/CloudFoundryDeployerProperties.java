@@ -18,6 +18,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
+
 import javax.validation.constraints.NotNull;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,10 @@ public class CloudFoundryDeployerProperties {
 	public static final String DISK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.disk";
 
 	public static final String SERVICES_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.services";
+
+	public static final String BUILDPACK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.buildpack";
+
+	public static final String USE_SPRING_APPLICATION_JSON_KEY = "spring.cloud.deployer.cloudfoundry.use-spring-application-json";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
@@ -114,6 +119,11 @@ public class CloudFoundryDeployerProperties {
 	 * Timeout for blocking task launches
 	 */
 	private long taskTimeout = 30L;
+
+	/**
+	 * Flag to indicate whether application properties are fed into SPRING_APPLICATION_JSON or ENVIRONMENT VARIABLES.
+	 */
+	private boolean useSpringApplicationJson = true;
 
 	/**
 	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
@@ -240,4 +250,14 @@ public class CloudFoundryDeployerProperties {
 	public void setTaskTimeout(long taskTimeout) {
 		this.taskTimeout = taskTimeout;
 	}
+
+	public boolean isUseSpringApplicationJson() {
+		return useSpringApplicationJson;
+	}
+
+	public void setUseSpringApplicationJson(boolean useSpringApplicationJson) {
+		this.useSpringApplicationJson = useSpringApplicationJson;
+	}
+
+
 }
