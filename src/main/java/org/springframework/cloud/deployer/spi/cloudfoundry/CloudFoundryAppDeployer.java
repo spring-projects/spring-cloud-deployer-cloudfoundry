@@ -188,7 +188,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.name(id)
 					.build()
 			)
-			.doOnSuccess(v -> logger.info(String.format("Sucessfully undeployed app %s", id)))
+			.doOnSuccess(v -> logger.info(String.format("Successfully undeployed app %s", id)))
 			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e));
 	}
 
