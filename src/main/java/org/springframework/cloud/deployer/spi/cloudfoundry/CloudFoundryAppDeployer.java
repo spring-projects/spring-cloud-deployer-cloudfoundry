@@ -102,25 +102,30 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	Mono<Void> asyncDeploy(AppDeploymentRequest request) {
 		String name = deploymentId(request);
+		logger.info(String.format("Starting deployment of '%s'", name));
+
+		Map<String, String> appProperties = new HashMap<>(request.getDefinition().getProperties());
+		// Remove server.port as CF assigns a port for us, and we don't want to override that
+		String port = appProperties.remove("server.port");
+		if (port != null) {
+			logger.warn(String.format("Ignoring 'server.port=%s' for app %s, as Cloud Foundry will assign a local dynamic port. " +
+					"Route to the app will use port 80.", port, name));
+		}
 
 		Map<String, String> envVariables = new HashMap<>();
 
 		if (useSpringApplicationJson(request)) {
 			try {
 				envVariables.put("SPRING_APPLICATION_JSON",
-						new ObjectMapper().writeValueAsString(
-								Optional.ofNullable(request.getDefinition().getProperties())
-										.orElse(Collections.emptyMap())));
+						new ObjectMapper().writeValueAsString(appProperties));
 			} catch (JsonProcessingException e) {
 				throw new RuntimeException(e);
 			}
 		} else {
-			envVariables.putAll(
-					Optional.ofNullable(request.getDefinition().getProperties())
-							.orElse(Collections.emptyMap()));
+			envVariables.putAll(appProperties);
 		}
 
-		if (request.getCommandlineArguments() != null && !request.getCommandlineArguments().isEmpty()) {
+		if (!request.getCommandlineArguments().isEmpty()) {
 			Yaml yaml = new Yaml();
 			String argsAsYaml = yaml.dump(Collections.singletonMap("arguments",
 					request.getCommandlineArguments().stream().collect(Collectors.joining(" "))));
