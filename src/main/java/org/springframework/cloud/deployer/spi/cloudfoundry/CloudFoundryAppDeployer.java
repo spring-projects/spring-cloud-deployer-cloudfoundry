@@ -207,8 +207,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			.otherwise(e ->  emptyAppStatusBuilder(id))
 			.map(AppStatus.Builder::build)
 			.doOnSuccess(v -> logger.info(String.format("Successfully computed status [%s] for %s", v, id)))
-			.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
-			;
+			.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e));
 	}
 
 	private String deploymentId(AppDeploymentRequest request) {

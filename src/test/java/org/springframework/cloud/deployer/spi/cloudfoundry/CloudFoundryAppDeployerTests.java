@@ -570,7 +570,7 @@ public class CloudFoundryAppDeployerTests {
 		given(operations.applications()).willReturn(applications);
 		given(operations.services()).willReturn(services);
 
-		mockGetUnknownApplication(request.getDefinition().getName());
+		mockGetUnknownApplication();
 		given(applications.push(any())).willReturn(Mono.empty());
 		given(applications.start(any())).willReturn(Mono.empty());
 
@@ -585,9 +585,8 @@ public class CloudFoundryAppDeployerTests {
 		return deployer.deploy(request);
 	}
 
-	private void mockGetUnknownApplication(String applicationName) {
+	private void mockGetUnknownApplication() {
 		given(applications.get(any())).willReturn(Mono.error(new RuntimeException()));
-
 	}
 
 }
