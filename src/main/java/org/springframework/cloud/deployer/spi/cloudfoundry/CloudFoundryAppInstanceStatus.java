@@ -16,7 +16,7 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.cloudfoundry.operations.applications.ApplicationDetail;
@@ -74,7 +74,19 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 
 	@Override
 	public Map<String, String> getAttributes() {
-		return new HashMap<>(); // TODO
+		Map<String, String> attributes = new LinkedHashMap<>();
+		if (instanceDetail != null) {
+			if (instanceDetail.getCpu() != null) {
+				attributes.put("cpu", String.format("%.1f%%", instanceDetail.getCpu() * 100d));
+			}
+			if (instanceDetail.getDiskQuota() != null && instanceDetail.getDiskUsage() != null) {
+				attributes.put("disk", String.format("%.1f%%", 100d * instanceDetail.getDiskUsage() / instanceDetail.getDiskQuota()));
+			}
+			if (instanceDetail.getMemoryQuota() != null && instanceDetail.getMemoryUsage() != null) {
+				attributes.put("memory", String.format("%.1f%%", 100d * instanceDetail.getMemoryUsage() / instanceDetail.getMemoryQuota()));
+			}
+		}
+		return attributes;
 	}
 
 	@Override
