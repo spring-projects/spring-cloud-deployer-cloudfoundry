@@ -78,7 +78,8 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 		}
 	}
 
-	@Override
+	// Commenting out @Override for the release against deployer core 1.0.2. Can be put back afterwards
+	//@Override
 	@Ignore("Need to look into args escaping better. Disabling for the time being")
 	public void testCommandLineArgumentsPassing() {
 	}
