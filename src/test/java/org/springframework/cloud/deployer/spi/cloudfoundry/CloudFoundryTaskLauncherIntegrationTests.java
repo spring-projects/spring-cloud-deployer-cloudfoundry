@@ -63,7 +63,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = CloudFoundryTaskLauncherIntegrationTests.Config.class)
-@IntegrationTest
+@IntegrationTest("server.port=-1")
 public class CloudFoundryTaskLauncherIntegrationTests {
 
 	@ClassRule

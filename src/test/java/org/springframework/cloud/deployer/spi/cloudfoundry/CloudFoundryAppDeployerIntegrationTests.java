@@ -45,7 +45,7 @@ import org.springframework.core.io.Resource;
  * @author Greg Turnquist
  */
 @SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
-@IntegrationTest("spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false")
+@IntegrationTest({"spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false", "server.port=-1"})
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
 	@ClassRule
