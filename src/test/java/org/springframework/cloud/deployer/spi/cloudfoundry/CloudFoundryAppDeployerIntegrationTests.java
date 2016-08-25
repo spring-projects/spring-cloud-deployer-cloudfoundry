@@ -33,8 +33,8 @@ import org.springframework.cloud.deployer.resource.maven.MavenProperties;
 import org.springframework.cloud.deployer.resource.maven.MavenResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
@@ -45,7 +45,7 @@ import org.springframework.core.io.Resource;
  * @author Greg Turnquist
  */
 @SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
-@IntegrationTest({"spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false", "server.port=-1"})
+@IntegrationTest(value = {"spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false"})
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
 	@ClassRule

@@ -27,9 +27,7 @@ import org.cloudfoundry.reactor.doppler.ReactorDopplerClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.test.junit.AbstractExternalResourceTestSupport;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -56,17 +54,16 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 	@Override
 	protected void obtainResource() throws Exception {
-		context = SpringApplication.run(Config.class);
+		context = new SpringApplicationBuilder(Config.class).web(false).run();
 		resource = context.getBean(CloudFoundryClient.class);
 	}
 
 	@Configuration
-	@EnableAutoConfiguration
+//	@EnableAutoConfiguration
 	@EnableConfigurationProperties(CloudFoundryConnectionProperties.class)
 	public static class Config {
 
 		@Bean
-		@ConditionalOnMissingBean
 		public ConnectionContext connectionContext(CloudFoundryConnectionProperties properties) {
 			return DefaultConnectionContext.builder()
 					.apiHost(properties.getUrl().getHost())
@@ -75,7 +72,6 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 		}
 
 		@Bean
-		@ConditionalOnMissingBean
 		public TokenProvider tokenProvider(CloudFoundryConnectionProperties properties) {
 			return PasswordGrantTokenProvider.builder()
 					.username(properties.getUsername())
