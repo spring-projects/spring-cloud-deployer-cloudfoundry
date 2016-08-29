@@ -43,7 +43,9 @@ import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
+import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import org.springframework.cloud.deployer.spi.test.AbstractTaskLauncherIntegrationTests;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -61,10 +63,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Greg Turnquist
  * @author Michael Minella
  */
-@RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = CloudFoundryTaskLauncherIntegrationTests.Config.class)
 @IntegrationTest("server.port=-1")
-public class CloudFoundryTaskLauncherIntegrationTests {
+public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLauncherIntegrationTests {
 
 	@ClassRule
 	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
@@ -76,6 +77,13 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 	ApplicationContext context;
 
 	AppDeploymentRequest request;
+
+	@Override
+	protected TaskLauncher taskLauncher() {
+		return taskLauncher;
+	}
+
+
 
 	/**
 	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if
@@ -105,11 +113,6 @@ public class CloudFoundryTaskLauncherIntegrationTests {
 			context.getResource("classpath:batch-job-1.0.0.BUILD-SNAPSHOT.jar"),
 			envProperties,
 			commandLineArgs);
-	}
-
-	@Test
-	public void testNonExistentAppsStatus() {
-		assertThat(taskLauncher.status("foo").getState(), is(LaunchState.unknown));
 	}
 
 	@Test
