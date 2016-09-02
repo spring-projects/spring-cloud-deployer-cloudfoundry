@@ -109,10 +109,10 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 		commandLineArgs.add("random=" + UUID.randomUUID().toString());
 
 		request = new AppDeploymentRequest(
-			new AppDefinition("timestamp", Collections.emptyMap()),
-			context.getResource("classpath:batch-job-1.0.0.BUILD-SNAPSHOT.jar"),
-			envProperties,
-			commandLineArgs);
+				new AppDefinition("timestamp", Collections.emptyMap()),
+				context.getResource("classpath:batch-job-1.0.0.BUILD-SNAPSHOT.jar"),
+				envProperties,
+				commandLineArgs);
 	}
 
 	@Test
@@ -144,10 +144,10 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 		commandLineArgs.add("30000");
 
 		request = new AppDeploymentRequest(
-			new AppDefinition("long-runner", Collections.emptyMap()),
-			context.getResource("classpath:long-running-task-1.0.0.BUILD-SNAPSHOT.jar"),
-			envProperties,
-			commandLineArgs);
+				new AppDefinition("long-runner", Collections.emptyMap()),
+				context.getResource("classpath:long-running-task-1.0.0.BUILD-SNAPSHOT.jar"),
+				envProperties,
+				commandLineArgs);
 
 		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(5, ChronoUnit.MINUTES));
 
@@ -187,21 +187,21 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 				.name(applicationName)
 				.page(page)
 				.build()))
-			.log("applicationResponses")
-			.singleOrEmpty()
-			.log("single")
-			.then(applicationResource -> client.serviceBindingsV3().list(ListServiceBindingsRequest.builder()
-				.applicationId(applicationResource.getId())
-				.build()))
-			.log("serviceBindingRequest")
-			.flatMap(serviceBindingsResponse -> Flux.fromIterable(serviceBindingsResponse.getResources()))
-			.log("serviceBindingResponses")
-			.flatMap(serviceBindingResource -> client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
-				.serviceBindingId(serviceBindingResource.getId())
-				.build()))
-			.log("serviceBindingDeletes")
-			.singleOrEmpty()
-			.block();
+				.log("applicationResponses")
+				.singleOrEmpty()
+				.log("single")
+				.then(applicationResource -> client.serviceBindingsV3().list(ListServiceBindingsRequest.builder()
+						.applicationId(applicationResource.getId())
+						.build()))
+				.log("serviceBindingRequest")
+				.flatMap(serviceBindingsResponse -> Flux.fromIterable(serviceBindingsResponse.getResources()))
+				.log("serviceBindingResponses")
+				.flatMap(serviceBindingResource -> client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
+						.serviceBindingId(serviceBindingResource.getId())
+						.build()))
+				.log("serviceBindingDeletes")
+				.singleOrEmpty()
+				.block();
 	}
 
 	/**
