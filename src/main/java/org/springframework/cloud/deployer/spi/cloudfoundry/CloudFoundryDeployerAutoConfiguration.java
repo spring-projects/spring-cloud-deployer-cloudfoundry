@@ -32,6 +32,7 @@ import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
@@ -139,5 +140,11 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@ConditionalOnMissingBean(TaskLauncher.class)
 	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties, CloudFoundryOperations operations) {
 		return new CloudFoundryTaskLauncher(client, operations, connectionProperties, taskDeploymentProperties());
+	}
+
+	@Bean
+	@ConfigurationPropertiesBinding
+	public DurationConverter durationConverter() {
+		return new DurationConverter();
 	}
 }

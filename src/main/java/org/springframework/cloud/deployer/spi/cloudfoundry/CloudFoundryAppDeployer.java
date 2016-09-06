@@ -183,6 +183,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.then(() -> operations.applications()
 					.start(StartApplicationRequest.builder()
 						.name(name)
+						.stagingTimeout(deploymentProperties.getStagingTimeout())
+						.startupTimeout(deploymentProperties.getStartupTimeout())
 						.build())
 					.doOnSuccess(v -> logger.info(String.format("Started app %s", name)))
 					.doOnError(e -> logger.error(String.format("Failed to start app %s", name), e))

@@ -17,6 +17,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -52,7 +53,6 @@ public class CloudFoundryDeploymentProperties {
 	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
-
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
@@ -109,6 +109,16 @@ public class CloudFoundryDeploymentProperties {
 	 * Flag to indicate whether application properties are fed into SPRING_APPLICATION_JSON or ENVIRONMENT VARIABLES.
 	 */
 	private boolean useSpringApplicationJson = true;
+
+	/**
+	 * If set, override the timeout allocated for staging the app by the client.
+	 */
+	private Duration stagingTimeout;
+
+	/**
+	 * If set, override the timeout allocated for starting the app by the client.
+	 */
+	private Duration startupTimeout;
 
 	/**
 	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name.
@@ -210,5 +220,21 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setHost(String host) {
 		this.host = host;
+	}
+
+	public Duration getStagingTimeout() {
+		return stagingTimeout;
+	}
+
+	public void setStagingTimeout(Duration stagingTimeout) {
+		this.stagingTimeout = stagingTimeout;
+	}
+
+	public Duration getStartupTimeout() {
+		return startupTimeout;
+	}
+
+	public void setStartupTimeout(Duration startupTimeout) {
+		this.startupTimeout = startupTimeout;
 	}
 }
