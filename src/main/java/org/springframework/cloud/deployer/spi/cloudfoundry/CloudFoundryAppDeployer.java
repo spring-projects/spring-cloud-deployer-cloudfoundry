@@ -19,6 +19,7 @@ import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
 import static java.util.stream.Stream.concat;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 import static org.springframework.util.StringUtils.commaDelimitedListToSet;
@@ -38,6 +39,7 @@ import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
@@ -142,6 +144,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 					.diskQuota(diskQuota(request))
 					.instances(instances(request))
 					.memory(memory(request))
+					.healthCheckType(healthCheck(request))
 					.noStart(true)
 					.build())
 				.doOnSuccess(v -> logger.info(String.format("Done uploading bits for %s", name)))
@@ -240,6 +243,15 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	private int memory(AppDeploymentRequest request) {
 		return parseInt(
 			request.getDeploymentProperties().getOrDefault(MEMORY_PROPERTY_KEY, valueOf(deploymentProperties.getMemory())));
+	}
+
+	private ApplicationHealthCheck healthCheck(AppDeploymentRequest request) {
+		ApplicationHealthCheck result = deploymentProperties.getHealthCheck();
+		String override = request.getDeploymentProperties().get(HEALTHCHECK_PROPERTY_KEY);
+		if (override != null) {
+			result = ApplicationHealthCheck.valueOf(override.toUpperCase());
+		}
+		return result;
 	}
 
 	private int instances(AppDeploymentRequest request) {
