@@ -20,6 +20,8 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryCo
 import java.util.HashSet;
 import java.util.Set;
 
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+
 import org.springframework.beans.factory.annotation.Value;
 
 /**
@@ -37,6 +39,8 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
 
+	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
+
 	public static final String BUILDPACK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.buildpack";
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = "spring.cloud.deployer.cloudfoundry.use-spring-application-json";
@@ -53,14 +57,19 @@ public class CloudFoundryDeploymentProperties {
 	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git";
 
 	/**
-	 * The amount of memory (MB) to allocate, if not overridden per-module.
+	 * The amount of memory (MB) to allocate, if not overridden per-app.
 	 */
 	private int memory = 1024;
 
 	/**
-	 * The amount of disk space (MB) to allocate, if not overridden per-module.
+	 * The amount of disk space (MB) to allocate, if not overridden per-app.
 	 */
 	private int disk = 1024;
+
+	/**
+	 * The type of health check to perform on deployed application, if not overridden per-app.
+	 */
+	private ApplicationHealthCheck healthCheck = null;
 
 	/**
 	 * The number of instances to run.
@@ -160,5 +169,11 @@ public class CloudFoundryDeploymentProperties {
 		this.useSpringApplicationJson = useSpringApplicationJson;
 	}
 
+	public ApplicationHealthCheck getHealthCheck() {
+		return healthCheck;
+	}
 
+	public void setHealthCheck(ApplicationHealthCheck healthCheck) {
+		this.healthCheck = healthCheck;
+	}
 }
