@@ -16,15 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
-import static org.cloudfoundry.util.tuple.TupleUtils.function;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -83,6 +74,15 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
+import static org.cloudfoundry.util.tuple.TupleUtils.function;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -255,7 +255,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     protected Mono<String> createAndUploadApplication(AppDeploymentRequest request) {
 
-        return createApplication(request.getDefinition().getName(), getSpaceId(request))
+        return createApplication(request, getSpaceId(request))
             .then(applicationId -> createPackage(applicationId)
                 .and(Mono.just(applicationId)))
             .then(function((packageId, applicationId) -> uploadPackage(packageId, request)
@@ -272,16 +272,26 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
     /**
      * Create a new Cloud Foundry application by name
      *
-     * @param name the name of the Cloud Foundry app to be created
+     * @param appDeploymentRequest the request for the application
      * @param spaceId the id of the Cloud Foundry space the app is to be created in
      * @return applicationId
      */
-    protected Mono<String> createApplication(String name, Mono<String> spaceId) {
+    protected Mono<String> createApplication(AppDeploymentRequest appDeploymentRequest, Mono<String> spaceId) {
+        Map<String, String> environmentVariables = new HashMap<>(1);
+
+        try {
+            String applicationJson = new ObjectMapper().writeValueAsString(appDeploymentRequest.getDefinition().getProperties());
+            environmentVariables.put("SPRING_APPLICATION_JSON", applicationJson);
+        }
+        catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
 
         return spaceId
             .then(spaceId2 -> this.client.applicationsV3()
                 .create(CreateApplicationRequest.builder()
-                    .name(name)
+                    .name(appDeploymentRequest.getDefinition().getName())
+                    .environmentVariables(environmentVariables)
                     .lifecycle(Lifecycle.builder()
                         .type(Type.BUILDPACK)
                         .data(BuildpackData
@@ -455,21 +465,12 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @return {@link Mono} containing the {@link Droplet}'s ID.
      */
     private Mono<String> createDroplet(String packageId, AppDeploymentRequest appDeploymentRequest) {
-        Map<String, String> environmentVariables = new HashMap<>(1);
-
-        try {
-            environmentVariables.put("SPRING_APPLICATION_JSON", new ObjectMapper().writeValueAsString(appDeploymentRequest.getDefinition().getProperties()));
-        }
-        catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
 
         return this.client.packages()
             .stage(StagePackageRequest.builder()
                 .packageId(packageId)
                 .stagingDiskInMb(diskQuota(appDeploymentRequest))
                 .stagingMemoryInMb(memory(appDeploymentRequest))
-                .environmentVariables(environmentVariables)
                 .build())
             .map(Droplet::getId);
     }
