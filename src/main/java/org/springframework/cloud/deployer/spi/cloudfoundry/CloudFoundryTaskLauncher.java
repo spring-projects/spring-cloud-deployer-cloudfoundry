@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.v2.organizations.ListOrganizationsRequest;
 import org.cloudfoundry.client.v2.spaces.ListSpacesRequest;
 import org.cloudfoundry.client.v3.BuildpackData;
 import org.cloudfoundry.client.v3.Lifecycle;
@@ -134,7 +135,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      */
     @Override
     public String launch(AppDeploymentRequest request) {
-        return asyncLaunch(request).block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+		return asyncLaunch(request).block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
     }
 
     /**
@@ -344,18 +345,23 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
      * @return A Mono that will return the id of the space requested
      */
     protected Mono<String> getSpaceId(AppDeploymentRequest request) {
+		return this.client.organizations().list(
+				ListOrganizationsRequest.builder()
+						.name(this.connectionProperties.getOrg())
+						.build())
+				.flatMap(r -> Flux.fromIterable(r.getResources()))
+				.map(ResourceUtils::getId)
+				.flatMap(orgId -> this.client.spaces()
+						.list(ListSpacesRequest.builder()
+								.name(this.connectionProperties.getSpace())
+								.organizationId(orgId)
+								.build()))
+				.single()
+				.flatMap(r -> Flux.fromIterable(r.getResources()))
+                .map(ResourceUtils::getId)
+				.single()
+		;
 
-        return Mono
-            .just(this.connectionProperties.getOrg())
-            .flatMap(organization -> PaginationUtils
-                .requestClientV2Resources(page -> this.client.spaces()
-                    .list(ListSpacesRequest.builder()
-                        .name(this.connectionProperties.getSpace())
-                        .page(page)
-                        .build())))
-            .single()
-            .map(ResourceUtils::getId)
-            .cache();
     }
 
     /**
