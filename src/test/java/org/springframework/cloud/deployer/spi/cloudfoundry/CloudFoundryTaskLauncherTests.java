@@ -72,6 +72,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
@@ -247,6 +248,7 @@ public class CloudFoundryTaskLauncherTests {
         AppDeploymentRequest request = new AppDeploymentRequest(definition,
             new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
             environmentProperties);
+        Hooks.onOperator( op -> op.operatorStacktrace());
         String launch = this.launcher.launch(request);
 
         // then
