@@ -16,6 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static java.lang.Integer.parseInt;
+import static java.lang.String.valueOf;
+import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
+import static org.cloudfoundry.util.tuple.TupleUtils.function;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+import static org.springframework.util.StringUtils.commaDelimitedListToSet;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -75,15 +84,6 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-
-import static java.lang.Integer.parseInt;
-import static java.lang.String.valueOf;
-import static org.cloudfoundry.util.DelayUtils.exponentialBackOff;
-import static org.cloudfoundry.util.tuple.TupleUtils.function;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -244,8 +244,7 @@ public class CloudFoundryTaskLauncher implements TaskLauncher {
                         .build())
                     .type(ServiceBindingType.APPLICATION)
                     .build()))
-            .last()
-            .then(Mono.just(applicationId));
+            .thenMany(Mono.just(applicationId)).next();
     }
 
     /**
