@@ -32,6 +32,9 @@ import java.util.UUID;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.Metadata;
+import org.cloudfoundry.client.v2.organizations.ListOrganizationsResponse;
+import org.cloudfoundry.client.v2.organizations.OrganizationResource;
+import org.cloudfoundry.client.v2.organizations.Organizations;
 import org.cloudfoundry.client.v2.spaces.ListSpacesResponse;
 import org.cloudfoundry.client.v2.spaces.SpaceEntity;
 import org.cloudfoundry.client.v2.spaces.SpaceResource;
@@ -98,6 +101,9 @@ public class CloudFoundryTaskLauncherTests {
     private Spaces spaces;
 
     @Mock
+    private Organizations organizations;
+
+    @Mock
     private Packages packages;
 
     @Mock
@@ -158,6 +164,7 @@ public class CloudFoundryTaskLauncherTests {
         UUID applicationId = UUID.randomUUID();
         UUID dropletId = UUID.randomUUID();
         UUID taskleltId = UUID.randomUUID();
+        UUID organizationId = UUID.randomUUID();
 
         ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
         ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
@@ -167,6 +174,8 @@ public class CloudFoundryTaskLauncherTests {
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
         given(this.applicationsV3.list(any())).willReturn(Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
+        given(this.client.organizations()).willReturn(this.organizations);
+        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
         given(this.client.droplets()).willReturn(this.droplets);
         given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
         given(this.client.tasks()).willReturn(this.tasks);
@@ -211,6 +220,8 @@ public class CloudFoundryTaskLauncherTests {
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
         given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
+        given(this.client.organizations()).willReturn(this.organizations);
+        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
         given(this.client.spaces()).willReturn(this.spaces);
         given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
         given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
@@ -495,6 +506,8 @@ public class CloudFoundryTaskLauncherTests {
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
         given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
+        given(this.client.organizations()).willReturn(this.organizations);
+        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
         given(this.client.spaces()).willReturn(this.spaces);
         given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
         given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
@@ -582,6 +595,8 @@ public class CloudFoundryTaskLauncherTests {
         given(this.client.applicationsV3()).willReturn(this.applicationsV3);
         given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
         given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
+        given(this.client.organizations()).willReturn(this.organizations);
+        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
         given(this.client.spaces()).willReturn(this.spaces);
         given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
         given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
@@ -850,5 +865,15 @@ public class CloudFoundryTaskLauncherTests {
             .state(org.cloudfoundry.client.v3.packages.State.READY)
             .id(packageId.toString())
             .build();
+    }
+
+    private ListOrganizationsResponse getListOrganizationsResponse(UUID orgId) {
+        return ListOrganizationsResponse.builder()
+                .resource(OrganizationResource.builder()
+                        .metadata(Metadata.builder()
+                                .id(orgId.toString())
+                        .build())
+                .build())
+                .build();
     }
 }
