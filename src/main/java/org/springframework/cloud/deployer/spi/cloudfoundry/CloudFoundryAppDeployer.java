@@ -54,6 +54,7 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.util.StringUtils;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -249,7 +250,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		ApplicationHealthCheck result = deploymentProperties.getHealthCheck();
 		String override = request.getDeploymentProperties().get(HEALTHCHECK_PROPERTY_KEY);
 		if (override != null) {
-			result = ApplicationHealthCheck.valueOf(override.toUpperCase());
+			try {
+				result = ApplicationHealthCheck.valueOf(override.toUpperCase());
+			}
+			catch (IllegalArgumentException e) {
+				throw new IllegalArgumentException(String.format("Unsupported health-check value '%s'. Available values are %s",
+						override, StringUtils.arrayToCommaDelimitedString(ApplicationHealthCheck.values())), e);
+			}
 		}
 		return result;
 	}
