@@ -18,14 +18,21 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.junit.rules.ExpectedException.none;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -70,6 +77,7 @@ import org.springframework.core.io.Resource;
  * Unit tests for the {@link CloudFoundryAppDeployer}.
  *
  * @author Greg Turnquist
+ * @author Eric Bottard
  */
 public class CloudFoundryAppDeployerTests {
 
@@ -90,6 +98,8 @@ public class CloudFoundryAppDeployerTests {
 
 	private AppNameGenerator deploymentCustomizer;
 
+	private CloudFoundryDeploymentProperties cloudFoundryDeploymentProperties = new CloudFoundryDeploymentProperties();
+
 	@Before
 	public void setUp() throws Exception {
 
@@ -99,17 +109,30 @@ public class CloudFoundryAppDeployerTests {
 		applicationsV2 = mock(ApplicationsV2.class);
 		services = mock(Services.class);
 
-		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
-		deploymentProperties.setAppNamePrefix("dataflow-server");
-		//Tests are setup not to handle random name prefix = true;
-		deploymentProperties.setEnableRandomAppNamePrefix(false);
-		deploymentProperties.setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
 
-		deploymentCustomizer = new CloudFoundryAppNameGenerator(deploymentProperties, new WordListRandomWords());
+		cloudFoundryDeploymentProperties.setAppNamePrefix("dataflow-server");
+		//Tests are setup not to handle random name prefix = true;
+		cloudFoundryDeploymentProperties.setEnableRandomAppNamePrefix(false);
+		cloudFoundryDeploymentProperties.setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
+
+		deploymentCustomizer = new CloudFoundryAppNameGenerator(cloudFoundryDeploymentProperties, new WordListRandomWords());
 		((CloudFoundryAppNameGenerator)deploymentCustomizer).afterPropertiesSet();
 
-		deployer = new CloudFoundryAppDeployer(new CloudFoundryConnectionProperties(), deploymentProperties, operations,
+		deployer = new CloudFoundryAppDeployer(new CloudFoundryConnectionProperties(), cloudFoundryDeploymentProperties, operations,
 				client, deploymentCustomizer);
+	}
+
+	@Test
+	public void shouldHonorRouteCustomization() throws Exception {
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		String deploymentId = runFullDeployment(new AppDeploymentRequest(
+				new AppDefinition("time", Collections.emptyMap()),
+				resource,
+				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "ticktock")));
+
+
+
 	}
 
 	@Test
@@ -129,12 +152,32 @@ public class CloudFoundryAppDeployerTests {
 	public void shouldNotNamespaceTheDeploymentIdWhenNoGroupIsUsed() throws InterruptedException, IOException {
 		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
-		String deploymentId = runFullDeployment(new AppDeploymentRequest(
+		cloudFoundryDeploymentProperties.setDomain("wizz.com");
+		cloudFoundryDeploymentProperties.setHost("quik");
+
+		runFullDeployment(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
 				resource,
 				Collections.emptyMap()));
 
-		assertThat(deploymentId, equalTo("dataflow-server-time"));
+		verify(applications).push(argThat(hasProperty("host", is("quik"))));
+		verify(applications).push(argThat(hasProperty("domain", is("wizz.com"))));
+
+
+		// Test per-app overrides
+		Map<String, String> deploymentProperties = new HashMap<>();
+		deploymentProperties.put(HOST_PROPERTY, "foo");
+		deploymentProperties.put(DOMAIN_PROPERTY, "bar.com");
+		deploymentProperties.put(ROUTE_PATH_PROPERTY, "/sub-route");
+
+		runFullDeployment(new AppDeploymentRequest(
+				new AppDefinition("time", Collections.emptyMap()),
+				resource,
+				deploymentProperties));
+
+		verify(applications).push(argThat(hasProperty("host", is("foo"))));
+		verify(applications).push(argThat(hasProperty("domain", is("bar.com"))));
+		verify(applications).push(argThat(hasProperty("routePath", is("/sub-route"))));
 	}
 
 	@Test

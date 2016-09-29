@@ -41,15 +41,34 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
-	public static final String BUILDPACK_PROPERTY_KEY = "spring.cloud.deployer.cloudfoundry.buildpack";
+	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
-	public static final String USE_SPRING_APPLICATION_JSON_KEY = "spring.cloud.deployer.cloudfoundry.use-spring-application-json";
+	public static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
+
+	public static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
+
+	public static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
+
+	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
+
+	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
+
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
 	 * This should typically contain a service capable of playing the role of a binding transport.
 	 */
 	private Set<String> services = new HashSet<>();
+
+	/**
+	 * The host name to use as part of the route. Defaults to hostname derived by Cloud Foundry.
+	 */
+	private String host = null;
+
+	/**
+	 * The domain to use when mapping routes for applications.
+	 */
+	private String domain;
 
 	/**
 	 * The buildpack to use for deploying the application.
@@ -77,12 +96,12 @@ public class CloudFoundryDeploymentProperties {
 	private int instances = 1;
 
 	/**
-	 * Flag to enable prefixing the app name with a random prefix
+	 * Flag to enable prefixing the app name with a random prefix.
 	 */
 	private boolean enableRandomAppNamePrefix = true;
 
 	/**
-	 * Timeout for blocking task launches
+	 * Timeout for blocking task launches.
 	 */
 	private long taskTimeout = 30L;
 
@@ -92,7 +111,7 @@ public class CloudFoundryDeploymentProperties {
 	private boolean useSpringApplicationJson = true;
 
 	/**
-	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name
+	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name.
 	 */
 	@Value("${spring.application.name:}")
 	private String appNamePrefix;
@@ -175,5 +194,21 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setHealthCheck(ApplicationHealthCheck healthCheck) {
 		this.healthCheck = healthCheck;
+	}
+
+	public String getDomain() {
+		return domain;
+	}
+
+	public void setDomain(String domain) {
+		this.domain = domain;
+	}
+
+	public String getHost() {
+		return host;
+	}
+
+	public void setHost(String host) {
+		this.host = host;
 	}
 }
