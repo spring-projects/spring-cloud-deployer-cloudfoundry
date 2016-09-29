@@ -36,12 +36,6 @@ public class CloudFoundryConnectionProperties {
 	public static final String CLOUDFOUNDRY_PROPERTIES = "spring.cloud.deployer.cloudfoundry";
 
 	/**
-	 * The domain to use when mapping routes for applications.
-	 */
-	@NotNull
-	private String domain;
-
-	/**
 	 * The organization to use when registering new applications.
 	 */
 	@NotNull
@@ -75,14 +69,6 @@ public class CloudFoundryConnectionProperties {
 	 * Allow operation using self-signed certificates.
 	 */
 	private boolean skipSslValidation = false;
-
-	public String getDomain() {
-		return domain;
-	}
-
-	public void setDomain(String domain) {
-		this.domain = domain;
-	}
 
 	public String getOrg() {
 		return org;

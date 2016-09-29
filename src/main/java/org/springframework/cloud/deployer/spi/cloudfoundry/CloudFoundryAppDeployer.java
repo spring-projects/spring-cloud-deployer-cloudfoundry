@@ -19,9 +19,14 @@ import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
 import static java.util.stream.Stream.concat;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 import static org.springframework.util.StringUtils.commaDelimitedListToSet;
 
 import java.io.IOException;
@@ -140,7 +145,10 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 				.push(PushApplicationRequest.builder()
 					.name(name)
 					.application(request.getResource().getFile().toPath())
-					.domain(connectionProperties.getDomain())
+					.domain(domain(request))
+					.host(host(request))
+					.routePath(routePath(request))
+					.noRoute(toggleNoRoute(request))
 					.buildpack(buildpack(request))
 					.diskQuota(diskQuota(request))
 					.instances(instances(request))
@@ -275,9 +283,27 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			request.getDeploymentProperties().getOrDefault(DISK_PROPERTY_KEY, valueOf(deploymentProperties.getDisk())));
 	}
 
+	private String routePath(AppDeploymentRequest request) {
+		return request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
+	}
+
+	private Boolean toggleNoRoute(AppDeploymentRequest request) {
+		String noRoute = request.getDeploymentProperties().get(NO_ROUTE_PROPERTY);
+		return noRoute != null ? Boolean.valueOf(noRoute) : null;
+	}
+
+	private String host(AppDeploymentRequest request) {
+		return request.getDeploymentProperties().getOrDefault(HOST_PROPERTY, deploymentProperties.getHost());
+	}
+
+	private String domain(AppDeploymentRequest request) {
+		return request.getDeploymentProperties().getOrDefault(DOMAIN_PROPERTY, deploymentProperties.getDomain());
+	}
+
+
 	private boolean useSpringApplicationJson(AppDeploymentRequest request) {
 		return Boolean.valueOf(
-				request.getDeploymentProperties().getOrDefault(CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY, valueOf(deploymentProperties.isUseSpringApplicationJson())));
+				request.getDeploymentProperties().getOrDefault(USE_SPRING_APPLICATION_JSON_KEY, valueOf(deploymentProperties.isUseSpringApplicationJson())));
 	}
 
 	private Mono<AppStatus.Builder> createAppStatusBuilder(String id, ApplicationDetail ad) {
