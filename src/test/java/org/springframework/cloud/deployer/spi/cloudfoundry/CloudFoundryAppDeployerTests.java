@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 
 import java.io.IOException;
@@ -78,6 +79,7 @@ import org.springframework.core.io.Resource;
  *
  * @author Greg Turnquist
  * @author Eric Bottard
+ * @author Ilayaperumal Gopinathan
  */
 public class CloudFoundryAppDeployerTests {
 
@@ -125,14 +127,47 @@ public class CloudFoundryAppDeployerTests {
 	@Test
 	public void shouldHonorRouteCustomization() throws Exception {
 		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
+		Map<String, String> deploymentProperties = new HashMap<>();
+		deploymentProperties.put(ROUTE_PATH_PROPERTY, "foo");
+		deploymentProperties.put(AppDeployer.GROUP_PROPERTY_KEY, "ticktock");
 		String deploymentId = runFullDeployment(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
 				resource,
-				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "ticktock")));
+				deploymentProperties));
+		verify(applications).push(argThat(hasProperty("routePath", is("foo"))));
+	}
+
+	@Test
+	public void shouldHonorCustomOverride() throws Exception {
+		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		cloudFoundryDeploymentProperties.setDomain("wizz.com");
+		cloudFoundryDeploymentProperties.setHost("quik");
+
+		runFullDeployment(new AppDeploymentRequest(
+				new AppDefinition("time", Collections.emptyMap()),
+				resource,
+				Collections.emptyMap()));
+		verify(applications).push(argThat(hasProperty("host", is("quik"))));
+		verify(applications).push(argThat(hasProperty("domain", is("wizz.com"))));
 
 
+		// Test per-app overrides
+		Map<String, String> deploymentProperties = new HashMap<>();
+		deploymentProperties.put(HOST_PROPERTY, "foo");
+		deploymentProperties.put(DOMAIN_PROPERTY, "bar.com");
+		deploymentProperties.put(ROUTE_PATH_PROPERTY, "/sub-route");
+		deploymentProperties.put(NO_ROUTE_PROPERTY, "false");
 
+		runFullDeployment(new AppDeploymentRequest(
+				new AppDefinition("time", Collections.emptyMap()),
+				resource,
+				deploymentProperties));
+
+		verify(applications).push(argThat(hasProperty("host", is("foo"))));
+		verify(applications).push(argThat(hasProperty("domain", is("bar.com"))));
+		verify(applications).push(argThat(hasProperty("routePath", is("/sub-route"))));
+		verify(applications).push(argThat(hasProperty("noRoute", is(Boolean.valueOf("false")))));
 	}
 
 	@Test
@@ -155,29 +190,11 @@ public class CloudFoundryAppDeployerTests {
 		cloudFoundryDeploymentProperties.setDomain("wizz.com");
 		cloudFoundryDeploymentProperties.setHost("quik");
 
-		runFullDeployment(new AppDeploymentRequest(
+		String deploymentId = runFullDeployment(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
 				resource,
 				Collections.emptyMap()));
-
-		verify(applications).push(argThat(hasProperty("host", is("quik"))));
-		verify(applications).push(argThat(hasProperty("domain", is("wizz.com"))));
-
-
-		// Test per-app overrides
-		Map<String, String> deploymentProperties = new HashMap<>();
-		deploymentProperties.put(HOST_PROPERTY, "foo");
-		deploymentProperties.put(DOMAIN_PROPERTY, "bar.com");
-		deploymentProperties.put(ROUTE_PATH_PROPERTY, "/sub-route");
-
-		runFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				deploymentProperties));
-
-		verify(applications).push(argThat(hasProperty("host", is("foo"))));
-		verify(applications).push(argThat(hasProperty("domain", is("bar.com"))));
-		verify(applications).push(argThat(hasProperty("routePath", is("/sub-route"))));
+		assertThat(deploymentId, equalTo("dataflow-server-time"));
 	}
 
 	@Test
