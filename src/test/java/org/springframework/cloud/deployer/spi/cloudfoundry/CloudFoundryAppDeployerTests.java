@@ -19,6 +19,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.junit.rules.ExpectedException.none;
@@ -130,7 +131,7 @@ public class CloudFoundryAppDeployerTests {
 		Map<String, String> deploymentProperties = new HashMap<>();
 		deploymentProperties.put(ROUTE_PATH_PROPERTY, "foo");
 		deploymentProperties.put(AppDeployer.GROUP_PROPERTY_KEY, "ticktock");
-		String deploymentId = runFullDeployment(new AppDeploymentRequest(
+		runFullDeployment(new AppDeploymentRequest(
 				new AppDefinition("time", Collections.emptyMap()),
 				resource,
 				deploymentProperties));
@@ -215,6 +216,8 @@ public class CloudFoundryAppDeployerTests {
 
 		appDeploymentProperties.put(fooKey, fooVal);
 		appDeploymentProperties.put(barKey, barVal);
+		deploymentProperties.setStagingTimeout(Duration.parse("PT15M"));
+		deploymentProperties.setStartupTimeout(Duration.parse("PT5M"));
 
 		deployer = new CloudFoundryAppDeployer(properties, deploymentProperties, operations, client, deploymentCustomizer);
 
@@ -248,6 +251,11 @@ public class CloudFoundryAppDeployerTests {
 		then(applications).should().push(any());
 		then(applications).should().get(any());
 		then(applications).should().start(any());
+		verify(applications)
+				.start(argThat(
+						hasProperty("stagingTimeout", is(Duration.parse("PT15M")))));
+		verify(applications)
+				.start(argThat(hasProperty("startupTimeout", is(Duration.parse("PT5M")))));
 		verifyNoMoreInteractions(applications);
 
 		then(client).should().applicationsV2();
