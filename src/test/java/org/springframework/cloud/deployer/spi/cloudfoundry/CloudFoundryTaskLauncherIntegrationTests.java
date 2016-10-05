@@ -16,6 +16,9 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -33,6 +36,7 @@ import org.cloudfoundry.util.PaginationUtils;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import reactor.core.publisher.Flux;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,9 +49,7 @@ import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 /**
  * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
