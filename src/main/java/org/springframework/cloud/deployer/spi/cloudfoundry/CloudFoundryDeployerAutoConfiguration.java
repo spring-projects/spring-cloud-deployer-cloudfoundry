@@ -46,7 +46,7 @@ import org.springframework.core.Ordered;
  * @author Eric Bottard
  */
 @Configuration
-@EnableConfigurationProperties(CloudFoundryConnectionProperties.class)
+@EnableConfigurationProperties
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 public class CloudFoundryDeployerAutoConfiguration {
 
@@ -67,9 +67,14 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public CloudFoundryDeploymentProperties defaultSharedDeploymentProperties() {
 		return new CloudFoundryDeploymentProperties();
 	}
-
-
-
+	
+	@Bean
+	@ConditionalOnMissingBean
+	@ConfigurationProperties(prefix = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES)
+	public CloudFoundryConnectionProperties cloudFoundryConnectionProperties() {
+		return new CloudFoundryConnectionProperties();
+	}
+	
 	@Bean
 	@ConditionalOnMissingBean
 	public ConnectionContext connectionContext(CloudFoundryConnectionProperties properties) {

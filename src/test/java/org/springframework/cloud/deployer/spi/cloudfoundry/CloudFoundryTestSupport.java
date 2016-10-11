@@ -28,6 +28,7 @@ import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
 
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.test.junit.AbstractExternalResourceTestSupport;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -59,9 +60,14 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 	}
 
 	@Configuration
-//	@EnableAutoConfiguration
-	@EnableConfigurationProperties(CloudFoundryConnectionProperties.class)
+	@EnableConfigurationProperties
 	public static class Config {
+
+		@Bean
+		@ConfigurationProperties(prefix = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES)
+		public CloudFoundryConnectionProperties cloudFoundryConnectionProperties() {
+			return new CloudFoundryConnectionProperties();
+		}
 
 		@Bean
 		public ConnectionContext connectionContext(CloudFoundryConnectionProperties properties) {
