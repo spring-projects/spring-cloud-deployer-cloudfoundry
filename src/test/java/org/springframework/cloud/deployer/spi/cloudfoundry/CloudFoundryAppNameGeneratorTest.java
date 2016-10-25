@@ -15,9 +15,12 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 
+import org.hamcrest.Description;
+import org.hamcrest.DiagnosingMatcher;
+import org.hamcrest.Matcher;
 import org.junit.Test;
 
 /**
@@ -32,10 +35,10 @@ public class CloudFoundryAppNameGeneratorTest {
 		properties.setEnableRandomAppNamePrefix(false);
 		properties.setAppNamePrefix("dataflow");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
-				new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+				new CloudFoundryAppNameGenerator(properties);
 		deploymentCustomizer.afterPropertiesSet();
 
-		assertEquals("dataflow-foo", deploymentCustomizer.generateAppName("foo") );
+		assertThat(deploymentCustomizer.generateAppName("foo"), is("dataflow-foo"));
 	}
 
 	@Test
@@ -44,17 +47,15 @@ public class CloudFoundryAppNameGeneratorTest {
 		properties.setEnableRandomAppNamePrefix(true);
 		properties.setAppNamePrefix("dataflow-longername");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
-				new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+				new CloudFoundryAppNameGenerator(properties);
 		deploymentCustomizer.afterPropertiesSet();
 
 		String deploymentIdWithUniquePrefix = deploymentCustomizer.generateAppName("foo");
-		assertTrue(deploymentIdWithUniquePrefix.startsWith("dataflow-"));
-		assertTrue(deploymentIdWithUniquePrefix.endsWith("-foo"));
-		assertTrue(deploymentIdWithUniquePrefix.matches("dataflow-longername-\\w+-\\w+-foo"));
+		assertThat(deploymentIdWithUniquePrefix, matchesPattern("dataflow-longername-\\w+-foo"));
 
 		String deploymentIdWithUniquePrefixAgain = deploymentCustomizer.generateAppName("foo");
 
-		assertEquals(deploymentIdWithUniquePrefix, deploymentIdWithUniquePrefixAgain);
+		assertThat(deploymentIdWithUniquePrefix, is(deploymentIdWithUniquePrefixAgain));
 	}
 
 	@Test
@@ -63,13 +64,11 @@ public class CloudFoundryAppNameGeneratorTest {
 		properties.setEnableRandomAppNamePrefix(true);
 		properties.setAppNamePrefix("");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
-				new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+				new CloudFoundryAppNameGenerator(properties);
 		deploymentCustomizer.afterPropertiesSet();
 
 		String deploymentIdWithUniquePrefix = deploymentCustomizer.generateAppName("foo");
-		assertTrue(deploymentIdWithUniquePrefix.endsWith("-foo"));
-
-		assertTrue(deploymentIdWithUniquePrefix.matches("\\w+-\\w+-foo"));
+		assertThat(deploymentIdWithUniquePrefix, matchesPattern("\\w+-foo"));
 	}
 
 	@Test
@@ -78,10 +77,27 @@ public class CloudFoundryAppNameGeneratorTest {
 		properties.setEnableRandomAppNamePrefix(false);
 		properties.setAppNamePrefix("");
 		CloudFoundryAppNameGenerator deploymentCustomizer =
-				new CloudFoundryAppNameGenerator(properties, new WordListRandomWords());
+				new CloudFoundryAppNameGenerator(properties);
 		deploymentCustomizer.afterPropertiesSet();
 
-		assertEquals("foo", deploymentCustomizer.generateAppName("foo"));
+		assertThat(deploymentCustomizer.generateAppName("foo"), is("foo"));
+	}
+
+	private Matcher<String> matchesPattern(final String pattern) {
+		return new DiagnosingMatcher<String>() {
+			@Override
+			protected boolean matches(Object item, Description mismatchDescription) {
+				if (!((String) item).matches(pattern)) {
+					mismatchDescription.appendValue(item).appendText(" did not match regex ").appendValue(pattern);
+				}
+				return ((String) item).matches(pattern);
+			}
+
+			@Override
+			public void describeTo(Description description) {
+				description.appendText("a string matching regex ").appendValue(pattern);
+			}
+		};
 	}
 
 }

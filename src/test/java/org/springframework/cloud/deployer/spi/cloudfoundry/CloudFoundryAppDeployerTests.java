@@ -19,7 +19,6 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.junit.rules.ExpectedException.none;
@@ -118,7 +117,7 @@ public class CloudFoundryAppDeployerTests {
 		cloudFoundryDeploymentProperties.setEnableRandomAppNamePrefix(false);
 		cloudFoundryDeploymentProperties.setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
 
-		deploymentCustomizer = new CloudFoundryAppNameGenerator(cloudFoundryDeploymentProperties, new WordListRandomWords());
+		deploymentCustomizer = new CloudFoundryAppNameGenerator(cloudFoundryDeploymentProperties);
 		((CloudFoundryAppNameGenerator)deploymentCustomizer).afterPropertiesSet();
 
 		deployer = new CloudFoundryAppDeployer(new CloudFoundryConnectionProperties(), cloudFoundryDeploymentProperties, operations,

@@ -15,8 +15,11 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.util.Random;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.StringUtils;
 
@@ -24,15 +27,14 @@ import org.springframework.util.StringUtils;
  * CloudFoundry specific implementation of {@link AppNameGenerator}.  This takes into account the
  * configuration properties {@code enableRandomAppNamePrefix} and {@code appNamePrefix}.
  *
- * If {@code enableRandomAppNamePrefix} a random adjective and noun are prefixed to the base name.
- * It is true by default.  If {@code appNamePrefix} is set, it is also prefixed before the random adjective and noun.
+ * If {@code enableRandomAppNamePrefix} a random short string is prefixed to the base name.
+ * It is true by default. If {@code appNamePrefix} is set, it is also prefixed before the random string.
  * By default the {@code appNamePrefix} is the value of {@code spring.application.name} if available,
  * otherwise the empty string.
  *
  * As an example, if {@code enableRandomAppNamePrefix=true}, {@code spring.application.name=server},
  * and we are deploying an application whose base name is {@code time}, then the deployed name on Cloud Foundry
- * will be {@code server-unfarming-restabilization-time}
- *
+ * may be {@code server-ug54dh5-time}
  *
  * @author Soby Chacko
  * @author Mark Pollack
@@ -41,16 +43,15 @@ public class CloudFoundryAppNameGenerator implements AppNameGenerator, Initializ
 
 	private static final Log logger = LogFactory.getLog(CloudFoundryAppNameGenerator.class);
 
+	/* Given that appnames are by default part of a hostname, limit to 63 chars max. */
+	private static final int MAX_APPNAME_LENGTH = 63;
+
 	private String prefixToUse = "";
 
 	private final CloudFoundryDeploymentProperties properties;
 
-	private final WordListRandomWords wordListRandomWords;
-
-	public CloudFoundryAppNameGenerator(CloudFoundryDeploymentProperties cloudFoundryDeploymentProperties,
-										WordListRandomWords wordListRandomWords) {
+	public CloudFoundryAppNameGenerator(CloudFoundryDeploymentProperties cloudFoundryDeploymentProperties) {
 		this.properties = cloudFoundryDeploymentProperties;
-		this.wordListRandomWords = wordListRandomWords;
 	}
 
 	@Override
@@ -72,14 +73,21 @@ public class CloudFoundryAppNameGenerator implements AppNameGenerator, Initializ
 	@Override
 	public String generateAppName(String appName) {
 		if (StringUtils.isEmpty(prefixToUse)) {
-			return appName;
+			return appName.substring(0, Math.min(MAX_APPNAME_LENGTH, appName.length()));
 		} else {
-			return String.format("%s-%s", prefixToUse, appName);
+			String string = String.format("%s-%s", prefixToUse, appName);
+			return string.substring(0, Math.min(MAX_APPNAME_LENGTH, string.length()));
 		}
 	}
 
 	private String createUniquePrefix() {
-		return String.format("%s-%s", wordListRandomWords.getAdjective(), wordListRandomWords.getNoun());
+		String alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		char[] result = new char[7];
+		Random random = new Random();
+		for (int i = 0 ; i < result.length ; i++) {
+			result[i] = alphabet.charAt(random.nextInt(alphabet.length()));
+		}
+		return new String(result);
 	}
 
 
