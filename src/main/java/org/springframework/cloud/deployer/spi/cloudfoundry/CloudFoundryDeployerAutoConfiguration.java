@@ -129,7 +129,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(AppNameGenerator.class)
 	public AppNameGenerator appDeploymentCustomizer() {
-		return new CloudFoundryAppNameGenerator(appDeploymentProperties(), new WordListRandomWords());
+		return new CloudFoundryAppNameGenerator(appDeploymentProperties());
 	}
 
 	@Bean
