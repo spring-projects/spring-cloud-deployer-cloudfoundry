@@ -30,7 +30,7 @@ import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cloud.stream.test.junit.AbstractExternalResourceTestSupport;
+import org.springframework.cloud.deployer.spi.test.junit.AbstractExternalResourceTestSupport;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

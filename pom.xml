@@ -12,18 +12,16 @@
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-deployer-parent</artifactId>
-		<version>1.0.3.RELEASE</version>
+		<version>1.1.0.M1</version>
 		<relativePath />
 	</parent>
 
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-cloud-deployer-spi.version>1.0.3.RELEASE</spring-cloud-deployer-spi.version>
+		<spring-cloud-deployer-spi.version>1.1.0.BUILD-SNAPSHOT</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.0.1.RELEASE</cloudfoundry-java-lib.version>
 		<reactor-core.version>3.0.2.RELEASE</reactor-core.version>
 		<reactor-netty.version>0.5.1.RELEASE</reactor-netty.version>
-		<spock-core.version>1.0-groovy-2.4</spock-core.version>
-		<groovy-all.version>2.4.4</groovy-all.version>
 	</properties>
 
 	<dependencies>
@@ -81,23 +79,11 @@
 			<artifactId>reactor-netty</artifactId>
 			<version>${reactor-netty.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-stream-test-support-internal</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.spockframework</groupId>
-			<artifactId>spock-core</artifactId>
-			<version>${spock-core.version}</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.groovy</groupId>
-			<artifactId>groovy-all</artifactId>
-			<version>${groovy-all.version}</version>
-			<scope>test</scope>
-		</dependency>
+		<!--<dependency>-->
+			<!--<groupId>org.springframework.cloud</groupId>-->
+			<!--<artifactId>spring-cloud-stream-test-support-internal</artifactId>-->
+			<!--<scope>test</scope>-->
+		<!--</dependency>-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>

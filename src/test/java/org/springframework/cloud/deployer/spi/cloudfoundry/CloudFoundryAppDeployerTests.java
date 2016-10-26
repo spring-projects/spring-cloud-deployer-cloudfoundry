@@ -18,21 +18,17 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
-import static org.junit.rules.ExpectedException.none;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 
@@ -40,40 +36,37 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.Applications;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
+import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.Services;
-import org.cloudfoundry.util.test.TestSubscriber;
+import org.cloudfoundry.util.FluentMap;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import reactor.core.publisher.Mono;
-
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.mockito.Answers;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import reactor.core.publisher.Mono;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
@@ -81,580 +74,635 @@ import org.springframework.core.io.Resource;
  * @author Greg Turnquist
  * @author Eric Bottard
  * @author Ilayaperumal Gopinathan
+ * @author Ben Hale
  */
 public class CloudFoundryAppDeployerTests {
 
-	@Rule
-	public ExpectedException thrown = none();
+	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
 
-	private CloudFoundryOperations operations;
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private AppNameGenerator applicationNameGenerator;
 
-	private CloudFoundryClient client;
-
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private Applications applications;
 
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private ApplicationsV2 applicationsV2;
 
-	private Services services;
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private CloudFoundryClient client;
 
 	private CloudFoundryAppDeployer deployer;
 
-	private AppNameGenerator deploymentCustomizer;
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private CloudFoundryOperations operations;
 
-	private CloudFoundryDeploymentProperties cloudFoundryDeploymentProperties = new CloudFoundryDeploymentProperties();
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Services services;
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deploy() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.application(resource.getFile().toPath())
+			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.diskQuota(1024)
+			.instances(1)
+			.memory(1024)
+			.name("test-application-id")
+			.noStart(true)
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+
+		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.emptyMap()),
+			resource,
+			Collections.emptyMap()));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+
+		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+
+		verifyRequestBindService("test-application-id", "test-service-1");
+		verifyRequestBindService("test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-application-id", null, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithAdditionalProperties() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.application(resource.getFile().toPath())
+			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.diskQuota(1024)
+			.instances(1)
+			.memory(1024)
+			.name("test-application-id")
+			.noStart(true)
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("test-key-1", "test-value-1"), Mono.empty());
+
+		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.singletonMap("test-key-1", "test-value-1")),
+			resource,
+			FluentMap.<String, String>builder()
+				.entry("test-key-2", "test-value-2")
+				.entry(CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY, String.valueOf(false))
+				.build()));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+
+		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("test-key-1", "test-value-1"));
+
+		verifyRequestBindService("test-application-id", "test-service-1");
+		verifyRequestBindService("test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-application-id", null, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithAdditionalPropertiesInSpringApplicationJson() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.application(resource.getFile().toPath())
+			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.diskQuota(1024)
+			.instances(1)
+			.memory(1024)
+			.name("test-application-id")
+			.noStart(true)
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{\"test-key-1\":\"test-value-1\"}"), Mono.empty());
+
+		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.singletonMap("test-key-1", "test-value-1")),
+			resource,
+			Collections.singletonMap("test-key-2", "test-value-2")));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+
+		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{\"test-key-1\":\"test-value-1\"}"));
+
+		verifyRequestBindService("test-application-id", "test-service-1");
+		verifyRequestBindService("test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-application-id", null, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithApplicationDeploymentProperties() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.application(resource.getFile().toPath())
+			.buildpack("test-buildpack")
+			.diskQuota(0)
+			.domain("test-domain")
+			.healthCheckType(ApplicationHealthCheck.NONE)
+			.host("test-host")
+			.instances(0)
+			.memory(0)
+			.name("test-application-id")
+			.noRoute(false)
+			.noStart(true)
+			.routePath("test-route-path")
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+
+		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.emptyMap()),
+			resource,
+			FluentMap.<String, String>builder()
+				.entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
+				.entry(DISK_PROPERTY_KEY, "0")
+				.entry(DOMAIN_PROPERTY, "test-domain")
+				.entry(HEALTHCHECK_PROPERTY_KEY, "none")
+				.entry(HOST_PROPERTY, "test-host")
+				.entry(COUNT_PROPERTY_KEY, "0")
+				.entry(MEMORY_PROPERTY_KEY, "0")
+				.entry(NO_ROUTE_PROPERTY, "false")
+				.entry(ROUTE_PATH_PROPERTY, "test-route-path")
+				.build()));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+
+		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+
+		verifyRequestBindService("test-application-id", "test-service-1");
+		verifyRequestBindService("test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-application-id", null, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithCustomDeploymentProperties() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		this.deploymentProperties.setBuildpack("test-buildpack");
+		this.deploymentProperties.setDisk(0);
+		this.deploymentProperties.setDomain("test-domain");
+		this.deploymentProperties.setHealthCheck(ApplicationHealthCheck.NONE);
+		this.deploymentProperties.setHost("test-host");
+		this.deploymentProperties.setInstances(0);
+		this.deploymentProperties.setMemory(0);
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.application(resource.getFile().toPath())
+			.buildpack("test-buildpack")
+			.diskQuota(0)
+			.domain("test-domain")
+			.healthCheckType(ApplicationHealthCheck.NONE)
+			.host("test-host")
+			.instances(0)
+			.memory(0)
+			.name("test-application-id")
+			.noStart(true)
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+
+		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.emptyMap()),
+			resource,
+			Collections.emptyMap()));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+
+		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+
+		verifyRequestBindService("test-application-id", "test-service-1");
+		verifyRequestBindService("test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-application-id", null, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithGroup() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-group-test-application")).willReturn("test-group-test-application-id");
+
+		givenRequestGetApplication("test-group-test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-group-test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-group-test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.application(resource.getFile().toPath())
+			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.diskQuota(1024)
+			.instances(1)
+			.memory(1024)
+			.name("test-group-test-application-id")
+			.noStart(true)
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-group-test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+
+		givenRequestBindService("test-group-test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-group-test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-group-test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.emptyMap()),
+			resource,
+			Collections.singletonMap(GROUP_PROPERTY_KEY, "test-group")));
+
+		assertThat(deploymentId, equalTo("test-group-test-application-id"));
+
+		verifyRequestUpdateApplication("test-group-test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+
+		verifyRequestBindService("test-group-test-application-id", "test-service-1");
+		verifyRequestBindService("test-group-test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-group-test-application-id", null, null);
+	}
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
+		MockitoAnnotations.initMocks(this);
+		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
+		given(this.operations.applications()).willReturn(this.applications);
+		given(this.operations.services()).willReturn(this.services);
 
-		operations = mock(CloudFoundryOperations.class);
-		client = mock(CloudFoundryClient.class);
-		applications = mock(Applications.class);
-		applicationsV2 = mock(ApplicationsV2.class);
-		services = mock(Services.class);
+		this.deploymentProperties.setServices(new HashSet<>(Arrays.asList("test-service-1", "test-service-2")));
 
-
-		cloudFoundryDeploymentProperties.setAppNamePrefix("dataflow-server");
-		//Tests are setup not to handle random name prefix = true;
-		cloudFoundryDeploymentProperties.setEnableRandomAppNamePrefix(false);
-		cloudFoundryDeploymentProperties.setServices(new HashSet<>(Arrays.asList("redis-service", "mysql-service")));
-
-		deploymentCustomizer = new CloudFoundryAppNameGenerator(cloudFoundryDeploymentProperties, new WordListRandomWords());
-		((CloudFoundryAppNameGenerator)deploymentCustomizer).afterPropertiesSet();
-
-		deployer = new CloudFoundryAppDeployer(new CloudFoundryConnectionProperties(), cloudFoundryDeploymentProperties, operations,
-				client, deploymentCustomizer);
+		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.client, this.deploymentProperties, this.operations);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
-	public void shouldHonorRouteCustomization() throws Exception {
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-		Map<String, String> deploymentProperties = new HashMap<>();
-		deploymentProperties.put(ROUTE_PATH_PROPERTY, "foo");
-		deploymentProperties.put(AppDeployer.GROUP_PROPERTY_KEY, "ticktock");
-		runFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				deploymentProperties));
-		verify(applications).push(argThat(hasProperty("routePath", is("foo"))));
-	}
+	public void statusOfCrashedApplicationIsFailed() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("CRASHED")
+				.build())
+			.build()));
+
+		AppStatus status = this.deployer.status("test-application-id");
 
-	@Test
-	public void shouldHonorCustomOverride() throws Exception {
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		cloudFoundryDeploymentProperties.setDomain("wizz.com");
-		cloudFoundryDeploymentProperties.setHost("quik");
-
-		runFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				Collections.emptyMap()));
-		verify(applications).push(argThat(hasProperty("host", is("quik"))));
-		verify(applications).push(argThat(hasProperty("domain", is("wizz.com"))));
-
-
-		// Test per-app overrides
-		Map<String, String> deploymentProperties = new HashMap<>();
-		deploymentProperties.put(HOST_PROPERTY, "foo");
-		deploymentProperties.put(DOMAIN_PROPERTY, "bar.com");
-		deploymentProperties.put(ROUTE_PATH_PROPERTY, "/sub-route");
-		deploymentProperties.put(NO_ROUTE_PROPERTY, "false");
-
-		runFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				deploymentProperties));
-
-		verify(applications).push(argThat(hasProperty("host", is("foo"))));
-		verify(applications).push(argThat(hasProperty("domain", is("bar.com"))));
-		verify(applications).push(argThat(hasProperty("routePath", is("/sub-route"))));
-		verify(applications).push(argThat(hasProperty("noRoute", is(Boolean.valueOf("false")))));
-	}
-
-	@Test
-	public void shouldNamespaceTheDeploymentIdWhenAGroupIsUsed() throws InterruptedException, IOException {
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		String deploymentId = runFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "ticktock")));
-
-		// then
-		assertThat(deploymentId, equalTo("dataflow-server-ticktock-time"));
-	}
-
-	@Test
-	public void shouldNotNamespaceTheDeploymentIdWhenNoGroupIsUsed() throws InterruptedException, IOException {
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		cloudFoundryDeploymentProperties.setDomain("wizz.com");
-		cloudFoundryDeploymentProperties.setHost("quik");
-
-		String deploymentId = runFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				Collections.emptyMap()));
-		assertThat(deploymentId, equalTo("dataflow-server-time"));
-	}
-
-	@Test
-	public void moveAppPropertiesToSAJ() throws InterruptedException, IOException {
-
-		// given
-		CloudFoundryConnectionProperties properties = new CloudFoundryConnectionProperties();
-		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
-
-		// Define the deployment properties for the app
-		Map<String, String> appDeploymentProperties = new HashMap<>();
-
-		final String fooKey = "spring.cloud.foo";
-		final String fooVal = "this should NOT end up in SPRING_APPLICATION_JSON";
-
-		final String barKey = "another.cloud.bar";
-		final String barVal = "neither should";
-
-		appDeploymentProperties.put(fooKey, fooVal);
-		appDeploymentProperties.put(barKey, barVal);
-		deploymentProperties.setStagingTimeout(Duration.parse("PT15M"));
-		deploymentProperties.setStartupTimeout(Duration.parse("PT5M"));
-
-		deployer = new CloudFoundryAppDeployer(properties, deploymentProperties, operations, client, deploymentCustomizer);
-
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplication("test", "RUNNING");
-		given(applications.push(any())).willReturn(Mono.empty());
-		given(applications.start(any())).willReturn(Mono.empty());
-
-		given(client.applicationsV2()).willReturn(applicationsV2);
-
-		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
-				.build()));
-
-		// when
-		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		deployer.asyncDeploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
-				resource,
-				appDeploymentProperties))
-				.subscribe(testSubscriber);
-
-		testSubscriber.verify(Duration.ofSeconds(10L));
-
-		// then
-		then(operations).should(times(3)).applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().push(any());
-		then(applications).should().get(any());
-		then(applications).should().start(any());
-		verify(applications)
-				.start(argThat(
-						hasProperty("stagingTimeout", is(Duration.parse("PT15M")))));
-		verify(applications)
-				.start(argThat(hasProperty("startupTimeout", is(Duration.parse("PT5M")))));
-		verifyNoMoreInteractions(applications);
-
-		then(client).should().applicationsV2();
-		verifyNoMoreInteractions(client);
-
-		then(applicationsV2).should().update(UpdateApplicationRequest.builder()
-				.applicationId("abc123")
-				.environmentJsons(new HashMap<String, String>() {{
-					put("SPRING_APPLICATION_JSON",
-							new ObjectMapper().writeValueAsString(
-									Collections.singletonMap("some.key", "someValue")));
-					// Note that fooKey and barKey are not expected to be in the environment as they are
-					// deployment properties
-				}})
-				.build());
-		verifyNoMoreInteractions(applicationsV2);
-	}
-
-	@Test
-	public void applyAppPropertiesIndividually() throws InterruptedException, IOException {
-
-		// given
-		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
-		CloudFoundryConnectionProperties connProperties = new CloudFoundryConnectionProperties();
-
-		// Define the deployment properties for the app
-		Map<String, String> appDeploymentProperties = new HashMap<>();
-
-		final String fooKey = "spring.cloud.foo";
-		final String fooVal = "this should NOT end up in SPRING_APPLICATION_JSON";
-
-		final String barKey = "another.cloud.bar";
-		final String barVal = "neither should this";
-
-		appDeploymentProperties.put(fooKey, fooVal);
-		appDeploymentProperties.put(barKey, barVal);
-
-		deployer = new CloudFoundryAppDeployer(connProperties, deploymentProperties, operations, client, deploymentCustomizer);
-
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplication("test", "RUNNING");
-		given(applications.push(any())).willReturn(Mono.empty());
-		given(applications.start(any())).willReturn(Mono.empty());
-
-		given(client.applicationsV2()).willReturn(applicationsV2);
-
-		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
-				.build()));
-
-		// when
-		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		appDeploymentProperties.put(CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY, "false");
-
-		deployer.asyncDeploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.singletonMap("some.key", "someValue")),
-				resource,
-				appDeploymentProperties))
-				.subscribe(testSubscriber);
-
-		testSubscriber.verify(Duration.ofSeconds(10L));
-
-		// then
-		then(operations).should(times(3)).applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().push(any());
-		then(applications).should().get(any());
-		then(applications).should().start(any());
-		verifyNoMoreInteractions(applications);
-
-		then(client).should().applicationsV2();
-		verifyNoMoreInteractions(client);
-
-		then(applicationsV2).should().update(UpdateApplicationRequest.builder()
-				.applicationId("abc123")
-				.environmentJsons(new LinkedHashMap<String, String>() {{
-					put("some.key", "someValue");
-					// Note that fooKey and barKey are not expected to be in the environment as they are
-					// deployment properties
-				}})
-				.build());
-		verifyNoMoreInteractions(applicationsV2);
-	}
-
-	@Test
-	public void shouldHandleRoutineDeployment() throws InterruptedException, IOException {
-		FileSystemResource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		runAsyncFullDeployment(new AppDeploymentRequest(
-				new AppDefinition("time", Collections.emptyMap()),
-				resource,
-				Collections.emptyMap()));
-		// then
-		then(operations).should(times(3)).applications();
-		then(operations).should(times(2)).services();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().push(any());
-		then(applications).should().get(GetApplicationRequest.builder().name("dataflow-server-time").build());
-		then(applications).should().start(StartApplicationRequest.builder().name("dataflow-server-time").build());
-		verifyNoMoreInteractions(applications);
-
-		then(client).should().applicationsV2();
-		verifyNoMoreInteractions(client);
-
-		then(applicationsV2).should().update(UpdateApplicationRequest.builder()
-				.applicationId("abc123")
-				.environmentJsons(new HashMap<String, String>() {{
-					put("SPRING_APPLICATION_JSON", "{}");
-				}})
-				.build());
-		verifyNoMoreInteractions(applicationsV2);
-
-		then(services).should().bind(BindServiceInstanceRequest.builder()
-				.applicationName("dataflow-server-time")
-				.serviceInstanceName("redis-service")
-				.build());
-		then(services).should().bind(BindServiceInstanceRequest.builder()
-				.applicationName("dataflow-server-time")
-				.serviceInstanceName("mysql-service")
-				.build());
-		verifyNoMoreInteractions(services);
-	}
-
-	@Test
-	public void shouldFailWhenDeployingSameAppTwice() throws InterruptedException, IllegalStateException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "RUNNING");
-
-		thrown.expect(IllegalStateException.class);
-		thrown.expectMessage(containsString("already deployed"));
-
-		// when
-		deployer.deploy(new AppDeploymentRequest(
-				new AppDefinition("test", Collections.emptyMap()),
-				mock(Resource.class),
-				Collections.emptyMap()));
-
-		// then
-		// JUnit's exception handlers must be before the actual code is run
-	}
-
-	@Test
-	public void shouldHandleRoutineUndeployment() throws InterruptedException, JsonProcessingException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-		given(applications.delete(any())).willReturn(Mono.empty());
-
-		// when
-		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
-
-		deployer.asyncUndeploy("test")
-				.subscribe(testSubscriber);
-
-		testSubscriber.verify(Duration.ofSeconds(10L));
-
-		// then
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().delete(DeleteApplicationRequest.builder()
-				.name("test")
-				.deleteRoutes(true)
-				.build());
-		verifyNoMoreInteractions(applications);
-	}
-
-	@Test
-	public void shouldReportDownStatus() throws InterruptedException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplicationWithInstanceDetail("test", "DOWN", "DOWN");
-
-		// when
-		AppStatus status = deployer.status("test");
-
-		// then
-		assertThat(status.getState(), equalTo(DeploymentState.deploying));
-
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().get(any());
-		verifyNoMoreInteractions(applications);
-	}
-
-
-	@Test
-	public void shouldReportStartingStatus() throws InterruptedException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "STARTING");
-
-		// when
-		AppStatus status = deployer.status("test");
-
-		// then
-		assertThat(status.getState(), equalTo(DeploymentState.deploying));
-
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().get(any());
-		verifyNoMoreInteractions(applications);
-	}
-
-	@Test
-	public void shouldReportCrashedStatus() throws InterruptedException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "CRASHED");
-
-		// when
-		AppStatus status = deployer.status("test");
-
-		// then
 		assertThat(status.getState(), equalTo(DeploymentState.failed));
-
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().get(any());
-		verifyNoMoreInteractions(applications);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
-	public void shouldReportFlappingStatus() throws InterruptedException {
+	public void statusOfDownApplicationIsDeploying() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("DOWN")
+				.build())
+			.build()));
 
-		// given
-		given(operations.applications()).willReturn(applications);
+		AppStatus status = this.deployer.status("test-application-id");
 
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "FLAPPING");
+		assertThat(status.getState(), equalTo(DeploymentState.deploying));
+	}
 
-		// when
-		AppStatus status = deployer.status("test");
+	@SuppressWarnings("unchecked")
+	@Test
+	public void statusOfFlappingApplicationIsDeployed() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("FLAPPING")
+				.build())
+			.build()));
 
-		// then
+		AppStatus status = deployer.status("test-application-id");
+
 		assertThat(status.getState(), equalTo(DeploymentState.deployed));
-
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().get(any());
-		verifyNoMoreInteractions(applications);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
-	public void shouldReportRunningStatus() throws InterruptedException {
+	public void statusOfRunningApplicationIsDeployed() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("RUNNING")
+				.build())
+			.build()));
 
-		// given
-		given(operations.applications()).willReturn(applications);
+		AppStatus status = this.deployer.status("test-application-id");
 
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "RUNNING");
-
-		// when
-		AppStatus status = deployer.status("test");
-
-		// then
 		assertThat(status.getState(), equalTo(DeploymentState.deployed));
-		assertThat(status.getInstances().get("test-0").toString(), equalTo("CloudFoundryAppInstanceStatus[test-0 : deployed]"));
-		assertThat(status.getInstances().get("test-0").getAttributes(), equalTo(Collections.emptyMap()));
+		assertThat(status.getInstances().get("test-application-0").toString(), equalTo("CloudFoundryAppInstanceStatus[test-application-0 : deployed]"));
+		assertThat(status.getInstances().get("test-application-0").getAttributes(), equalTo(Collections.emptyMap()));
+	}
 
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
+	@SuppressWarnings("unchecked")
+	@Test
+	public void statusOfStartingApplicationIsDeploying() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("STARTING")
+				.build())
+			.build()));
 
-		then(applications).should().get(any());
-		verifyNoMoreInteractions(applications);
+		AppStatus status = this.deployer.status("test-application-id");
+
+		assertThat(status.getState(), equalTo(DeploymentState.deploying));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void statusOfUnknownApplicationIsUnknown() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("UNKNOWN")
+				.build())
+			.build()));
+
+		AppStatus status = this.deployer.status("test-application-id");
+
+		assertThat(status.getState(), equalTo(DeploymentState.unknown));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void statusWithAbnormalInstanceStateThrowsException() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("ABNORMAL")
+				.build())
+			.build()));
+
+		try {
+			this.deployer.status("test-application-id").getState();
+		} catch (IllegalStateException e) {
+			assertThat(e.getMessage(), containsString("Unsupported CF state"));
+		}
 	}
 
 	@Test
-	public void shouldReportUnknownStatus() throws InterruptedException {
+	public void undeploy() {
+		givenRequestDeleteApplication("test-application-id", Mono.empty());
 
-		// given
-		given(operations.applications()).willReturn(applications);
+		this.deployer.undeploy("test-application-id");
 
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "UNKNOWN");
-
-		// when
-		AppStatus status = deployer.status("test");
-
-		// then
-		assertThat(status.getState(), equalTo(DeploymentState.unknown));
-
-		then(operations).should().applications();
-		verifyNoMoreInteractions(operations);
-
-		then(applications).should().get(any());
-		verifyNoMoreInteractions(applications);
+		verifyRequestDeleteApplication("test-application-id");
 	}
 
-	@Test
-	public void shouldErrorOnUnknownState() throws InterruptedException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-
-		mockGetApplicationWithInstanceDetail("test", "RUNNING", "some code never before seen");
-
-		thrown.expect(IllegalStateException.class);
-		thrown.expectMessage(containsString("Unsupported CF state"));
-
-		// when
-		AppStatus status = deployer.status("test");
-
-		// then
-		assertThat(status.getState(), equalTo(DeploymentState.unknown));
+	private void givenRequestBindService(String deploymentId, String service, Mono<Void> response) {
+		given(this.operations.services()
+			.bind(BindServiceInstanceRequest.builder()
+				.applicationName(deploymentId)
+				.serviceInstanceName(service)
+				.build()))
+			.willReturn(response);
 	}
 
-	private void mockGetApplication(String applicationName, String requestedStatus) {
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name(applicationName)
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState(requestedStatus)
-				.runningInstances(1)
-				.build()));
+	private void givenRequestDeleteApplication(String id, Mono<Void> response) {
+		given(this.operations.applications()
+			.delete(DeleteApplicationRequest.builder()
+				.deleteRoutes(true)
+				.name(id)
+				.build()))
+			.willReturn(response);
 	}
 
-	private void mockGetApplicationWithInstanceDetail(String applicationName, String requestedState, String instanceState) {
-		given(applications.get(any())).willReturn(Mono.just(ApplicationDetail.builder()
-				.id("abc123")
-				.name(applicationName)
-				.stack("stack")
-				.diskQuota(1024)
-				.instances(1)
-				.memoryLimit(1024)
-				.requestedState(requestedState)
-				.runningInstances(1)
-				.instanceDetail(InstanceDetail.builder()
-						.state(instanceState)
-						.build())
-				.build()));
+	@SuppressWarnings("unchecked")
+	private void givenRequestGetApplication(String id, Mono<ApplicationDetail> response, Mono<ApplicationDetail>... responses) {
+		given(this.operations.applications()
+			.get(GetApplicationRequest.builder()
+				.name(id)
+				.build()))
+			.willReturn(response, responses);
 	}
 
-	private void runAsyncFullDeployment(AppDeploymentRequest request) throws InterruptedException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-		given(operations.services()).willReturn(services);
-
-		mockGetApplication(request.getDefinition().getName(), "RUNNING");
-		given(applications.push(any())).willReturn(Mono.empty());
-		given(applications.start(any())).willReturn(Mono.empty());
-
-		given(client.applicationsV2()).willReturn(applicationsV2);
-
-		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
-				.build()));
-
-		given(services.bind(any())).willReturn(Mono.empty());
-
-		// when
-		final TestSubscriber<Void> testSubscriber = new TestSubscriber<>();
-
-		deployer.asyncDeploy(request)
-				.subscribe(testSubscriber);
-
-		testSubscriber.verify(Duration.ofSeconds(10L));
+	private void givenRequestPushApplication(PushApplicationRequest request, Mono<Void> response) {
+		given(this.operations.applications()
+			.push(request))
+			.willReturn(response);
 	}
 
-	private String runFullDeployment(AppDeploymentRequest request) throws InterruptedException {
-
-		// given
-		given(operations.applications()).willReturn(applications);
-		given(operations.services()).willReturn(services);
-
-		mockGetUnknownApplication();
-		given(applications.push(any())).willReturn(Mono.empty());
-		given(applications.start(any())).willReturn(Mono.empty());
-
-		given(client.applicationsV2()).willReturn(applicationsV2);
-
-		given(applicationsV2.update(any())).willReturn(Mono.just(UpdateApplicationResponse.builder()
-				.build()));
-
-		given(services.bind(any())).willReturn(Mono.empty());
-
-		// when
-		return deployer.deploy(request);
+	private void givenRequestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout, Mono<Void> response) {
+		given(this.operations.applications()
+			.start(StartApplicationRequest.builder()
+				.name(name)
+				.stagingTimeout(stagingTimeout)
+				.startupTimeout(startupTimeout)
+				.build()))
+			.willReturn(response);
 	}
 
-	private void mockGetUnknownApplication() {
-		given(applications.get(any())).willReturn(Mono.error(new RuntimeException()));
+	private void givenRequestUpdateApplication(String applicationId, Map<String, String> environmentVariables, Mono<UpdateApplicationResponse> response) {
+		given(this.client.applicationsV2()
+			.update(UpdateApplicationRequest.builder()
+				.applicationId(applicationId)
+				.environmentJsons(environmentVariables)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void verifyRequestBindService(String deploymentId, String service) {
+		verify(this.operations.services())
+			.bind(BindServiceInstanceRequest.builder()
+				.applicationName(deploymentId)
+				.serviceInstanceName(service)
+				.build());
+	}
+
+	private void verifyRequestDeleteApplication(String id) {
+		verify(this.operations.applications())
+			.delete(DeleteApplicationRequest.builder()
+				.deleteRoutes(true)
+				.name(id)
+				.build());
+	}
+
+	private void verifyRequestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout) {
+		verify(this.operations.applications())
+			.start(StartApplicationRequest.builder()
+				.name(name)
+				.stagingTimeout(stagingTimeout)
+				.startupTimeout(startupTimeout)
+				.build());
+	}
+
+	private void verifyRequestUpdateApplication(String applicationId, Map<String, String> environmentVariables) {
+		verify(this.client.applicationsV2())
+			.update(UpdateApplicationRequest.builder()
+				.applicationId(applicationId)
+				.environmentJsons(environmentVariables)
+				.build());
 	}
 
 }

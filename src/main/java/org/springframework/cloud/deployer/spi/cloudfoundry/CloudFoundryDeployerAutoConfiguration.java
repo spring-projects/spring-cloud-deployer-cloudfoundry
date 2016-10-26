@@ -44,6 +44,7 @@ import org.springframework.core.Ordered;
  * Creates a {@link CloudFoundryAppDeployer}
  *
  * @author Eric Bottard
+ * @author Ben Hale
  */
 @Configuration
 @EnableConfigurationProperties
@@ -67,14 +68,14 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public CloudFoundryDeploymentProperties defaultSharedDeploymentProperties() {
 		return new CloudFoundryDeploymentProperties();
 	}
-	
+
 	@Bean
 	@ConditionalOnMissingBean
 	@ConfigurationProperties(prefix = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES)
 	public CloudFoundryConnectionProperties cloudFoundryConnectionProperties() {
 		return new CloudFoundryConnectionProperties();
 	}
-	
+
 	@Bean
 	@ConditionalOnMissingBean
 	public ConnectionContext connectionContext(CloudFoundryConnectionProperties properties) {
@@ -104,35 +105,18 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient,
-														 ConnectionContext connectionContext,
-														 TokenProvider tokenProvider,
-														 CloudFoundryConnectionProperties properties) {
-		ReactorDopplerClient dopplerClient = ReactorDopplerClient.builder()
-				.connectionContext(connectionContext)
-				.tokenProvider(tokenProvider)
-				.build();
-
-		ReactorUaaClient uaaClient = ReactorUaaClient.builder()
-				.connectionContext(connectionContext)
-				.tokenProvider(tokenProvider)
-				.build();
-
+	public CloudFoundryOperations cloudFoundryOperations(CloudFoundryClient cloudFoundryClient, CloudFoundryConnectionProperties properties) {
 		return DefaultCloudFoundryOperations.builder()
 			.cloudFoundryClient(cloudFoundryClient)
-			.dopplerClient(dopplerClient)
-			.uaaClient(uaaClient)
 			.organization(properties.getOrg())
 			.space(properties.getSpace())
 			.build();
 	}
 
-
 	@Bean
 	@ConditionalOnMissingBean(AppDeployer.class)
-	public AppDeployer appDeployer(CloudFoundryConnectionProperties connectionProperties, CloudFoundryOperations operations, CloudFoundryClient client,
-								   AppNameGenerator appDeploymentCustomizer) {
-		return new CloudFoundryAppDeployer(connectionProperties, appDeploymentProperties(), operations, client, appDeploymentCustomizer);
+	public AppDeployer appDeployer(CloudFoundryOperations operations, CloudFoundryClient client, AppNameGenerator applicationNameGenerator) {
+		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations);
 	}
 
 	@Bean
@@ -144,7 +128,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(TaskLauncher.class)
 	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties, CloudFoundryOperations operations) {
-		return new CloudFoundryTaskLauncher(client, operations, connectionProperties, taskDeploymentProperties());
+		return new CloudFoundryTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
 	}
 
 	@Bean

@@ -68,7 +68,7 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 			case "UNKNOWN":
 				return DeploymentState.unknown;
 			default:
-				throw new IllegalStateException("Unsupported CF state " + instanceDetail.getState());
+				throw new IllegalStateException("Unsupported CF state: " + instanceDetail.getState());
 		}
 	}
 
