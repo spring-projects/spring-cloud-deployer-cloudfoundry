@@ -60,6 +60,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * @author Eric Bottard
  * @author Greg Turnquist
  * @author Michael Minella
+ * @author Ben Hale
  */
 @SpringApplicationConfiguration(classes = CloudFoundryTaskLauncherIntegrationTests.Config.class)
 @IntegrationTest("server.port=-1")
@@ -116,16 +117,16 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	@Test
 	public void testSimpleLaunch() throws InterruptedException {
 
-		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(5, ChronoUnit.MINUTES));
+		String taskId = taskLauncher.launch(request);
 
 		System.out.println(">> taskId = " + taskId);
 
-		TaskStatus status = taskLauncher.asyncStatus(taskId).block();
+		TaskStatus status = taskLauncher.status(taskId);
 
 		while (!status.getState().equals(LaunchState.complete)) {
 			System.out.println(">> state = " + status.getState());
 			Thread.sleep(5000);
-			status = taskLauncher.asyncStatus(taskId).block();
+			status = taskLauncher.status(taskId);
 		}
 
 		assertThat(status.getState(), is(LaunchState.complete));
@@ -147,26 +148,26 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 				envProperties,
 				commandLineArgs);
 
-		String taskId = taskLauncher.asyncLaunch(request).block(Duration.of(5, ChronoUnit.MINUTES));
+		String taskId = taskLauncher.launch(request);
 
 		System.out.println(">> taskId = " + taskId);
 
-		TaskStatus status = taskLauncher.asyncStatus(taskId).block();
+		TaskStatus status = taskLauncher.status(taskId);
 
 		while (!status.getState().equals(LaunchState.running)) {
 			System.out.println(">> state = " + status.getState());
 			Thread.sleep(5000);
-			status = taskLauncher.asyncStatus(taskId).block();
+			status = taskLauncher.status(taskId);
 		}
 
 		taskLauncher.cancel(taskId);
 
-		status = taskLauncher.asyncStatus(taskId).block();
+		status = taskLauncher.status(taskId);
 
 		while (!status.getState().equals(LaunchState.failed)) {
 			System.out.println(">> state = " + status.getState());
 			Thread.sleep(5000);
-			status = taskLauncher.asyncStatus(taskId).block();
+			status = taskLauncher.status(taskId);
 		}
 
 		assertThat(status.getState(), is(LaunchState.failed));
