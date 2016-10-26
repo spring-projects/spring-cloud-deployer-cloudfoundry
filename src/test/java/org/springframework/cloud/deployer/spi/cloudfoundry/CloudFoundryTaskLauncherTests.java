@@ -16,866 +16,910 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.BDDMockito.any;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
 import org.cloudfoundry.client.CloudFoundryClient;
-import org.cloudfoundry.client.v2.Metadata;
-import org.cloudfoundry.client.v2.organizations.ListOrganizationsResponse;
-import org.cloudfoundry.client.v2.organizations.OrganizationResource;
-import org.cloudfoundry.client.v2.organizations.Organizations;
-import org.cloudfoundry.client.v2.spaces.ListSpacesResponse;
-import org.cloudfoundry.client.v2.spaces.SpaceEntity;
-import org.cloudfoundry.client.v2.spaces.SpaceResource;
-import org.cloudfoundry.client.v2.spaces.Spaces;
+import org.cloudfoundry.client.v3.BuildpackData;
+import org.cloudfoundry.client.v3.Lifecycle;
 import org.cloudfoundry.client.v3.Pagination;
+import org.cloudfoundry.client.v3.Relationship;
+import org.cloudfoundry.client.v3.Type;
 import org.cloudfoundry.client.v3.applications.ApplicationResource;
 import org.cloudfoundry.client.v3.applications.ApplicationsV3;
+import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
 import org.cloudfoundry.client.v3.applications.CreateApplicationResponse;
+import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsResponse;
+import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationsResponse;
 import org.cloudfoundry.client.v3.droplets.DropletResource;
 import org.cloudfoundry.client.v3.droplets.Droplets;
+import org.cloudfoundry.client.v3.droplets.GetDropletRequest;
 import org.cloudfoundry.client.v3.droplets.GetDropletResponse;
 import org.cloudfoundry.client.v3.droplets.StagedResult;
+import org.cloudfoundry.client.v3.packages.CreatePackageRequest;
 import org.cloudfoundry.client.v3.packages.CreatePackageResponse;
 import org.cloudfoundry.client.v3.packages.GetPackageRequest;
 import org.cloudfoundry.client.v3.packages.GetPackageResponse;
+import org.cloudfoundry.client.v3.packages.PackageType;
 import org.cloudfoundry.client.v3.packages.Packages;
+import org.cloudfoundry.client.v3.packages.StagePackageRequest;
 import org.cloudfoundry.client.v3.packages.StagePackageResponse;
+import org.cloudfoundry.client.v3.packages.State;
+import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
 import org.cloudfoundry.client.v3.packages.UploadPackageResponse;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingResponse;
+import org.cloudfoundry.client.v3.servicebindings.Relationships;
+import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingsV3;
+import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
+import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
+import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
+import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
-import org.cloudfoundry.client.v3.tasks.State;
 import org.cloudfoundry.client.v3.tasks.Tasks;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.services.ServiceInstance;
 import org.cloudfoundry.operations.services.ServiceInstanceType;
 import org.cloudfoundry.operations.services.Services;
+import org.cloudfoundry.operations.spaces.GetSpaceRequest;
+import org.cloudfoundry.operations.spaces.SpaceDetail;
+import org.cloudfoundry.operations.spaces.Spaces;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * @author Michael Minella
+ * @author Ben Hale
  */
 public class CloudFoundryTaskLauncherTests {
 
-    @Mock
-    private CloudFoundryClient client;
-
-    @Mock
-    private CloudFoundryOperations operations;
-
-    @Mock
-    private Tasks tasks;
+	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private ApplicationsV3 applicationsV3;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private CloudFoundryClient client;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Droplets droplets;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private InputStream inputStream;
+
+	private CloudFoundryTaskLauncher launcher;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private CloudFoundryOperations operations;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Packages packages;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Resource resource;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private ServiceBindingsV3 serviceBindingsV3;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Services services;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Spaces spaces;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Tasks tasks;
+
+	@Test
+	public void cancel() {
+		givenRequestCancelTask("test-task-id", Mono.just(CancelTaskResponse.builder()
+			.id("test-task-id")
+			.state(org.cloudfoundry.client.v3.tasks.State.CANCELING_STATE)
+			.build()));
+
+		this.launcher.cancel("test-task-id");
+	}
+
+	@Test
+	public void launchTaskApplicationExists() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(ApplicationResource.builder()
+				.id("test-application-id")
+				.build())
+			.build()));
+
+		givenRequestListDroplets("test-application-id", Mono.just(ListApplicationDropletsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(DropletResource.builder()
+				.result(StagedResult.builder()
+					.processType("web", "test-command")
+					.build())
+				.id("test-droplet-id")
+				.build())
+			.build()));
+
+		givenRequestCreateTask("test-application-id", "test-command", "test-droplet-id", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
+			.id("test-task-id")
+			.build()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		String taskId = this.launcher.launch(request);
+
+		assertThat(taskId, equalTo("test-task-id"));
+	}
+
+	@Test
+	public void launchTaskWithNonExistentApplication() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.just(GetPackageResponse.builder()
+			.id("test-package-id")
+			.state(State.READY)
+			.build()));
+
+		givenRequestStagePackage(this.deploymentProperties.getDisk(), this.deploymentProperties.getMemory(), "test-package-id", Mono.just(StagePackageResponse.builder()
+			.id("test-droplet-id")
+			.build()));
+
+		givenRequestGetDroplet("test-droplet-id", Mono.just(GetDropletResponse.builder()
+			.id("test-droplet-id")
+			.state(org.cloudfoundry.client.v3.droplets.State.STAGED)
+			.build()));
+
+		givenRequestListServiceInstances(Flux.empty());
+
+		givenRequestListDroplets("test-application-id", Mono.just(ListApplicationDropletsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(DropletResource.builder()
+				.result(StagedResult.builder()
+					.processType("web", "test-command")
+					.build())
+				.id("test-droplet-id")
+				.build())
+			.build()));
+
+		givenRequestCreateTask("test-application-id", "test-command", "test-droplet-id", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
+			.id("test-task-id")
+			.build()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		String taskId = this.launcher.launch(request);
+
+		assertThat(taskId, equalTo("test-task-id"));
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndApplicationCreationFails() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndApplicationListingFails() {
+		givenRequestListApplications("test-application", Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndBindingFails() {
+
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.just(GetPackageResponse.builder()
+			.id("test-package-id")
+			.state(State.READY)
+			.build()));
+
+		givenRequestStagePackage(this.deploymentProperties.getDisk(), this.deploymentProperties.getMemory(), "test-package-id", Mono.just(StagePackageResponse.builder()
+			.id("test-droplet-id")
+			.build()));
+
+		givenRequestGetDroplet("test-droplet-id", Mono.just(GetDropletResponse.builder()
+			.id("test-droplet-id")
+			.state(org.cloudfoundry.client.v3.droplets.State.STAGED)
+			.build()));
+
+		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+				.id("test-service-instance-id-1")
+				.name("test-service-instance-1")
+				.type(ServiceInstanceType.MANAGED)
+				.build(),
+			ServiceInstance.builder()
+				.id("test-service-instance-id-2")
+				.name("test-service-instance-2")
+				.type(ServiceInstanceType.MANAGED)
+				.build()));
+
+		givenRequestCreateServiceBinding("test-application-id", "test-service-instance-id-2", Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource,
+			Collections.singletonMap(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "test-service-instance-2"));
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndDropletCreationFails() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.just(GetPackageResponse.builder()
+			.id("test-package-id")
+			.state(State.READY)
+			.build()));
+
+		givenRequestStagePackage(this.deploymentProperties.getDisk(), this.deploymentProperties.getMemory(), "test-package-id", Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndPackageCreationFails() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndPackageStatusFails() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndPackageUploadFails() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void launchTaskWithNonExistentApplicationAndTaskCreationFails() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.just(GetPackageResponse.builder()
+			.id("test-package-id")
+			.state(State.READY)
+			.build()));
+
+		givenRequestStagePackage(this.deploymentProperties.getDisk(), this.deploymentProperties.getMemory(), "test-package-id", Mono.just(StagePackageResponse.builder()
+			.id("test-droplet-id")
+			.build()));
+
+		givenRequestGetDroplet("test-droplet-id", Mono.just(GetDropletResponse.builder()
+			.id("test-droplet-id")
+			.state(org.cloudfoundry.client.v3.droplets.State.STAGED)
+			.build()));
+
+		givenRequestListServiceInstances(Flux.empty());
+
+		givenRequestListDroplets("test-application-id", Mono.just(ListApplicationDropletsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(DropletResource.builder()
+				.result(StagedResult.builder()
+					.processType("web", "test-command")
+					.build())
+				.id("test-droplet-id")
+				.build())
+			.build()));
+
+		givenRequestCreateTask("test-application-id", "test-command", "test-droplet-id", this.deploymentProperties.getMemory(), "test-application",
+			Mono.error(new UnsupportedOperationException()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
+
+		this.launcher.launch(request);
+	}
+
+	@Test
+	public void launchTaskWithNonExistentApplicationBindingOneService() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.just(GetPackageResponse.builder()
+			.id("test-package-id")
+			.state(State.READY)
+			.build()));
+
+		givenRequestStagePackage(this.deploymentProperties.getDisk(), this.deploymentProperties.getMemory(), "test-package-id", Mono.just(StagePackageResponse.builder()
+			.id("test-droplet-id")
+			.build()));
+
+		givenRequestGetDroplet("test-droplet-id", Mono.just(GetDropletResponse.builder()
+			.id("test-droplet-id")
+			.state(org.cloudfoundry.client.v3.droplets.State.STAGED)
+			.build()));
+
+		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+				.id("test-service-instance-id-1")
+				.name("test-service-instance-1")
+				.type(ServiceInstanceType.MANAGED)
+				.build(),
+			ServiceInstance.builder()
+				.id("test-service-instance-id-2")
+				.name("test-service-instance-2")
+				.type(ServiceInstanceType.MANAGED)
+				.build()));
+
+		givenRequestCreateServiceBinding("test-application-id", "test-service-instance-id-2", Mono.just(CreateServiceBindingResponse.builder()
+			.id("test-service-binding-id-2")
+			.build()));
+
+		givenRequestListDroplets("test-application-id", Mono.just(ListApplicationDropletsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(DropletResource.builder()
+				.result(StagedResult.builder()
+					.processType("web", "test-command")
+					.build())
+				.id("test-droplet-id")
+				.build())
+			.build()));
+
+		givenRequestCreateTask("test-application-id", "test-command", "test-droplet-id", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
+			.id("test-task-id")
+			.build()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource,
+			Collections.singletonMap(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "test-service-instance-2"));
+
+		String taskId = this.launcher.launch(request);
+
+		assertThat(taskId, equalTo("test-task-id"));
+		verifyRequestCreateServiceBinding("test-application-id", "test-service-instance-id-2");
+	}
+
+	@Test
+	public void launchTaskWithNonExistentApplicationBindingThreeServices() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		givenRequestSpace("test-space", Mono.just(SpaceDetail.builder()
+			.id("test-space-id")
+			.name("test-name")
+			.organization("test-organization")
+			.build()));
+
+		givenRequestCreateApplication(this.deploymentProperties.getBuildpack(), Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), "test-application", "test-space-id",
+			Mono.just(CreateApplicationResponse.builder()
+				.id("test-application-id")
+				.build()));
+
+		givenRequestCreatePackage("test-application-id", Mono.just(CreatePackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+			.id("test-package-id")
+			.build()));
+
+		givenRequestGetPackage("test-package-id", Mono.just(GetPackageResponse.builder()
+			.id("test-package-id")
+			.state(State.READY)
+			.build()));
+
+		givenRequestStagePackage(this.deploymentProperties.getDisk(), this.deploymentProperties.getMemory(), "test-package-id", Mono.just(StagePackageResponse.builder()
+			.id("test-droplet-id")
+			.build()));
+
+		givenRequestGetDroplet("test-droplet-id", Mono.just(GetDropletResponse.builder()
+			.id("test-droplet-id")
+			.state(org.cloudfoundry.client.v3.droplets.State.STAGED)
+			.build()));
+
+		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+				.id("test-service-instance-id-1")
+				.name("test-service-instance-1")
+				.type(ServiceInstanceType.MANAGED)
+				.build(),
+			ServiceInstance.builder()
+				.id("test-service-instance-id-2")
+				.name("test-service-instance-2")
+				.type(ServiceInstanceType.MANAGED)
+				.build(),
+			ServiceInstance.builder()
+				.id("test-service-instance-id-3")
+				.name("test-service-instance-3")
+				.type(ServiceInstanceType.MANAGED)
+				.build()));
+
+		givenRequestCreateServiceBinding("test-application-id", "test-service-instance-id-1", Mono.just(CreateServiceBindingResponse.builder()
+			.id("test-service-binding-id-1")
+			.build()));
+
+		givenRequestCreateServiceBinding("test-application-id", "test-service-instance-id-2", Mono.just(CreateServiceBindingResponse.builder()
+			.id("test-service-binding-id-2")
+			.build()));
+
+		givenRequestCreateServiceBinding("test-application-id", "test-service-instance-id-3", Mono.just(CreateServiceBindingResponse.builder()
+			.id("test-service-binding-id-3")
+			.build()));
+
+		givenRequestListDroplets("test-application-id", Mono.just(ListApplicationDropletsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(DropletResource.builder()
+				.result(StagedResult.builder()
+					.processType("web", "test-command")
+					.build())
+				.id("test-droplet-id")
+				.build())
+			.build()));
+
+		givenRequestCreateTask("test-application-id", "test-command", "test-droplet-id", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
+			.id("test-task-id")
+			.build()));
+
+		AppDefinition definition = new AppDefinition("test-application", null);
+		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource,
+			Collections.singletonMap(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "test-service-instance-1,test-service-instance-2,test-service-instance-3"));
+
+		String taskId = this.launcher.launch(request);
+
+		assertThat(taskId, equalTo("test-task-id"));
+		verifyRequestCreateServiceBinding("test-application-id", "test-service-instance-id-1");
+		verifyRequestCreateServiceBinding("test-application-id", "test-service-instance-id-2");
+		verifyRequestCreateServiceBinding("test-application-id", "test-service-instance-id-3");
+	}
+
+	@Before
+	public void setUp() throws IOException {
+		MockitoAnnotations.initMocks(this);
+		given(this.client.applicationsV3()).willReturn(this.applicationsV3);
+		given(this.client.droplets()).willReturn(this.droplets);
+		given(this.client.packages()).willReturn(this.packages);
+		given(this.client.serviceBindingsV3()).willReturn(this.serviceBindingsV3);
+		given(this.client.tasks()).willReturn(this.tasks);
+
+		given(this.operations.services()).willReturn(this.services);
+		given(this.operations.spaces()).willReturn(this.spaces);
+
+		given(this.resource.getInputStream()).willReturn(this.inputStream);
+
+		this.deploymentProperties.setTaskTimeout(1);
+		this.launcher = new CloudFoundryTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space");
+	}
+
+	@Test
+	public void status() {
+		givenRequestGetTask("test-task-id", Mono.just(GetTaskResponse.builder()
+			.id("test-task-id")
+			.state(org.cloudfoundry.client.v3.tasks.State.SUCCEEDED_STATE)
+			.build()));
+
+		TaskStatus status = this.launcher.status("test-task-id");
+
+		assertThat(status.getState(), equalTo(LaunchState.complete));
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testStatusTimeout() {
+		givenRequestGetTask("test-task-id", Mono
+			.delay(Duration.ofSeconds(2))
+			.then(Mono.just(GetTaskResponse.builder()
+				.id("test-task-id")
+				.state(org.cloudfoundry.client.v3.tasks.State.SUCCEEDED_STATE)
+				.build())));
+
+		this.launcher.status("test-task-id");
+	}
+
+	private void givenRequestCancelTask(String taskId, Mono<CancelTaskResponse> response) {
+		given(this.client.tasks()
+			.cancel(CancelTaskRequest.builder()
+				.taskId(taskId)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestCreateApplication(String buildpack, Map<String, String> environmentVariables, String name, String spaceId, Mono<CreateApplicationResponse> response) {
+		given(this.client.applicationsV3()
+			.create(CreateApplicationRequest.builder()
+				.environmentVariables(environmentVariables)
+				.lifecycle(Lifecycle.builder()
+					.type(Type.BUILDPACK)
+					.data(BuildpackData.builder()
+						.buildpack(buildpack)
+						.build())
+					.build())
+				.name(name)
+				.relationships(org.cloudfoundry.client.v3.applications.Relationships.builder()
+					.space(Relationship.builder()
+						.id(spaceId)
+						.build())
+					.build())
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestCreatePackage(String applicationId, Mono<CreatePackageResponse> response) {
+		given(this.client.packages()
+			.create(CreatePackageRequest.builder()
+				.applicationId(applicationId)
+				.type(PackageType.BITS)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestCreateServiceBinding(String applicationId, String serviceInstanceId, Mono<CreateServiceBindingResponse> response) {
+		given(this.client.serviceBindingsV3()
+			.create(CreateServiceBindingRequest.builder()
+				.relationships(Relationships.builder()
+					.application(Relationship.builder()
+						.id(applicationId)
+						.build())
+					.serviceInstance(Relationship.builder()
+						.id(serviceInstanceId)
+						.build())
+					.build())
+				.type(ServiceBindingType.APPLICATION)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestCreateTask(String applicationId, String command, String dropletId, int memory, String name, Mono<CreateTaskResponse> response) {
+		given(this.client.tasks()
+			.create(CreateTaskRequest.builder()
+				.applicationId(applicationId)
+				.command(command)
+				.dropletId(dropletId)
+				.memoryInMb(memory)
+				.name(name)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestGetDroplet(String dropletId, Mono<GetDropletResponse> response) {
+		given(this.client.droplets()
+			.get(GetDropletRequest.builder()
+				.dropletId(dropletId)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestGetPackage(String packageId, Mono<GetPackageResponse> response) {
+		given(this.client.packages()
+			.get(GetPackageRequest.builder()
+				.packageId(packageId)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestGetTask(String taskId, Mono<GetTaskResponse> response) {
+		given(this.client.tasks()
+			.get(GetTaskRequest.builder()
+				.taskId(taskId)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestListApplications(String name, Mono<ListApplicationsResponse> response) {
+		given(this.client.applicationsV3()
+			.list(ListApplicationsRequest.builder()
+				.name(name)
+				.page(1)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestListDroplets(String applicationId, Mono<ListApplicationDropletsResponse> response) {
+		given(this.client.applicationsV3()
+			.listDroplets(ListApplicationDropletsRequest.builder()
+				.applicationId(applicationId)
+				.page(1)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestListServiceInstances(Flux<ServiceInstance> response) {
+		given(this.operations.services()
+			.listInstances())
+			.willReturn(response);
+	}
+
+	private void givenRequestSpace(String space, Mono<SpaceDetail> response) {
+		given(this.operations.spaces()
+			.get(GetSpaceRequest.builder()
+				.name(space)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestStagePackage(int disk, int memory, String packageId, Mono<StagePackageResponse> response) {
+		given(this.client.packages()
+			.stage(StagePackageRequest.builder()
+				.packageId(packageId)
+				.stagingDiskInMb(disk)
+				.stagingMemoryInMb(memory)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestUploadPackage(InputStream bits, String packageId, Mono<UploadPackageResponse> response) {
+		given(this.client.packages()
+			.upload(UploadPackageRequest.builder()
+				.bits(bits)
+				.packageId(packageId)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void verifyRequestCreateServiceBinding(String applicationId, String serviceInstanceId) {
+		verify(this.client.serviceBindingsV3())
+			.create(CreateServiceBindingRequest.builder()
+				.relationships(Relationships.builder()
+					.application(Relationship.builder()
+						.id(applicationId)
+						.build())
+					.serviceInstance(Relationship.builder()
+						.id(serviceInstanceId)
+						.build())
+					.build())
+				.type(ServiceBindingType.APPLICATION)
+				.build());
+	}
 
-    @Mock
-    private Droplets droplets;
-
-    @Mock
-    private Spaces spaces;
-
-    @Mock
-    private Organizations organizations;
-
-    @Mock
-    private Packages packages;
-
-    @Mock
-    private Services services;
-
-    @Mock
-    private ApplicationsV3 applicationsV3;
-
-    @Mock
-    private ServiceBindingsV3 serviceBindingsV3;
-
-    private CloudFoundryTaskLauncher launcher;
-
-    @Before
-    public void setUp() {
-        MockitoAnnotations.initMocks(this);
-
-        CloudFoundryConnectionProperties connectionProperties = new CloudFoundryConnectionProperties();
-        connectionProperties.setOrg("org");
-        connectionProperties.setSpace("space");
-
-        this.launcher = new CloudFoundryTaskLauncher(this.client, this.operations, connectionProperties, new CloudFoundryDeploymentProperties());
-    }
-
-    @Test
-    public void testStatus() {
-
-        // given
-        given(client.tasks()).willReturn(tasks);
-        given(tasks.get(any())).willReturn(Mono.just(GetTaskResponse.builder()
-            .id("foo")
-            .state(State.SUCCEEDED_STATE)
-            .build()));
-
-        // when
-        TaskStatus status = this.launcher.status("foo");
-
-        // then
-        assertThat(status.getState(), equalTo(LaunchState.complete));
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void testStatusTimeout() {
-
-        // given
-        given(client.tasks()).willReturn(tasks);
-        given(tasks.get(any())).willReturn(Mono.delay(Duration.ofSeconds(35)).then(Mono.just(GetTaskResponse.builder()
-                    .state(State.SUCCEEDED_STATE)
-                    .build())));
-
-        // when
-        this.launcher.status("bar");
-    }
-
-    @Test
-    public void testLaunchTaskAppExists() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-        UUID taskleltId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-        GetDropletResponse getDropletResponse = getGetDropletResponse();
-        CreateTaskResponse createTaskResponse = getCreateTaskResponse(taskleltId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.organizations()).willReturn(this.organizations);
-        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
-        given(this.client.droplets()).willReturn(this.droplets);
-        given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
-        given(this.client.tasks()).willReturn(this.tasks);
-        given(this.tasks.create(any())).willReturn(Mono.just(createTaskResponse));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String, String> deploymentProperties = new HashMap<>(1);
-        deploymentProperties.put("organization", "org");
-        deploymentProperties.put("space", "the final frontier");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition, new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"), deploymentProperties);
-        String launch = this.launcher.launch(request);
-
-        // then
-        assertThat(launch, equalTo(taskleltId.toString()));
-    }
-
-    @Test
-    public void testLaunchTaskAppDoesntExists() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-        UUID taskletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        GetPackageResponse getReadyPackageResponse = getGetPackageResponse(packageId);
-        StagePackageResponse stagePackageResponse = getStagePackageResponse(dropletId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-        GetDropletResponse getDropletResponse = getGetDropletResponse();
-        CreateTaskResponse createTaskResponse = getCreateTaskResponse(taskletId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.organizations()).willReturn(this.organizations);
-        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willReturn(Mono.just(getReadyPackageResponse));
-        given(this.packages.stage(any())).willReturn(Mono.just(stagePackageResponse));
-        given(this.client.droplets()).willReturn(this.droplets);
-        given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
-        given(this.operations.services()).willReturn(this.services);
-        given(this.services.listInstances()).willReturn(Flux.empty());
-        given(this.client.tasks()).willReturn(this.tasks);
-        given(this.tasks.create(any())).willReturn(Mono.just(createTaskResponse));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-        Hooks.onOperator( op -> op.operatorStacktrace());
-        String launch = this.launcher.launch(request);
-
-        // then
-        assertThat(launch, equalTo(taskletId.toString()));
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskCantGetAppStatus() {
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willThrow(new RuntimeException("Error getting App status"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-
-        this.launcher.launch(request);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskAppCreationFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willThrow(new RuntimeException("Application creation failed"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-
-        this.launcher.launch(request);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskCreatePackageFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willThrow(new RuntimeException("Error creating a package"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-
-        this.launcher.launch(request);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskUploadPackageFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willThrow(new RuntimeException("Upload failed"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-        this.launcher.launch(request);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskPackageStatusFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willThrow(new RuntimeException("Package Status Failed"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-        this.launcher.launch(request);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskCreateDropletFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        GetPackageResponse getReadyPackageResponse = getGetPackageResponse(packageId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willReturn(Mono.just(getReadyPackageResponse));
-        given(this.packages.stage(any())).willThrow(new RuntimeException("Droplet was not created"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-
-        this.launcher.launch(request);
-    }
-
-    @Test
-    public void testLaunchTaskOneServiceToBind() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-        UUID taskletId = UUID.randomUUID();
-        UUID serviceInstanceId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        GetPackageResponse getReadyPackageResponse = getGetPackageResponse(packageId);
-        StagePackageResponse stagePackageResponse = getStagePackageResponse(dropletId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-        GetDropletResponse getDropletResponse = getGetDropletResponse();
-        CreateTaskResponse createTaskResponse = getCreateTaskResponse(taskletId);
-        Flux<ServiceInstance> serviceInstances = Flux.just(ServiceInstance.builder()
-                .id(serviceInstanceId.toString())
-                .name("my_mysql")
-                .type(ServiceInstanceType.MANAGED)
-                .build(),
-        ServiceInstance.builder()
-            .id(UUID.randomUUID().toString())
-            .name("my_other_service")
-            .type(ServiceInstanceType.MANAGED)
-            .build());
-        CreateServiceBindingResponse createServiceBindingResponse = CreateServiceBindingResponse.builder()
-            .build();
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.organizations()).willReturn(this.organizations);
-        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willReturn(Mono.just(getReadyPackageResponse));
-        given(this.packages.stage(any())).willReturn(Mono.just(stagePackageResponse));
-        given(this.client.droplets()).willReturn(this.droplets);
-        given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
-        given(this.operations.services()).willReturn(this.services);
-        given(this.services.listInstances()).willReturn(serviceInstances);
-        given(this.client.serviceBindingsV3()).willReturn(this.serviceBindingsV3);
-
-        ArgumentCaptor<CreateServiceBindingRequest> createServiceBindingRequestArgumentCaptor =
-            ArgumentCaptor.forClass(CreateServiceBindingRequest.class);
-
-        given(this.serviceBindingsV3.create(createServiceBindingRequestArgumentCaptor.capture())).willReturn(Mono.just(createServiceBindingResponse));
-        given(this.client.tasks()).willReturn(this.tasks);
-        given(this.tasks.create(any())).willReturn(Mono.just(createTaskResponse));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-        environmentProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_mysql");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-        String launch = this.launcher.launch(request);
-
-        // then
-        assertThat(launch, equalTo(taskletId.toString()));
-
-        assertThat(1, equalTo(createServiceBindingRequestArgumentCaptor.getAllValues().size()));
-
-        CreateServiceBindingRequest serviceBindingRequest = createServiceBindingRequestArgumentCaptor.getValue();
-        assertThat(applicationId.toString(), equalTo(serviceBindingRequest.getRelationships().getApplication().getId()));
-        assertThat(serviceInstanceId.toString(), equalTo(serviceBindingRequest.getRelationships().getServiceInstance().getId()));
-    }
-
-    @Test
-    public void testLaunchTaskThreeServicesToBind() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-        UUID taskletId = UUID.randomUUID();
-        UUID serviceInstanceId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        GetPackageResponse getReadyPackageResponse = getGetPackageResponse(packageId);
-        StagePackageResponse stagePackageResponse = getStagePackageResponse(dropletId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-        GetDropletResponse getDropletResponse = getGetDropletResponse();
-        CreateTaskResponse createTaskResponse = getCreateTaskResponse(taskletId);
-        Flux<ServiceInstance> serviceInstances = Flux.just(ServiceInstance.builder()
-                .id("my_service3" + serviceInstanceId.toString())
-                .name("my_service3")
-                .type(ServiceInstanceType.MANAGED)
-                .build(),
-            ServiceInstance.builder()
-                .id("my_service1" + serviceInstanceId.toString())
-                .name("my_service1")
-                .type(ServiceInstanceType.MANAGED)
-                .build(),
-            ServiceInstance.builder()
-                .id("my_service2" + serviceInstanceId.toString())
-                .name("my_service2")
-                .type(ServiceInstanceType.MANAGED)
-                .build());
-        CreateServiceBindingResponse createServiceBindingResponse = CreateServiceBindingResponse.builder()
-            .build();
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.organizations()).willReturn(this.organizations);
-        given(this.client.organizations().list(any())).willReturn(Mono.just(getListOrganizationsResponse(organizationId)));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willReturn(Mono.just(getReadyPackageResponse));
-        given(this.packages.stage(any())).willReturn(Mono.just(stagePackageResponse));
-        given(this.client.droplets()).willReturn(this.droplets);
-        given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
-        given(this.operations.services()).willReturn(this.services);
-        given(this.services.listInstances()).willReturn(serviceInstances);
-        given(this.client.serviceBindingsV3()).willReturn(this.serviceBindingsV3);
-
-        ArgumentCaptor<CreateServiceBindingRequest> createServiceBindingRequestArgumentCaptor =
-            ArgumentCaptor.forClass(CreateServiceBindingRequest.class);
-
-        given(this.serviceBindingsV3.create(createServiceBindingRequestArgumentCaptor.capture())).willReturn(Mono.just(createServiceBindingResponse));
-        given(this.client.tasks()).willReturn(this.tasks);
-        given(this.tasks.create(any())).willReturn(Mono.just(createTaskResponse));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-        environmentProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-        String launch = this.launcher.launch(request);
-
-        // then
-        assertThat(launch, equalTo(taskletId.toString()));
-
-        assertThat(3, equalTo(createServiceBindingRequestArgumentCaptor.getAllValues().size()));
-
-        List<CreateServiceBindingRequest> serviceBindingRequests = createServiceBindingRequestArgumentCaptor.getAllValues();
-        Set<String> serviceIds = new HashSet<>(3);
-
-        for (CreateServiceBindingRequest serviceBindingRequest : serviceBindingRequests) {
-            assertThat(applicationId.toString(), equalTo(serviceBindingRequest.getRelationships().getApplication().getId()));
-            serviceIds.add(serviceBindingRequest.getRelationships().getServiceInstance().getId());
-        }
-
-        assertThat(3, equalTo(serviceIds.size()));
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskServiceBindFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-        UUID serviceInstanceId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        GetPackageResponse getReadyPackageResponse = getGetPackageResponse(packageId);
-        StagePackageResponse stagePackageResponse = getStagePackageResponse(dropletId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-        GetDropletResponse getDropletResponse = getGetDropletResponse();
-        Flux<ServiceInstance> serviceInstances = Flux.just(ServiceInstance.builder()
-                .id("my_service3" + serviceInstanceId.toString())
-                .name("my_service3")
-                .type(ServiceInstanceType.MANAGED)
-                .build(),
-            ServiceInstance.builder()
-                .id("my_service1" + serviceInstanceId.toString())
-                .name("my_service1")
-                .type(ServiceInstanceType.MANAGED)
-                .build(),
-            ServiceInstance.builder()
-                .id("my_service2" + serviceInstanceId.toString())
-                .name("my_service2")
-                .type(ServiceInstanceType.MANAGED)
-                .build());
-        CreateServiceBindingResponse createServiceBindingResponse = CreateServiceBindingResponse.builder()
-            .build();
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willReturn(Mono.just(getReadyPackageResponse));
-        given(this.packages.stage(any())).willReturn(Mono.just(stagePackageResponse));
-        given(this.client.droplets()).willReturn(this.droplets);
-        given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
-        given(this.operations.services()).willReturn(this.services);
-        given(this.services.listInstances()).willReturn(serviceInstances);
-        given(this.client.serviceBindingsV3()).willReturn(this.serviceBindingsV3);
-
-        ArgumentCaptor<CreateServiceBindingRequest> createServiceBindingRequestArgumentCaptor =
-            ArgumentCaptor.forClass(CreateServiceBindingRequest.class);
-
-        given(this.serviceBindingsV3.create(createServiceBindingRequestArgumentCaptor.capture())).willReturn(Mono.just(createServiceBindingResponse), Mono.error(new RuntimeException("Service binding failed")));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-        environmentProperties.put(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "my_service1,my_service2,my_service3");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-
-        this.launcher.launch(request);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void testLaunchTaskCreateTaskFails() {
-        // given
-        UUID applicationId = UUID.randomUUID();
-        UUID organizationId = UUID.randomUUID();
-        UUID spaceId = UUID.randomUUID();
-        UUID packageId = UUID.randomUUID();
-        UUID dropletId = UUID.randomUUID();
-
-        ListApplicationsResponse emptyListApplicationsResponse = getListApplicationsResponse();
-        ListApplicationsResponse listApplicationsResponse = getListApplicationsResponse(applicationId);
-        ListSpacesResponse listSpacesResponse = getListSpacesResponse(organizationId, spaceId);
-        CreateApplicationResponse createApplicationResponse = getCreateApplicationResponse(applicationId);
-        CreatePackageResponse createPackageResponse = getCreatePackageResponse(packageId);
-        UploadPackageResponse uploadPackageResponse = getUploadPackageResponse(packageId);
-        GetPackageResponse getReadyPackageResponse = getGetPackageResponse(packageId);
-        StagePackageResponse stagePackageResponse = getStagePackageResponse(dropletId);
-        ListApplicationDropletsResponse listApplicationDropletsResponse = getListApplicationDropletsResponse(dropletId);
-        GetDropletResponse getDropletResponse = getGetDropletResponse();
-
-        given(this.client.applicationsV3()).willReturn(this.applicationsV3);
-        given(this.applicationsV3.list(any())).willReturn(Mono.just(emptyListApplicationsResponse), Mono.just(listApplicationsResponse));
-        given(this.applicationsV3.listDroplets(any())).willReturn(Mono.just(listApplicationDropletsResponse));
-        given(this.client.spaces()).willReturn(this.spaces);
-        given(this.spaces.list(any())).willReturn(Mono.just(listSpacesResponse));
-        given(this.applicationsV3.create(any())).willReturn(Mono.just(createApplicationResponse));
-        given(this.client.packages()).willReturn(this.packages);
-        given(this.packages.create(any())).willReturn(Mono.just(createPackageResponse));
-        given(this.packages.upload(any())).willReturn(Mono.just(uploadPackageResponse));
-        given(this.packages.get(GetPackageRequest.builder().packageId(packageId.toString()).build())).willReturn(Mono.just(getReadyPackageResponse));
-        given(this.packages.stage(any())).willReturn(Mono.just(stagePackageResponse));
-        given(this.client.droplets()).willReturn(this.droplets);
-        given(this.droplets.get(any())).willReturn(Mono.just(getDropletResponse));
-        given(this.operations.services()).willReturn(this.services);
-        given(this.services.listInstances()).willReturn(Flux.empty());
-        given(this.client.tasks()).willReturn(this.tasks);
-        given(this.tasks.create(any())).willThrow(new RuntimeException("Task Create failed"));
-
-        // when
-        AppDefinition definition = new AppDefinition("foo", null);
-
-        Map<String,String> environmentProperties = new HashMap<>();
-        environmentProperties.put("organization", "org");
-        environmentProperties.put("space", "dev");
-
-        AppDeploymentRequest request = new AppDeploymentRequest(definition,
-            new ClassPathResource("/org/springframework/cloud/deployer/spi/cloudfoundry/CloudFoundryTaskLauncherTests.class"),
-            environmentProperties);
-
-        this.launcher.launch(request);
-    }
-
-    private CreateTaskResponse getCreateTaskResponse(UUID taskleltId) {
-        return CreateTaskResponse.builder()
-            .id(taskleltId.toString())
-            .build();
-    }
-
-    private GetDropletResponse getGetDropletResponse() {
-        return GetDropletResponse.builder()
-            .result(StagedResult.builder()
-                .processType("web", "java -jar foo.jar")
-                .build())
-            .state(org.cloudfoundry.client.v3.droplets.State.STAGED)
-            .build();
-    }
-
-    private ListApplicationDropletsResponse getListApplicationDropletsResponse(UUID dropletId) {
-        return ListApplicationDropletsResponse.builder()
-            .resource(DropletResource.builder()
-                .id(dropletId.toString())
-                .build())
-            .pagination(Pagination.builder()
-                .totalResults(1)
-                .totalPages(1)
-                .build())
-            .build();
-    }
-
-    private ListApplicationsResponse getListApplicationsResponse(UUID applicationId) {
-        return ListApplicationsResponse.builder()
-            .resource(ApplicationResource.builder()
-                .id(applicationId.toString())
-                .build())
-            .pagination(Pagination.builder()
-                .totalPages(1)
-                .build())
-            .build();
-    }
-
-    private ListApplicationsResponse getListApplicationsResponse() {
-        return ListApplicationsResponse.builder()
-            .resources(Collections.emptyList())
-            .pagination(Pagination.builder()
-                .totalPages(1)
-                .build())
-            .build();
-    }
-
-    private StagePackageResponse getStagePackageResponse(UUID dropletId) {
-        return StagePackageResponse.builder()
-            .id(dropletId.toString())
-            .build();
-    }
-
-    private UploadPackageResponse getUploadPackageResponse(UUID packageId) {
-        return UploadPackageResponse.builder()
-            .id(packageId.toString())
-            .build();
-    }
-
-    private CreatePackageResponse getCreatePackageResponse(UUID packageId) {
-        return CreatePackageResponse.builder()
-            .id(packageId.toString())
-            .build();
-    }
-
-    private CreateApplicationResponse getCreateApplicationResponse(UUID applicationId) {
-        return CreateApplicationResponse.builder()
-            .id(applicationId.toString())
-            .build();
-    }
-
-    private ListSpacesResponse getListSpacesResponse(UUID organizationId, UUID spaceId) {
-        return ListSpacesResponse.builder()
-            .resource(SpaceResource.builder()
-                .entity(SpaceEntity.builder()
-                    .name("dev")
-                    .organizationId(organizationId.toString())
-                    .build())
-                .metadata(Metadata.builder()
-                    .id(spaceId.toString())
-                    .build())
-                .build())
-            .totalPages(1)
-            .build();
-    }
-
-    private GetPackageResponse getGetPackageResponse(UUID packageId) {
-        return GetPackageResponse.builder()
-            .state(org.cloudfoundry.client.v3.packages.State.READY)
-            .id(packageId.toString())
-            .build();
-    }
-
-    private ListOrganizationsResponse getListOrganizationsResponse(UUID orgId) {
-        return ListOrganizationsResponse.builder()
-                .resource(OrganizationResource.builder()
-                        .metadata(Metadata.builder()
-                                .id(orgId.toString())
-                        .build())
-                .build())
-                .build();
-    }
 }
