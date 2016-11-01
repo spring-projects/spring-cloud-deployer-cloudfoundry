@@ -94,7 +94,7 @@ import org.springframework.core.io.Resource;
  * @author Michael Minella
  * @author Ben Hale
  */
-public class CloudFoundryTaskLauncherTests {
+public class CloudFoundry2620AndEarlierTaskLauncherTests {
 
 	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
 
@@ -110,7 +110,7 @@ public class CloudFoundryTaskLauncherTests {
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private InputStream inputStream;
 
-	private CloudFoundryTaskLauncher launcher;
+	private CloudFoundry2620AndEarlierTaskLauncher launcher;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private CloudFoundryOperations operations;
@@ -234,7 +234,7 @@ public class CloudFoundryTaskLauncherTests {
 					.build())
 				.id("test-droplet-id")
 				.build())
-			);
+		);
 
 		givenRequestListServiceInstances(Flux.empty());
 
@@ -778,7 +778,7 @@ public class CloudFoundryTaskLauncherTests {
 		given(this.resource.getInputStream()).willReturn(this.inputStream);
 
 		this.deploymentProperties.setTaskTimeout(1);
-		this.launcher = new CloudFoundryTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space");
+		this.launcher = new CloudFoundry2620AndEarlierTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space");
 	}
 
 	@Test

@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 /**
- * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
+ * Runs integration tests for {@link CloudFoundry2630AndLaterTaskLauncher}, using the production configuration,
  * that may be configured via {@link CloudFoundryConnectionProperties}.
  *
  * Tests are only run if a successful connection can be made at startup.
@@ -44,7 +44,7 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
 
 	@Autowired
-	private CloudFoundryTaskLauncher taskLauncher;
+	private TaskLauncher taskLauncher;
 
 	@Override
 	protected TaskLauncher taskLauncher() {

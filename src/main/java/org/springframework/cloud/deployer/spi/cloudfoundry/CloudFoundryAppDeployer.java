@@ -53,16 +53,15 @@ import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.util.StringUtils;
+import org.yaml.snakeyaml.Yaml;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -75,7 +74,7 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryTaskLauncher.class);
+	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryAppDeployer.class);
 
 	private final AppNameGenerator applicationNameGenerator;
 
@@ -98,11 +97,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		String deploymentId = deploymentId(request);
 
 		getStatus(deploymentId)
-				.doOnNext(status -> assertApplicationDoesNotExist(deploymentId, status))
-				// Need to block here to be able to throw exception early
-				.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
-		Mono.empty()
-			.then(pushApplication(deploymentId, request))
+			.doOnNext(status -> assertApplicationDoesNotExist(deploymentId, status))
+			// Need to block here to be able to throw exception early
+			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+
+		pushApplication(deploymentId, request)
 			.then(setEnvironmentVariables(deploymentId, getEnvironmentVariables(deploymentId, request)))
 			.then(bindServices(deploymentId, request))
 			.then(startApplication(deploymentId))

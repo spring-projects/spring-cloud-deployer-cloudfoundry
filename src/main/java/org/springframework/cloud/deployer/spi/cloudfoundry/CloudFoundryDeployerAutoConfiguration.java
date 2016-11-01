@@ -18,17 +18,20 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
+import java.time.Duration;
+
+import com.github.zafarkhaja.semver.Version;
 import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.v2.info.GetInfoRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
 import org.cloudfoundry.reactor.ConnectionContext;
 import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
-import org.cloudfoundry.reactor.doppler.ReactorDopplerClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
-import org.cloudfoundry.reactor.uaa.ReactorUaaClient;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -50,6 +53,10 @@ import org.springframework.core.Ordered;
 @EnableConfigurationProperties
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 public class CloudFoundryDeployerAutoConfiguration {
+
+	private static final Version CF_TASKS_INFLECTION_POINT = Version.forIntegers(2, 63, 0);
+
+	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryDeployerAutoConfiguration.class);
 
 	@Bean
 	@ConditionalOnMissingBean(name = "appDeploymentProperties")
@@ -128,7 +135,19 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(TaskLauncher.class)
 	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties, CloudFoundryOperations operations) {
-		return new CloudFoundryTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
+		return client.info()
+			.get(GetInfoRequest.builder()
+				.build())
+			.map(response -> Version.valueOf(response.getApiVersion()))
+			.doOnNext(version -> logger.info("Connecting to Cloud Foundry with API Version {}", version))
+			.map(version -> {
+				if (version.greaterThanOrEqualTo(CF_TASKS_INFLECTION_POINT)) {
+					return new CloudFoundry2630AndLaterTaskLauncher(client, taskDeploymentProperties(), operations);
+				} else {
+					return new CloudFoundry2620AndEarlierTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
+				}
+			})
+			.block(Duration.ofSeconds(taskDeploymentProperties().getTaskTimeout()));
 	}
 
 	@Bean
@@ -136,4 +155,5 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public DurationConverter durationConverter() {
 		return new DurationConverter();
 	}
+
 }
