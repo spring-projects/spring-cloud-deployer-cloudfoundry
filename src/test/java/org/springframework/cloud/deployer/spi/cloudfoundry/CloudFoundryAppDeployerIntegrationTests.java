@@ -19,16 +19,15 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.IntegrationTest;
-import org.springframework.boot.test.SpringApplicationConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
 import org.springframework.cloud.deployer.spi.test.Timeout;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 /**
  * Integration tests for CloudFoundryAppDeployer.
@@ -36,8 +35,8 @@ import org.springframework.context.annotation.Configuration;
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-@SpringApplicationConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
-@IntegrationTest(value = {"spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false", "server.port=-1"})
+@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.NONE,
+	properties = {"spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false"})
 public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
 
 	@ClassRule
@@ -97,8 +96,7 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	@Configuration
 	@EnableAutoConfiguration
 	@EnableConfigurationProperties
+	@Import(MavenConfiguration.class)
 	public static class Config {
-
-
 	}
 }
