@@ -66,10 +66,7 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	@Configuration
 	@EnableAutoConfiguration
 	@EnableConfigurationProperties
-	@Import(MavenConfiguration.class)
 	public static class Config {
-
-
 
 	}
 

@@ -1,7 +1,6 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
-import java.util.function.BiFunction;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.CloudFoundryException;
@@ -11,11 +10,12 @@ import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import reactor.core.publisher.Mono;
 
 abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
 
@@ -100,4 +100,13 @@ abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
 				.build());
 	}
 
+	@Override
+	public void cleanup(String id) {
+
+	}
+
+	@Override
+	public void destroy(String appName) {
+
+	}
 }
