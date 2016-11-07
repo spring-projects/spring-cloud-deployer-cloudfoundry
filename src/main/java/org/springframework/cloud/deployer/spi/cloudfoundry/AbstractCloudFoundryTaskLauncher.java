@@ -108,4 +108,13 @@ abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
 				.build());
 	}
 
+	@Override
+	public void cleanup(String id) {
+
+	}
+
+	@Override
+	public void destroy(String appName) {
+
+	}
 }
