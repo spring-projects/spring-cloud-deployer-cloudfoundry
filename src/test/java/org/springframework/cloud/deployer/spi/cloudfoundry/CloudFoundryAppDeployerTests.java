@@ -60,13 +60,14 @@ import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import reactor.core.publisher.Mono;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.

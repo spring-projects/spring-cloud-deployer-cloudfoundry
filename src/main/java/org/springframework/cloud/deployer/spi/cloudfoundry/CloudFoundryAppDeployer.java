@@ -21,7 +21,6 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
@@ -53,15 +52,16 @@ import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.util.StringUtils;
-import org.yaml.snakeyaml.Yaml;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -273,7 +273,8 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private int memory(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(MEMORY_PROPERTY_KEY))
+		return Optional.ofNullable(request.getDeploymentProperties().get(
+			org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY))
 			.map(Integer::parseInt)
 			.orElse(this.deploymentProperties.getMemory());
 	}
