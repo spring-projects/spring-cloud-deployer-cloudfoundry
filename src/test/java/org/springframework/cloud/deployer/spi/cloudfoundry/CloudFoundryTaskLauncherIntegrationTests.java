@@ -19,13 +19,14 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.test.AbstractTaskLauncherIntegrationTests;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ContextConfiguration;
 
 /**
  * Runs integration tests for {@link CloudFoundry2630AndLaterTaskLauncher}, using the production configuration,
@@ -38,6 +39,7 @@ import org.springframework.context.annotation.Import;
  * @author Michael Minella
  * @author Ben Hale
  */
+@ContextConfiguration(classes=CloudFoundryTaskLauncherIntegrationTests.Config.class)
 public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLauncherIntegrationTests {
 
 	@ClassRule
