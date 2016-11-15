@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import org.junit.After;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -51,6 +52,16 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	@Override
 	protected TaskLauncher taskLauncher() {
 		return taskLauncher;
+	}
+
+
+	/*
+	 * Allow for a small pause so that each each TL.destroy() at the end of tests actually completes,
+	 * as this is asynchronous.
+	 */
+	@After
+	public void pause() throws InterruptedException {
+		Thread.sleep(500);
 	}
 
 	@Test

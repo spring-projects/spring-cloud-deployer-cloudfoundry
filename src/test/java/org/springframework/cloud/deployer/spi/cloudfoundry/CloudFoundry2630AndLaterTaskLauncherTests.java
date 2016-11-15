@@ -44,6 +44,7 @@ import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.Applications;
+import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
@@ -58,14 +59,15 @@ import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * @author Michael Minella
@@ -695,6 +697,22 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 				.build())));
 
 		this.launcher.status("test-task-id");
+	}
+
+	@Test
+	public void testDestroy() {
+		givenRequestDeleteApplication("test-application");
+
+		this.launcher.destroy("test-application");
+	}
+
+	private void givenRequestDeleteApplication(String appName) {
+		given(this.operations.applications()
+			.delete(DeleteApplicationRequest.builder()
+				.name(appName)
+				.deleteRoutes(true)
+				.build()))
+			.willReturn(Mono.empty());
 	}
 
 	private void givenRequestBindService(String applicationName, String serviceInstanceName, Mono<Void> response) {

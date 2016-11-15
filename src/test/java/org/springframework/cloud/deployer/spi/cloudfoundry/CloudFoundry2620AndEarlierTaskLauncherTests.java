@@ -37,6 +37,7 @@ import org.cloudfoundry.client.v3.applications.ApplicationResource;
 import org.cloudfoundry.client.v3.applications.ApplicationsV3;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
 import org.cloudfoundry.client.v3.applications.CreateApplicationResponse;
+import org.cloudfoundry.client.v3.applications.DeleteApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsResponse;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
@@ -59,7 +60,11 @@ import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
 import org.cloudfoundry.client.v3.packages.UploadPackageResponse;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingResponse;
+import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
+import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
+import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsResponse;
 import org.cloudfoundry.client.v3.servicebindings.Relationships;
+import org.cloudfoundry.client.v3.servicebindings.ServiceBindingResource;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingsV3;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
@@ -805,6 +810,46 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 		this.launcher.status("test-task-id");
 	}
 
+	@Test
+	public void testDestroyEvenWithBoundServices() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(ApplicationResource.builder()
+				.id("test-application-id")
+				.build())
+			.build()));
+
+		givenRequestListServiceBindings("test-application-id", Mono.just(ListServiceBindingsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(1)
+				.build())
+			.resource(ServiceBindingResource.builder()
+				.id("test-service-binding-id")
+				.build())
+			.build()
+		));
+
+		givenRequestDeleteServiceBinding("test-service-binding-id");
+		givenRequestDeleteApplication("test-application-id");
+
+		this.launcher.destroy("test-application");
+		verifyRequestDeleteServiceBinding("test-service-binding-id");
+	}
+
+	@Test
+	public void testDestroyInexistentApp() {
+		givenRequestListApplications("test-application", Mono.just(ListApplicationsResponse.builder()
+			.pagination(Pagination.builder()
+				.totalResults(0)
+				.build())
+			.resource()
+			.build()));
+
+		this.launcher.destroy("test-application");
+	}
+
 	private void givenRequestCancelTask(String taskId, Mono<CancelTaskResponse> response) {
 		given(this.client.tasks()
 			.cancel(CancelTaskRequest.builder()
@@ -926,6 +971,31 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.willReturn(response);
 	}
 
+	private void givenRequestListServiceBindings(String appId, Mono<ListServiceBindingsResponse> response) {
+		given(this.client.serviceBindingsV3()
+			.list(ListServiceBindingsRequest.builder()
+				.applicationId(appId)
+				.page(1)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestDeleteServiceBinding(String sbId) {
+		given(this.client.serviceBindingsV3()
+			.delete(DeleteServiceBindingRequest.builder()
+				.serviceBindingId(sbId)
+				.build()))
+			.willReturn(Mono.empty());
+	}
+
+	private void givenRequestDeleteApplication(String appId) {
+		given(this.client.applicationsV3()
+			.delete(DeleteApplicationRequest.builder()
+				.applicationId(appId)
+				.build()))
+			.willReturn(Mono.empty());
+	}
+
 	private void givenRequestStagePackage(int disk, int memory, String packageId, Mono<StagePackageResponse> response) {
 		given(this.client.packages()
 			.stage(StagePackageRequest.builder()
@@ -958,6 +1028,13 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 					.build())
 				.type(ServiceBindingType.APPLICATION)
 				.build());
+	}
+
+	private void verifyRequestDeleteServiceBinding(String serviceBindingId) {
+		verify(this.client.serviceBindingsV3())
+			.delete(DeleteServiceBindingRequest.builder()
+				.serviceBindingId(serviceBindingId)
+			.build());
 	}
 
 }
