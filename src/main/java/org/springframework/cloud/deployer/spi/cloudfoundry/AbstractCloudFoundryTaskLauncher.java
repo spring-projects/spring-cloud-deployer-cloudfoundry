@@ -70,7 +70,9 @@ abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
 
 	protected Mono<TaskStatus> toTaskStatus(Throwable throwable, String id) {
 		if ((throwable instanceof CloudFoundryException)
-			&& ((CloudFoundryException) throwable).getCode() == 10010) {
+			&& (Integer.valueOf(10010).equals(((CloudFoundryException) throwable).getCode())
+		|| (throwable.getCause() != null
+			&& "HTTP request failed with code: 404".equals(throwable.getCause().getMessage())))) {
 			return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
 		} else {
 			return Mono.error(throwable);

@@ -40,6 +40,7 @@ import org.cloudfoundry.client.v3.Relationship;
 import org.cloudfoundry.client.v3.Type;
 import org.cloudfoundry.client.v3.applications.Application;
 import org.cloudfoundry.client.v3.applications.CreateApplicationRequest;
+import org.cloudfoundry.client.v3.applications.DeleteApplicationRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationDropletsRequest;
 import org.cloudfoundry.client.v3.applications.ListApplicationsRequest;
 import org.cloudfoundry.client.v3.droplets.Droplet;
@@ -60,6 +61,8 @@ import org.cloudfoundry.client.v3.packages.UploadPackageRequest;
 import org.cloudfoundry.client.v3.packages.UploadPackageResponse;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingResponse;
+import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
+import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
 import org.cloudfoundry.client.v3.servicebindings.Relationships;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
@@ -72,13 +75,14 @@ import org.cloudfoundry.util.DelayUtils;
 import org.cloudfoundry.util.PaginationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.util.StringUtils;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -127,6 +131,31 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 			.doOnSuccess(r -> logger.info("Task {} launch successful", request))
 			.doOnError(t -> logger.error(String.format("Task %s launch failed", request), t))
 			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+	}
+
+	@Override
+	public void destroy(String appName) {
+		getOptionalApplication(appName)
+			.then(this::deleteServiceBindings)
+			.then(application -> requestDeleteApplication(application.getId()))
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.doOnSuccess(v -> {if(v != null) logger.info("Successfully destroyed app {}", appName);})
+			.doOnError(e -> logger.error(String.format("Failed to destroy app %s", appName), e))
+			.subscribe();
+	}
+
+	private Mono<Application> deleteServiceBindings(Application app) {
+		return
+			PaginationUtils.requestClientV3Resources(page -> this.client.serviceBindingsV3().list(
+				ListServiceBindingsRequest.builder()
+					.applicationId(app.getId())
+					.page(page)
+					.build())
+			).flatMap(sbr -> this.client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
+				.serviceBindingId(sbr.getId())
+				.build()))
+				.then()
+			.then(Mono.just(app));
 	}
 
 	private Mono<Void> bindServices(AppDeploymentRequest request, Application application) {
@@ -255,6 +284,14 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 				.build())
 			.cast(Application.class);
 	}
+
+	private Mono<Void> requestDeleteApplication(String appId) {
+		return this.client.applicationsV3()
+			.delete(DeleteApplicationRequest.builder()
+				.applicationId(appId)
+				.build());
+	}
+
 
 	private Mono<CreatePackageResponse> requestCreatePackage(String applicationId) {
 		return this.client.packages()
