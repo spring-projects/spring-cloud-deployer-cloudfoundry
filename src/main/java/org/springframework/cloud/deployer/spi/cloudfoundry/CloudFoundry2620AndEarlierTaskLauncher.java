@@ -64,6 +64,7 @@ import org.cloudfoundry.client.v3.servicebindings.CreateServiceBindingResponse;
 import org.cloudfoundry.client.v3.servicebindings.DeleteServiceBindingRequest;
 import org.cloudfoundry.client.v3.servicebindings.ListServiceBindingsRequest;
 import org.cloudfoundry.client.v3.servicebindings.Relationships;
+import org.cloudfoundry.client.v3.servicebindings.ServiceBindingResource;
 import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
@@ -136,26 +137,30 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 	@Override
 	public void destroy(String appName) {
 		getOptionalApplication(appName)
-			.then(this::deleteServiceBindings)
-			.then(application -> requestDeleteApplication(application.getId()))
+			.doOnSuccess(a -> {if(a == null) logger.info("Did not destroy app {} as it did not exist", appName);})
+			.then(app -> requestListServiceBindings(app.getId())
+				.flatMap(sb -> requestDeleteServiceBinding(sb.getId()))
+				.then(() -> requestDeleteApplication(app.getId()))
+				.doOnSuccess(v -> logger.info("Successfully destroyed app {}", appName))
+				.doOnError(e -> logger.error(String.format("Failed to destroy app %s", appName), e))
+			)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
-			.doOnSuccess(v -> {if(v != null) logger.info("Successfully destroyed app {}", appName);})
-			.doOnError(e -> logger.error(String.format("Failed to destroy app %s", appName), e))
 			.subscribe();
 	}
 
-	private Mono<Application> deleteServiceBindings(Application app) {
-		return
-			PaginationUtils.requestClientV3Resources(page -> this.client.serviceBindingsV3().list(
-				ListServiceBindingsRequest.builder()
-					.applicationId(app.getId())
-					.page(page)
-					.build())
-			).flatMap(sbr -> this.client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
-				.serviceBindingId(sbr.getId())
-				.build()))
-				.then()
-			.then(Mono.just(app));
+	private Mono<Void> requestDeleteServiceBinding(String sbId) {
+		return this.client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
+			.serviceBindingId(sbId)
+			.build());
+	}
+
+	private Flux<ServiceBindingResource> requestListServiceBindings(String appId) {
+		return PaginationUtils.requestClientV3Resources(page -> this.client.serviceBindingsV3().list(
+			ListServiceBindingsRequest.builder()
+				.applicationId(appId)
+				.page(page)
+				.build())
+		);
 	}
 
 	private Mono<Void> bindServices(AppDeploymentRequest request, Application application) {
