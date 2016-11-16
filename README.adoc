@@ -64,11 +64,11 @@ combinations as shown in the table below. The name of the deployed application i
 
 |server
 |true
-|server-unfarming-restabilization-time
+|server-u7r9fhm-time
 
 |<empty string>
 |true
-|unfarming-restabilization-time
+|u7r9fhm-time
 
 |server
 |false
@@ -77,9 +77,3 @@ combinations as shown in the table below. The name of the deployed application i
 |<emtpy string>
 |false
 |time
-
-
-
-
-
-
