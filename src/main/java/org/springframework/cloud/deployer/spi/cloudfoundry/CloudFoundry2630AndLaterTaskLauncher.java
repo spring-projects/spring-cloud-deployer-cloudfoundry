@@ -45,6 +45,7 @@ import org.cloudfoundry.operations.applications.AbstractApplicationSummary;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
+import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
@@ -53,12 +54,13 @@ import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.ServiceInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.util.StringUtils;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.task.TaskLauncher;
+import org.springframework.util.StringUtils;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -103,6 +105,15 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.doOnSuccess(r -> logger.info("Task {} launch successful", request))
 			.doOnError(t -> logger.error(String.format("Task %s launch failed", request), t))
 			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+	}
+
+	@Override
+	public void destroy(String appName) {
+		requestDeleteApplication(appName)
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.doOnSuccess(v -> logger.info("Successfully destroyed app {}", appName))
+			.doOnError(e -> logger.error(String.format("Failed to destroy app %s", appName), e))
+			.subscribe();
 	}
 
 	private Mono<Void> bindServices(String name, AppDeploymentRequest request) {
@@ -257,6 +268,14 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	private Mono<Void> requestStopApplication(String name) {
 		return this.operations.applications()
 			.stop(StopApplicationRequest.builder()
+				.name(name)
+				.build());
+	}
+
+	private Mono<Void> requestDeleteApplication(String name) {
+		return this.operations.applications()
+			.delete(DeleteApplicationRequest.builder()
+				.deleteRoutes(true)
 				.name(name)
 				.build());
 	}
