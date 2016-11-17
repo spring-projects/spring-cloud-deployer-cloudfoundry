@@ -101,9 +101,9 @@ public class CloudFoundryDeploymentProperties {
 	private boolean enableRandomAppNamePrefix = true;
 
 	/**
-	 * Timeout for blocking task launches.
+	 * Timeout for blocking API calls, in seconds.
 	 */
-	private long taskTimeout = 30L;
+	private long apiTimeout = 30L;
 
 	/**
 	 * Flag to indicate whether application properties are fed into SPRING_APPLICATION_JSON or ENVIRONMENT VARIABLES.
@@ -182,12 +182,12 @@ public class CloudFoundryDeploymentProperties {
 		this.appNamePrefix = appNamePrefix;
 	}
 
-	public long getTaskTimeout() {
-		return taskTimeout;
+	public long getApiTimeout() {
+		return apiTimeout;
 	}
 
-	public void setTaskTimeout(long taskTimeout) {
-		this.taskTimeout = taskTimeout;
+	public void setApiTimeout(long apiTimeout) {
+		this.apiTimeout = apiTimeout;
 	}
 
 	public boolean isUseSpringApplicationJson() {

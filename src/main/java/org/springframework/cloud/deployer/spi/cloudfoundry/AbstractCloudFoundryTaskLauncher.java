@@ -46,7 +46,7 @@ abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
 	@Override
 	public void cancel(String id) {
 		requestCancelTask(id)
-			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(r -> logger.info("Task {} cancellation successful", id))
 			.doOnError(t -> logger.error(String.format("Task %s cancellation failed", id), t))
 			.subscribe();
@@ -65,7 +65,7 @@ abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
 			.otherwise(e -> toTaskStatus(e, id))
 			.doOnSuccess(r -> logger.info("Task {} status successful", id))
 			.doOnError(t -> logger.error(String.format("Task %s status failed", id), t))
-			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 
 	private Mono<TaskStatus> toTaskStatus(Throwable throwable, String id) {

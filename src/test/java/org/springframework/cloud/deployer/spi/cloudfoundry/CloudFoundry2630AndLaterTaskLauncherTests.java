@@ -671,7 +671,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		given(this.operations.services()).willReturn(this.services);
 		given(this.operations.spaces()).willReturn(this.spaces);
 
-		this.deploymentProperties.setTaskTimeout(1);
+		this.deploymentProperties.setApiTimeout(1);
 		this.launcher = new CloudFoundry2630AndLaterTaskLauncher(this.client, this.deploymentProperties, this.operations);
 	}
 

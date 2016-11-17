@@ -99,13 +99,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		getStatus(deploymentId)
 			.doOnNext(status -> assertApplicationDoesNotExist(deploymentId, status))
 			// Need to block here to be able to throw exception early
-			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 
 		pushApplication(deploymentId, request)
 			.then(setEnvironmentVariables(deploymentId, getEnvironmentVariables(deploymentId, request)))
 			.then(bindServices(deploymentId, request))
 			.then(startApplication(deploymentId))
-			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully deployed {}", deploymentId))
 			.doOnError(e -> logger.error(String.format("Failed to deploy %s", deploymentId), e))
 			.subscribe();
@@ -118,13 +118,13 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		return getStatus(id)
 			.doOnSuccess(v -> logger.info("Successfully computed status [{}] for {}", v, id))
 			.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
-			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 
 	@Override
 	public void undeploy(String id) {
 		requestDeleteApplication(id)
-			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
 			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e))
 			.subscribe();

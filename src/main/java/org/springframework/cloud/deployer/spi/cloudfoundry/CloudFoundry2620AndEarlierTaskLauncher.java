@@ -131,7 +131,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 			.then(application -> launchTask(application.getId(), request))
 			.doOnSuccess(r -> logger.info("Task {} launch successful", request))
 			.doOnError(t -> logger.error(String.format("Task %s launch failed", request), t))
-			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 
 	@Override
@@ -144,7 +144,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 				.doOnSuccess(v -> logger.info("Successfully destroyed app {}", appName))
 				.doOnError(e -> logger.error(String.format("Failed to destroy app %s", appName), e))
 			)
-			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.subscribe();
 	}
 

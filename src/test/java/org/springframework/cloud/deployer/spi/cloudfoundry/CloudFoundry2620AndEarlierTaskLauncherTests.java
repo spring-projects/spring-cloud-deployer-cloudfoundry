@@ -782,7 +782,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 
 		given(this.resource.getInputStream()).willReturn(this.inputStream);
 
-		this.deploymentProperties.setTaskTimeout(1);
+		this.deploymentProperties.setApiTimeout(1);
 		this.launcher = new CloudFoundry2620AndEarlierTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space");
 	}
 

@@ -104,13 +104,13 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.then(application -> launchTask(application, request))
 			.doOnSuccess(r -> logger.info("Task {} launch successful", request))
 			.doOnError(t -> logger.error(String.format("Task %s launch failed", request), t))
-			.block(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()));
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 
 	@Override
 	public void destroy(String appName) {
 		requestDeleteApplication(appName)
-			.timeout(Duration.ofSeconds(this.deploymentProperties.getTaskTimeout()))
+			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully destroyed app {}", appName))
 			.doOnError(e -> logger.error(String.format("Failed to destroy app %s", appName), e))
 			.subscribe();

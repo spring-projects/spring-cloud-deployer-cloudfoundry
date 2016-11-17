@@ -147,7 +147,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 					return new CloudFoundry2620AndEarlierTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
 				}
 			})
-			.block(Duration.ofSeconds(taskDeploymentProperties().getTaskTimeout()));
+			.block(Duration.ofSeconds(taskDeploymentProperties().getApiTimeout()));
 	}
 
 	@Bean
