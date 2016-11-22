@@ -16,14 +16,11 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
 import java.io.IOException;
@@ -34,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,7 +66,7 @@ import org.springframework.util.StringUtils;
  * @author Greg Turnquist
  * @author Ben Hale
  */
-public class CloudFoundryAppDeployer implements AppDeployer {
+public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements AppDeployer {
 
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -80,13 +76,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private final CloudFoundryClient client;
 
-	private final CloudFoundryDeploymentProperties deploymentProperties;
-
 	private final CloudFoundryOperations operations;
 
 	public CloudFoundryAppDeployer(AppNameGenerator applicationNameGenerator, CloudFoundryClient client, CloudFoundryDeploymentProperties deploymentProperties,
 								   CloudFoundryOperations operations) {
-		this.deploymentProperties = deploymentProperties;
+		super(deploymentProperties);
 		this.operations = operations;
 		this.client = client;
 		this.applicationNameGenerator = applicationNameGenerator;
@@ -138,16 +132,11 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 	}
 
 	private Mono<Void> bindServices(String deploymentId, AppDeploymentRequest request) {
-		return servicesToBind(request)
+		return Flux.fromIterable(servicesToBind(request))
 			.flatMap(service -> requestBindService(deploymentId, service)
 				.doOnSuccess(v -> logger.debug("Binding service {} to app {}", service, deploymentId))
 				.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, deploymentId), e)))
 			.then();
-	}
-
-	private String buildpack(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY))
-			.orElse(this.deploymentProperties.getBuildpack());
 	}
 
 	private AppStatus createAppStatus(ApplicationDetail applicationDetail, String deploymentId) {
@@ -180,12 +169,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		String appName = String.format("%s%s", prefix, request.getDefinition().getName());
 
 		return this.applicationNameGenerator.generateAppName(appName);
-	}
-
-	private int diskQuota(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(DISK_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getDisk());
 	}
 
 	private String domain(AppDeploymentRequest request) {
@@ -272,13 +255,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 			.orElse(this.deploymentProperties.getInstances());
 	}
 
-	private int memory(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(
-			org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getMemory());
-	}
-
 	private Mono<Void> pushApplication(String deploymentId, AppDeploymentRequest request) {
 		return requestPushApplication(PushApplicationRequest.builder()
 			.application(getApplication(request))
@@ -345,14 +321,6 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 
 	private String routePath(AppDeploymentRequest request) {
 		return request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
-	}
-
-	private Flux<String> servicesToBind(AppDeploymentRequest request) {
-		return Flux.fromStream(Stream
-			.concat(
-				this.deploymentProperties.getServices().stream(),
-				StringUtils.commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream())
-			.distinct());
 	}
 
 	private Mono<UpdateApplicationResponse> setEnvironmentVariables(String deploymentId, Map<String, String> environmentVariables) {

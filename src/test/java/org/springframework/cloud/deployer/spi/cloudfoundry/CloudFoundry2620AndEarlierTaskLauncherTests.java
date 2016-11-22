@@ -93,6 +93,7 @@ import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.core.io.Resource;
 
 /**
@@ -903,13 +904,13 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.willReturn(response);
 	}
 
-	private void givenRequestCreateTask(String applicationId, String command, String dropletId, int memory, String name, Mono<CreateTaskResponse> response) {
+	private void givenRequestCreateTask(String applicationId, String command, String dropletId, String memory, String name, Mono<CreateTaskResponse> response) {
 		given(this.client.tasks()
 			.create(CreateTaskRequest.builder()
 				.applicationId(applicationId)
 				.command(command)
 				.dropletId(dropletId)
-				.memoryInMb(memory)
+				.memoryInMb((int) ByteSizeUtils.parseToMebibytes(memory))
 				.name(name)
 				.build()))
 			.willReturn(response);
@@ -996,12 +997,12 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.willReturn(Mono.empty());
 	}
 
-	private void givenRequestStagePackage(int disk, int memory, String packageId, Mono<StagePackageResponse> response) {
+	private void givenRequestStagePackage(String disk, String memory, String packageId, Mono<StagePackageResponse> response) {
 		given(this.client.packages()
 			.stage(StagePackageRequest.builder()
 				.packageId(packageId)
-				.stagingDiskInMb(disk)
-				.stagingMemoryInMb(memory)
+				.stagingDiskInMb((int) ByteSizeUtils.parseToMebibytes(disk))
+				.stagingMemoryInMb((int) ByteSizeUtils.parseToMebibytes(memory))
 				.build()))
 			.willReturn(response);
 	}

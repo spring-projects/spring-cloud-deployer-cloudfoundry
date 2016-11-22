@@ -16,17 +16,11 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -83,7 +77,6 @@ import reactor.core.publisher.Mono;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.util.StringUtils;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -164,7 +157,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 	}
 
 	private Mono<Void> bindServices(AppDeploymentRequest request, Application application) {
-		Set<String> servicesToBind = getServicesToBind(request);
+		Set<String> servicesToBind = servicesToBind(request);
 
 		return requestListServiceInstances()
 			.filter(instance -> servicesToBind.contains(instance.getName()))
@@ -175,11 +168,11 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 
 	private Mono<Application> createApplication(AppDeploymentRequest request, String spaceId) {
 		AppDefinition definition = request.getDefinition();
-		return requestCreateApplication(this.deploymentProperties.getBuildpack(), getEnvironmentVariables(definition.getProperties()), definition.getName(), spaceId);
+		return requestCreateApplication(buildpack(request), getEnvironmentVariables(definition.getProperties()), definition.getName(), spaceId);
 	}
 
 	private Mono<String> createDroplet(String packageId, AppDeploymentRequest request) {
-		return requestStagePackage(getDisk(request), getMemory(request), packageId)
+		return requestStagePackage(diskQuota(request), memory(request), packageId)
 			.map(Droplet::getId);
 	}
 
@@ -189,7 +182,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 	}
 
 	private Mono<String> createTask(String applicationId, Droplet droplet, AppDeploymentRequest request) {
-		return requestCreateTask(applicationId, getCommand(droplet, request), droplet.getId(), this.deploymentProperties.getMemory(), request.getDefinition().getName())
+		return requestCreateTask(applicationId, getCommand(droplet, request), droplet.getId(), memory(request), request.getDefinition().getName())
 			.map(CreateTaskResponse::getId);
 	}
 
@@ -215,12 +208,6 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 			.collect(Collectors.joining(" "));
 	}
 
-	private int getDisk(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(DISK_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getDisk());
-	}
-
 	private Mono<GetDropletResponse> getDroplet(String applicationId) {
 		return requestListDroplets(applicationId)
 			.single()
@@ -237,12 +224,6 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 		}
 	}
 
-	private int getMemory(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(MEMORY_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getMemory());
-	}
-
 	private Mono<Application> getOptionalApplication(String name) {
 		return requestListApplications(name)
 			.singleOrEmpty();
@@ -251,13 +232,6 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 	private Mono<Application> getOrDeployApplication(AppDeploymentRequest request) {
 		return getOptionalApplication(request.getDefinition().getName())
 			.otherwiseIfEmpty(deployApplication(request));
-	}
-
-	private Set<String> getServicesToBind(AppDeploymentRequest request) {
-		Set<String> services = new HashSet<>();
-		services.addAll(this.deploymentProperties.getServices());
-		services.addAll(StringUtils.commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
-		return services;
 	}
 
 	private Mono<String> getSpaceId() {

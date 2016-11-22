@@ -24,11 +24,9 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 
@@ -62,6 +60,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Mono;
 
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
@@ -307,12 +306,12 @@ public class CloudFoundryAppDeployerTests {
 			resource,
 			FluentMap.<String, String>builder()
 				.entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
-				.entry(DISK_PROPERTY_KEY, "0")
+				.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
 				.entry(DOMAIN_PROPERTY, "test-domain")
 				.entry(HEALTHCHECK_PROPERTY_KEY, "none")
 				.entry(HOST_PROPERTY, "test-host")
 				.entry(COUNT_PROPERTY_KEY, "0")
-				.entry(MEMORY_PROPERTY_KEY, "0")
+				.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
 				.entry(NO_ROUTE_PROPERTY, "false")
 				.entry(ROUTE_PATH_PROPERTY, "test-route-path")
 				.build()));
@@ -348,12 +347,12 @@ public class CloudFoundryAppDeployerTests {
 				.build()));
 
 		this.deploymentProperties.setBuildpack("test-buildpack");
-		this.deploymentProperties.setDisk(0);
+		this.deploymentProperties.setDisk("0");
 		this.deploymentProperties.setDomain("test-domain");
 		this.deploymentProperties.setHealthCheck(ApplicationHealthCheck.NONE);
 		this.deploymentProperties.setHost("test-host");
 		this.deploymentProperties.setInstances(0);
-		this.deploymentProperties.setMemory(0);
+		this.deploymentProperties.setMemory("0");
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())

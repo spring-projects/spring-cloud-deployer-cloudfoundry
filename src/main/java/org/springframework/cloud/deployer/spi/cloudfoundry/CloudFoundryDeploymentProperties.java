@@ -34,25 +34,21 @@ import org.springframework.beans.factory.annotation.Value;
  */
 public class CloudFoundryDeploymentProperties {
 
-	public static final String MEMORY_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".memory";
+	static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
 
-	public static final String DISK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".disk";
+	static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
-	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
+	static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
-	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
+	static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
 
-	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
+	static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
 
-	public static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
+	static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
 
-	public static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
+	static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
 
-	public static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
-
-	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
-
-	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
+	static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
@@ -76,14 +72,14 @@ public class CloudFoundryDeploymentProperties {
 	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git";
 
 	/**
-	 * The amount of memory (MB) to allocate, if not overridden per-app.
+	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
 	 */
-	private int memory = 1024;
+	private String memory = "1024m";
 
 	/**
-	 * The amount of disk space (MB) to allocate, if not overridden per-app.
+	 * The amount of disk space to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
 	 */
-	private int disk = 1024;
+	private String disk = "1024m";
 
 	/**
 	 * The type of health check to perform on deployed application, if not overridden per-app.
@@ -142,19 +138,19 @@ public class CloudFoundryDeploymentProperties {
 		this.buildpack = buildpack;
 	}
 
-	public int getMemory() {
+	public String getMemory() {
 		return memory;
 	}
 
-	public void setMemory(int memory) {
+	public void setMemory(String memory) {
 		this.memory = memory;
 	}
 
-	public int getDisk() {
+	public String getDisk() {
 		return disk;
 	}
 
-	public void setDisk(int disk) {
+	public void setDisk(String disk) {
 		this.disk = disk;
 	}
 

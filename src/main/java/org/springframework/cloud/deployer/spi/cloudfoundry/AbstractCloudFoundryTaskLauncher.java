@@ -25,17 +25,15 @@ import org.springframework.cloud.deployer.spi.task.TaskStatus;
  * Does not override the default no-op implementation for {@link TaskLauncher#cleanup(String)}
  * and {@link TaskLauncher#destroy(String)}.
  */
-abstract class AbstractCloudFoundryTaskLauncher implements TaskLauncher {
+abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDeployer implements TaskLauncher {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractCloudFoundryTaskLauncher.class);
 
 	private final CloudFoundryClient client;
 
-	private final CloudFoundryDeploymentProperties deploymentProperties;
-
 	AbstractCloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryDeploymentProperties deploymentProperties) {
+		super(deploymentProperties);
 		this.client = client;
-		this.deploymentProperties = deploymentProperties;
 	}
 
 	/**

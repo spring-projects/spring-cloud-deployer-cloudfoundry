@@ -16,18 +16,11 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DISK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.MEMORY_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,7 +53,6 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.util.StringUtils;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -125,11 +117,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.then();
 	}
 
-	private String buildpack(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY))
-			.orElse(this.deploymentProperties.getBuildpack());
-	}
-
 	private Mono<AbstractApplicationSummary> deployApplication(AppDeploymentRequest request) {
 		String name = request.getDefinition().getName();
 
@@ -140,12 +127,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 				.then(startApplication(name))
 				.then(stopApplication(name))
 				.then(Mono.just(application)));
-	}
-
-	private int diskQuota(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(DISK_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getDisk());
 	}
 
 	private Path getApplication(AppDeploymentRequest request) {
@@ -187,12 +168,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	private Mono<String> launchTask(SummaryApplicationResponse application, AppDeploymentRequest request) {
 		return requestCreateTask(application.getId(), getCommand(application, request), memory(request), request.getDefinition().getName())
 			.map(CreateTaskResponse::getId);
-	}
-
-	private int memory(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(MEMORY_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getMemory());
 	}
 
 	private Mono<Void> pushApplication(String name, AppDeploymentRequest request) {
@@ -286,13 +261,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 				.applicationId(applicationId)
 				.environmentJsons(environmentVariables)
 				.build());
-	}
-
-	private Set<String> servicesToBind(AppDeploymentRequest request) {
-		Set<String> services = new HashSet<>();
-		services.addAll(this.deploymentProperties.getServices());
-		services.addAll(StringUtils.commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
-		return services;
 	}
 
 	private Mono<UpdateApplicationResponse> setEnvironmentVariables(String applicationId, Map<String, String> environmentVariables) {
