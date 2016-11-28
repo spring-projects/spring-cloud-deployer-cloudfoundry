@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.net.URL;
 
 import javax.validation.constraints.NotNull;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
