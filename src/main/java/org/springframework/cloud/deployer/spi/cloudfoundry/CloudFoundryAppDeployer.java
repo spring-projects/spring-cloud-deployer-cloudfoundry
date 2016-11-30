@@ -236,6 +236,10 @@ public class CloudFoundryAppDeployer implements AppDeployer {
 		Map<String, String> envVariables = new HashMap<>();
 		envVariables.putAll(getApplicationProperties(deploymentId, request));
 		envVariables.putAll(getCommandLineArguments(request));
+		String group = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
+		if (group != null) {
+			envVariables.put("SPRING_CLOUD_APPLICATION_GROUP", group);
+		}
 		return envVariables;
 	}
 

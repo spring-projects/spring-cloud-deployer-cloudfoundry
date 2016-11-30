@@ -420,7 +420,12 @@ public class CloudFoundryAppDeployerTests {
 			.noStart(true)
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-group-test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+		givenRequestUpdateApplication("test-group-test-application-id",
+			FluentMap.<String, String>builder()
+				.entry("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
+				.entry("SPRING_APPLICATION_JSON", "{}")
+				.build(),
+			Mono.empty());
 
 		givenRequestBindService("test-group-test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-group-test-application-id", "test-service-2", Mono.empty());
@@ -434,7 +439,12 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-group-test-application-id"));
 
-		verifyRequestUpdateApplication("test-group-test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+		verifyRequestUpdateApplication("test-group-test-application-id",
+			FluentMap.<String, String>builder()
+				.entry("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
+				.entry("SPRING_APPLICATION_JSON", "{}")
+				.build()
+		);
 
 		verifyRequestBindService("test-group-test-application-id", "test-service-1");
 		verifyRequestBindService("test-group-test-application-id", "test-service-2");
