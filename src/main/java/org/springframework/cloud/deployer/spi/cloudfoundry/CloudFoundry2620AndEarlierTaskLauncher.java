@@ -17,7 +17,7 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
@@ -194,9 +194,9 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 				.then(Mono.just(application)));
 	}
 
-	private InputStream getBits(AppDeploymentRequest request) {
+	private Path getBits(AppDeploymentRequest request) {
 		try {
-			return request.getResource().getInputStream();
+			return request.getResource().getFile().toPath();
 		} catch (IOException e) {
 			throw Exceptions.propagate(e);
 		}
@@ -360,7 +360,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 				.build());
 	}
 
-	private Mono<UploadPackageResponse> requestUploadPackage(InputStream bits, String packageId) {
+	private Mono<UploadPackageResponse> requestUploadPackage(Path bits, String packageId) {
 		return this.client.packages()
 			.upload(UploadPackageRequest.builder()
 				.bits(bits)

@@ -21,8 +21,9 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
@@ -114,7 +115,10 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 	private Droplets droplets;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
-	private InputStream inputStream;
+	private File file;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Path path;
 
 	private CloudFoundry2620AndEarlierTaskLauncher launcher;
 
@@ -216,7 +220,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -327,7 +331,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -389,7 +393,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -458,7 +462,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -494,7 +498,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.error(new UnsupportedOperationException()));
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.error(new UnsupportedOperationException()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
 		AppDeploymentRequest request = new AppDeploymentRequest(definition, this.resource, Collections.emptyMap());
@@ -526,7 +530,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -598,7 +602,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -688,7 +692,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.id("test-package-id")
 			.build()));
 
-		givenRequestUploadPackage(this.inputStream, "test-package-id", Mono.just(UploadPackageResponse.builder()
+		givenRequestUploadPackage(this.path, "test-package-id", Mono.just(UploadPackageResponse.builder()
 			.id("test-package-id")
 			.build()));
 
@@ -781,7 +785,8 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 		given(this.operations.services()).willReturn(this.services);
 		given(this.operations.spaces()).willReturn(this.spaces);
 
-		given(this.resource.getInputStream()).willReturn(this.inputStream);
+		given(this.resource.getFile()).willReturn(this.file);
+		given(this.file.toPath()).willReturn(this.path);
 
 		this.deploymentProperties.setApiTimeout(1);
 		this.launcher = new CloudFoundry2620AndEarlierTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space");
@@ -1007,7 +1012,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.willReturn(response);
 	}
 
-	private void givenRequestUploadPackage(InputStream bits, String packageId, Mono<UploadPackageResponse> response) {
+	private void givenRequestUploadPackage(Path bits, String packageId, Mono<UploadPackageResponse> response) {
 		given(this.client.packages()
 			.upload(UploadPackageRequest.builder()
 				.bits(bits)
