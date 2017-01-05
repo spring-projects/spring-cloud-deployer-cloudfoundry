@@ -18,20 +18,19 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
 
+import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.client.CloudFoundryClient;
-import org.cloudfoundry.client.v2.CloudFoundryException;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import reactor.core.publisher.Mono;
 
 /**
  * Abstract class to provide base functionality for launching Tasks on Cloud Foundry.
@@ -42,6 +41,8 @@ import org.springframework.cloud.deployer.spi.task.TaskStatus;
  * and {@link TaskLauncher#destroy(String)}.
  */
 abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDeployer implements TaskLauncher {
+
+	private static final int NOT_FOUND = 404;
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractCloudFoundryTaskLauncher.class);
 
@@ -76,23 +77,11 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 	public TaskStatus status(String id) {
 		return requestGetTask(id)
 			.map(this::toTaskStatus)
-			.otherwise(e -> toTaskStatus(e, id))
+			.otherwiseReturn(t -> t instanceof AbstractCloudFoundryException && ((AbstractCloudFoundryException) t).getStatusCode() == NOT_FOUND,
+				new TaskStatus(id, LaunchState.unknown, null))
 			.doOnSuccess(r -> logger.info("Task {} status successful", id))
 			.doOnError(t -> logger.error(String.format("Task %s status failed", id), t))
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
-	}
-
-	private Mono<TaskStatus> toTaskStatus(Throwable throwable, String id) {
-		if (!(throwable instanceof CloudFoundryException)) {
-			return Mono.error(throwable);
-		}
-		boolean isHttpNotFoundError = Integer.valueOf(10010).equals(((CloudFoundryException) throwable).getCode())
-			|| throwable.getCause() != null && "HTTP request failed with code: 404".equals(throwable.getCause().getMessage());
-		if (isHttpNotFoundError) {
-			return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
-		} else {
-			return Mono.error(throwable);
-		}
 	}
 
 	protected TaskStatus toTaskStatus(GetTaskResponse response) {
