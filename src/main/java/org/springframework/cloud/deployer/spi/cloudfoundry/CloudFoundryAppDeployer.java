@@ -46,6 +46,7 @@ import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -109,10 +110,16 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	@Override
 	public AppStatus status(String id) {
-		return getStatus(id)
-			.doOnSuccess(v -> logger.info("Successfully computed status [{}] for {}", v, id))
-			.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
-			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+		try {
+			return getStatus(id)
+				.doOnSuccess(v -> logger.info("Successfully computed status [{}] for {}", v, id))
+				.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
+				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+		}
+		catch (Exception timeoutDueToBlock) {
+			logger.error("Caught exception while querying for status of {}", id, timeoutDueToBlock);
+			return createErrorAppStatus(id);
+		}
 	}
 
 	@Override
@@ -158,6 +165,12 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	private AppStatus createEmptyAppStatus(String deploymentId) {
 		return AppStatus.of(deploymentId)
+			.build();
+	}
+
+	private AppStatus createErrorAppStatus(String deploymentId) {
+		return AppStatus.of(deploymentId)
+			.generalState(DeploymentState.error)
 			.build();
 	}
 
@@ -239,7 +252,10 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<AppStatus> getStatus(String deploymentId) {
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
-			.otherwiseReturn(createEmptyAppStatus(deploymentId));
+			.otherwiseReturn(IllegalArgumentException.class, createEmptyAppStatus(deploymentId))
+			.retryWhen(DelayUtils.exponentialBackOffError(Duration.ofMillis(50), Duration.ofMillis(shortApiCallsTimeoutMs/2), Duration.ofMillis(shortApiCallsTimeoutMs)))
+			.otherwiseReturn(createErrorAppStatus(deploymentId));
+
 	}
 
 	private ApplicationHealthCheck healthCheck(AppDeploymentRequest request) {

@@ -18,6 +18,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -36,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
@@ -53,6 +55,7 @@ import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.util.FluentMap;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;
@@ -616,9 +619,40 @@ public class CloudFoundryAppDeployerTests {
 
 		try {
 			this.deployer.status("test-application-id").getState();
+			Assert.fail();
 		} catch (IllegalStateException e) {
 			assertThat(e.getMessage(), containsString("Unsupported CF state"));
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void statusWithFailingCAPICallRetries() throws Exception{
+		AtomicInteger i = new AtomicInteger();
+		Mono<ApplicationDetail> m = Mono.create(s -> {
+			if (i.incrementAndGet() == 2) {
+				s.success(ApplicationDetail.builder()
+					.diskQuota(0)
+					.id("test-application-id")
+					.instances(1)
+					.memoryLimit(0)
+					.name("test-application")
+					.requestedState("RUNNING")
+					.runningInstances(1)
+					.stack("test-stack")
+					.instanceDetail(InstanceDetail.builder()
+						.state("UNKNOWN")
+						.build())
+					.build());
+			}
+			else {
+				s.error(new RuntimeException("Simulated Server Side error"));
+			}
+		});
+		givenRequestGetApplication("test-application-id", m);
+
+		DeploymentState state = this.deployer.status("test-application-id").getState();
+		assertThat(state, is(DeploymentState.unknown));
 	}
 
 	@Test
