@@ -108,6 +108,11 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.subscribe();
 	}
 
+	@Override
+	public void cleanup(String s) {
+
+	}
+
 	private Mono<Void> bindServices(String name, AppDeploymentRequest request) {
 		Set<String> servicesToBind = servicesToBind(request);
 

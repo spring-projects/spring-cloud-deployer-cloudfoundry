@@ -141,6 +141,11 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 			.subscribe();
 	}
 
+	@Override
+	public void cleanup(String s) {
+
+	}
+
 	private Mono<Void> requestDeleteServiceBinding(String sbId) {
 		return this.client.serviceBindingsV3().delete(DeleteServiceBindingRequest.builder()
 			.serviceBindingId(sbId)
