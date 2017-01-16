@@ -18,7 +18,6 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
 
-import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
@@ -26,11 +25,12 @@ import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import reactor.core.publisher.Mono;
 
 /**
  * Abstract class to provide base functionality for launching Tasks on Cloud Foundry.
@@ -41,8 +41,6 @@ import reactor.core.publisher.Mono;
  * and {@link TaskLauncher#destroy(String)}.
  */
 abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDeployer implements TaskLauncher {
-
-	private static final int NOT_FOUND = 404;
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractCloudFoundryTaskLauncher.class);
 
@@ -77,7 +75,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 	public TaskStatus status(String id) {
 		return requestGetTask(id)
 			.map(this::toTaskStatus)
-			.otherwiseReturn(t -> t instanceof AbstractCloudFoundryException && ((AbstractCloudFoundryException) t).getStatusCode() == NOT_FOUND,
+			.otherwiseReturn(isNotFoundError(),
 				new TaskStatus(id, LaunchState.unknown, null))
 			.doOnSuccess(r -> logger.info("Task {} status successful", id))
 			.doOnError(t -> logger.error(String.format("Task %s status failed", id), t))
@@ -115,4 +113,13 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 				.build());
 	}
 
+	@Override
+	public void cleanup(String id) {
+
+	}
+
+	@Override
+	public void destroy(String appName) {
+
+	}
 }
