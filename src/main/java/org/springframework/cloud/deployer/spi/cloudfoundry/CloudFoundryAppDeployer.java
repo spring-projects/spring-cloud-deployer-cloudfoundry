@@ -113,7 +113,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			return getStatus(id)
 				.doOnSuccess(v -> logger.info("Successfully computed status [{}] for {}", v, id))
 				.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
-				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+				.block(Duration.ofMillis(this.deploymentProperties.getStatusTimeout()));
 		}
 		catch (Exception timeoutDueToBlock) {
 			logger.error("Caught exception while querying for status of {}", id, timeoutDueToBlock);
@@ -252,7 +252,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
 			.otherwiseReturn(IllegalArgumentException.class, createEmptyAppStatus(deploymentId))
-			.retryWhen(DelayUtils.exponentialBackOffError(Duration.ofMillis(50), Duration.ofMillis(shortApiCallsTimeoutMs/2), Duration.ofMillis(shortApiCallsTimeoutMs)))
+			.retryWhen(DelayUtils.exponentialBackOffError(Duration.ofMillis(50), Duration.ofMillis(this.deploymentProperties.getStatusTimeout()/2), Duration.ofMillis(this.deploymentProperties.getStatusTimeout())))
 			.otherwiseReturn(createErrorAppStatus(deploymentId));
 
 	}
