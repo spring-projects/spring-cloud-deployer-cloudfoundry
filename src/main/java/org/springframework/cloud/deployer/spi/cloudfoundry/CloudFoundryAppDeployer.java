@@ -132,7 +132,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	private void assertApplicationDoesNotExist(String deploymentId, AppStatus status) {
 		DeploymentState state = status.getState();
-		if (state != DeploymentState.unknown) {
+		if (state != DeploymentState.unknown && state != DeploymentState.error) {
 			throw new IllegalStateException(String.format("App %s is already deployed with state %s", deploymentId, state));
 		}
 	}
@@ -251,8 +251,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<AppStatus> getStatus(String deploymentId) {
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
+			.doOnError(e -> logger.error(String.format("Error computing for %s", deploymentId), e))
 			.otherwiseReturn(IllegalArgumentException.class, createEmptyAppStatus(deploymentId))
 			.retryWhen(DelayUtils.exponentialBackOffError(Duration.ofMillis(50), Duration.ofMillis(this.deploymentProperties.getStatusTimeout()/2), Duration.ofMillis(this.deploymentProperties.getStatusTimeout())))
+			.doOnSuccess(v -> logger.info("Successfully retried getStatus operation status [{}] for {}", v, deploymentId))
+			.doOnError(e -> logger.error(String.format("Retry operation on getStatus timeout for %s", deploymentId), e))
 			.otherwiseReturn(createErrorAppStatus(deploymentId));
 
 	}
