@@ -42,10 +42,6 @@ class AbstractCloudFoundryDeployer {
 
 	final CloudFoundryDeploymentProperties deploymentProperties;
 
-	/**
-	 * How many ms to wait for API calls that ought to return "quickly". Not final so that tests can override.
-	 */
-	/*default*/ int shortApiCallsTimeoutMs = 1_000;
 
 
 	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties) {
