@@ -255,16 +255,24 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<AppStatus> getStatus(String deploymentId) {
+		long requestTimeout = Math.round(this.deploymentProperties.getStatusTimeout()*0.20); // wait 200ms with status timeout of 1000ms
+		long initialRetryDelay =  Math.round(this.deploymentProperties.getStatusTimeout()*0.10); // wait 100ms with status timeout of 1000ms
+
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
-			.doOnError(IllegalArgumentException.class, e -> logger.info(String.format("Application for %s does not exist.", deploymentId)))
-			.otherwiseReturn(IllegalArgumentException.class, createEmptyAppStatus(deploymentId))
-			.doOnError(e -> logger.error(String.format("Error getting status for %s.  Retrying operation.", deploymentId), e))
-			.retryWhen(DelayUtils.exponentialBackOffError(Duration.ofMillis(50), Duration.ofMillis(this.deploymentProperties.getStatusTimeout()/2), Duration.ofMillis(this.deploymentProperties.getStatusTimeout())))
+			.otherwise(IllegalArgumentException.class, t -> {
+				logger.info("Application for {} does not exist.", deploymentId);
+				return Mono.just(createEmptyAppStatus(deploymentId));
+			})
+			.timeout(Duration.ofMillis(requestTimeout))
+			.doOnError(e -> logger.error(String.format("Error getting status for %s witin %s, Retrying operation.", deploymentId, requestTimeout), e))
+			.retryWhen(DelayUtils.exponentialBackOffError(
+				Duration.ofMillis(initialRetryDelay), //initial retry delay
+				Duration.ofMillis(this.deploymentProperties.getStatusTimeout()/2), // max retry delay
+				Duration.ofMillis(this.deploymentProperties.getStatusTimeout()))) // max total retry time
 			.doOnSuccess(v -> logger.info("Successfully retried getStatus operation status [{}] for {}", v, deploymentId))
-			.doOnError(e -> logger.error(String.format("Retry operation on getStatus timeout for %s", deploymentId), e))
+			.doOnError(e -> logger.error(String.format("Retry operation on getStatus failed for %s", deploymentId), e))
 			.otherwiseReturn(createErrorAppStatus(deploymentId));
-
 	}
 
 	private ApplicationHealthCheck healthCheck(AppDeploymentRequest request) {
