@@ -89,12 +89,17 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	@Override
 	public String deploy(AppDeploymentRequest request) {
+		logger.trace("Entered deploy: Deploying AppDeploymentRequest: AppDefinition = {}, Resource = {}, Deployment Properties = {}",
+			request.getDefinition(), request.getResource(), request.getDeploymentProperties());
 		String deploymentId = deploymentId(request);
 
+		logger.trace("deploy: Getting Status for Deployment Id = {}", deploymentId);
 		getStatus(deploymentId)
 			.doOnNext(status -> assertApplicationDoesNotExist(deploymentId, status))
 			// Need to block here to be able to throw exception early
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+
+		logger.trace("deploy: Pushing application");
 		pushApplication(deploymentId, request)
 			.then(setEnvironmentVariables(deploymentId, getEnvironmentVariables(deploymentId, request)))
 			.then(bindServices(deploymentId, request))
@@ -104,6 +109,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnError(e -> logger.error(String.format("Failed to deploy %s", deploymentId), e))
 			.subscribe();
 
+		logger.trace("Exiting deploy().  Deployment Id = {}", deploymentId);
 		return deploymentId;
 	}
 
@@ -251,8 +257,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<AppStatus> getStatus(String deploymentId) {
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
-			.doOnError(e -> logger.error(String.format("Error computing for %s", deploymentId), e))
+			.doOnError(IllegalArgumentException.class, e -> logger.info(String.format("Application for %s does not exist.", deploymentId)))
 			.otherwiseReturn(IllegalArgumentException.class, createEmptyAppStatus(deploymentId))
+			.doOnError(e -> logger.error(String.format("Error getting status for %s.  Retrying operation.", deploymentId), e))
 			.retryWhen(DelayUtils.exponentialBackOffError(Duration.ofMillis(50), Duration.ofMillis(this.deploymentProperties.getStatusTimeout()/2), Duration.ofMillis(this.deploymentProperties.getStatusTimeout())))
 			.doOnSuccess(v -> logger.info("Successfully retried getStatus operation status [{}] for {}", v, deploymentId))
 			.doOnError(e -> logger.error(String.format("Retry operation on getStatus timeout for %s", deploymentId), e))
