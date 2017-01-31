@@ -688,7 +688,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		assertThat(status.getState(), equalTo(LaunchState.complete));
 	}
 
-	@Test(expected = IllegalStateException.class)
+	@Test
 	public void testStatusTimeout() {
 		givenRequestGetTask("test-task-id", Mono
 			.delay(Duration.ofSeconds(2))
@@ -697,7 +697,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 				.state(org.cloudfoundry.client.v3.tasks.State.SUCCEEDED_STATE)
 				.build())));
 
-		this.launcher.status("test-task-id");
+		assertThat(this.launcher.status("test-task-id").getState(), equalTo(LaunchState.error));
 	}
 
 	@Test
