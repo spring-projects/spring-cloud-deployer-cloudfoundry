@@ -28,8 +28,10 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IllegalFormatCodePointException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -47,6 +49,7 @@ import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.util.DelayUtils;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -255,23 +258,17 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<AppStatus> getStatus(String deploymentId) {
+
 		long requestTimeout = Math.round(this.deploymentProperties.getStatusTimeout()*0.20); // wait 200ms with status timeout of 1000ms
 		long initialRetryDelay =  Math.round(this.deploymentProperties.getStatusTimeout()*0.10); // wait 100ms with status timeout of 1000ms
 
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
 			.otherwise(IllegalArgumentException.class, t -> {
-				logger.info("Application for {} does not exist.", deploymentId);
+				logger.debug("Application for {} does not exist.", deploymentId);
 				return Mono.just(createEmptyAppStatus(deploymentId));
 			})
-			.timeout(Duration.ofMillis(requestTimeout))
-			.doOnError(e -> logger.error(String.format("Error getting status for %s witin %s, Retrying operation.", deploymentId, requestTimeout), e))
-			.retryWhen(DelayUtils.exponentialBackOffError(
-				Duration.ofMillis(initialRetryDelay), //initial retry delay
-				Duration.ofMillis(this.deploymentProperties.getStatusTimeout()/2), // max retry delay
-				Duration.ofMillis(this.deploymentProperties.getStatusTimeout()))) // max total retry time
-			.doOnSuccess(v -> logger.info("Successfully retried getStatus operation status [{}] for {}", v, deploymentId))
-			.doOnError(e -> logger.error(String.format("Retry operation on getStatus failed for %s", deploymentId), e))
+			.transform(ErrorHandlingUtils.statusRetry(deploymentId, requestTimeout, initialRetryDelay, this.deploymentProperties.getStatusTimeout()))
 			.otherwiseReturn(createErrorAppStatus(deploymentId));
 	}
 

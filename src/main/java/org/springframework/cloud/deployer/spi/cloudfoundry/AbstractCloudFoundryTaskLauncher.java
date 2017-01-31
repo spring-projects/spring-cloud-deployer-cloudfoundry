@@ -23,6 +23,7 @@ import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
+import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -73,6 +74,20 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 	 */
 	@Override
 	public TaskStatus status(String id) {
+		try {
+			return getStatus(id)
+				.doOnSuccess(v -> logger.info("Successfully computed status [{}] for id={}", v, id))
+				.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id),e))
+				.block(Duration.ofMillis(this.deploymentProperties.getStatusTimeout()));
+		} catch (Exception timeoutDueToBlock) {
+			logger.error("Caught exception while querying for status of id={}", id, timeoutDueToBlock);
+			return createErrorTaskStatus(id);
+		}
+	}
+
+
+	//@Override
+	public TaskStatus statusOld(String id) {
 		return requestGetTask(id)
 			.map(this::toTaskStatus)
 			.otherwiseReturn(isNotFoundError(),
@@ -80,6 +95,24 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 			.doOnSuccess(r -> logger.info("Task {} status successful", id))
 			.doOnError(t -> logger.error(String.format("Task %s status failed", id), t))
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+	}
+
+	private Mono<TaskStatus> getStatus(String id) {
+		long requestTimeout = Math.round(this.deploymentProperties.getStatusTimeout()*0.20); // wait 200ms with status timeout of 1000ms
+		long initialRetryDelay =  Math.round(this.deploymentProperties.getStatusTimeout()*0.10); // wait 100ms with status timeout of 1000ms
+
+		return requestGetTask(id)
+			.map(this::toTaskStatus)
+			.otherwise(isNotFoundError(), t -> {
+				logger.debug("Task for id={} does not exist", id);
+				return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
+			})
+			.transform(ErrorHandlingUtils.statusRetry(id, requestTimeout, initialRetryDelay, this.deploymentProperties.getStatusTimeout()))
+			.otherwiseReturn(createErrorTaskStatus(id));
+	}
+
+	private TaskStatus createErrorTaskStatus(String id) {
+			return new TaskStatus(id, LaunchState.error, null);
 	}
 
 	protected TaskStatus toTaskStatus(GetTaskResponse response) {
