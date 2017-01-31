@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.IllegalFormatCodePointException;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -96,13 +97,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			request.getDefinition(), request.getResource(), request.getDeploymentProperties());
 		String deploymentId = deploymentId(request);
 
-		logger.trace("deploy: Getting Status for Deployment Id = {}", deploymentId);
 		getStatus(deploymentId)
 			.doOnNext(status -> assertApplicationDoesNotExist(deploymentId, status))
 			// Need to block here to be able to throw exception early
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 
-		logger.trace("deploy: Pushing application");
 		pushApplication(deploymentId, request)
 			.then(setEnvironmentVariables(deploymentId, getEnvironmentVariables(deploymentId, request)))
 			.then(bindServices(deploymentId, request))
@@ -112,7 +111,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnError(e -> logger.error(String.format("Failed to deploy %s", deploymentId), e))
 			.subscribe();
 
-		logger.trace("Exiting deploy().  Deployment Id = {}", deploymentId);
+		logger.trace("Exiting deploy:.  Deployment Id = {}", deploymentId);
 		return deploymentId;
 	}
 
@@ -132,6 +131,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	@Override
 	public void undeploy(String id) {
+		logger.debug("Undeploying Deployment Id = {}", id);
 		requestDeleteApplication(id)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
@@ -147,7 +147,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<Void> bindServices(String deploymentId, AppDeploymentRequest request) {
-		return Flux.fromIterable(servicesToBind(request))
+		Set<String> services = servicesToBind(request);
+		logger.trace("deploy: Binding Services for Deployement Id = {}, services = {}", deploymentId, services);
+		return Flux.fromIterable(services)
 			.flatMap(service -> requestBindService(deploymentId, service)
 				.doOnSuccess(v -> logger.debug("Binding service {} to app {}", service, deploymentId))
 				.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, deploymentId), e)))
@@ -155,8 +157,8 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private AppStatus createAppStatus(ApplicationDetail applicationDetail, String deploymentId) {
-		logger.trace("Gathering instances for " + applicationDetail);
-		logger.trace("InstanceDetails: " + applicationDetail.getInstanceDetails());
+		logger.trace("createAppStatus: Deployment Id = {}, Gathering instances for {}", deploymentId, applicationDetail);
+		logger.trace("createAppStatus: Deployment Id = {}, InstanceDetails: {}", deploymentId, applicationDetail.getInstanceDetails());
 
 		AppStatus.Builder builder = AppStatus.of(deploymentId);
 
@@ -262,10 +264,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		long requestTimeout = Math.round(this.deploymentProperties.getStatusTimeout()*0.20); // wait 200ms with status timeout of 1000ms
 		long initialRetryDelay =  Math.round(this.deploymentProperties.getStatusTimeout()*0.10); // wait 100ms with status timeout of 1000ms
 
+		logger.debug("Getting Status for Deployment Id = {}", deploymentId);
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
 			.otherwise(IllegalArgumentException.class, t -> {
-				logger.debug("Application for {} does not exist.", deploymentId);
+				logger.debug("Application with Deployment Id {} does not exist.", deploymentId);
 				return Mono.just(createEmptyAppStatus(deploymentId));
 			})
 			.transform(ErrorHandlingUtils.statusRetry(deploymentId, requestTimeout, initialRetryDelay, this.deploymentProperties.getStatusTimeout()))
@@ -290,6 +293,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<Void> pushApplication(String deploymentId, AppDeploymentRequest request) {
+		logger.info("Pushing Application with Deployment Id = {}", deploymentId);
 		return requestPushApplication(PushApplicationRequest.builder()
 			.application(getApplication(request))
 			.buildpack(buildpack(request))
@@ -304,7 +308,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.noStart(true)
 			.routePath(routePath(request))
 			.build())
-			.doOnSuccess(v -> logger.info("Done uploading bits for {}", deploymentId))
+			.doOnSuccess(v -> logger.info("Done pushing application with Deployment Id = {}", deploymentId))
 			.doOnError(e -> logger.error(String.format("Error creating app %s", deploymentId), e));
 	}
 
@@ -358,6 +362,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<UpdateApplicationResponse> setEnvironmentVariables(String deploymentId, Map<String, String> environmentVariables) {
+		logger.trace("setEnvironmentVariables: Deployment Id = {}, environmentVariables = {}", deploymentId, environmentVariables);
 		return getApplicationId(deploymentId)
 			.then(applicationId -> requestUpdateApplication(applicationId, environmentVariables))
 			.doOnSuccess(v -> logger.debug("Setting individual env variables to {} for app {}", environmentVariables, deploymentId))
@@ -365,6 +370,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<Void> startApplication(String deploymentId) {
+		logger.trace("startApplication: Deployment Id = {}", deploymentId);
 		return requestStartApplication(deploymentId, this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout())
 			.doOnSuccess(v -> logger.info("Started app {}", deploymentId))
 			.doOnError(e -> logger.error(String.format("Failed to start app %s", deploymentId), e));
