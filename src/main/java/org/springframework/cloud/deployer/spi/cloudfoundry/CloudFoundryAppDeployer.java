@@ -28,10 +28,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IllegalFormatCodePointException;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -48,8 +46,6 @@ import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.util.DelayUtils;
-import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -268,7 +264,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				logger.debug("Application for {} does not exist.", deploymentId);
 				return Mono.just(createEmptyAppStatus(deploymentId));
 			})
-			.transform(ErrorHandlingUtils.statusRetry(deploymentId, requestTimeout, initialRetryDelay, this.deploymentProperties.getStatusTimeout()))
+			.transform(statusRetry(deploymentId))
 			.otherwiseReturn(createErrorAppStatus(deploymentId));
 	}
 
