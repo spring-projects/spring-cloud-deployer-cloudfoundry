@@ -680,7 +680,7 @@ public class CloudFoundryAppDeployerTests {
 			}
 		});
 		givenRequestGetApplication("test-application-id", m);
-		this.deployer.deploymentProperties.setStatusTimeout(200); // Will cause wait of 50ms then 100ms
+		this.deployer.deploymentProperties.setStatusTimeout(200); // Will cause wait of 20ms then 40ms,80ms
 
 		DeploymentState state = this.deployer.status("test-application-id").getState();
 		assertThat(state, is(DeploymentState.error));
