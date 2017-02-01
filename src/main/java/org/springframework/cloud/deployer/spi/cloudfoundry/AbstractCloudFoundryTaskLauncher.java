@@ -23,7 +23,6 @@ import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
-import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -95,7 +94,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 				logger.debug("Task for id={} does not exist", id);
 				return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
 			})
-			.transform(ErrorHandlingUtils.statusRetry(id, requestTimeout, initialRetryDelay, this.deploymentProperties.getStatusTimeout()))
+			.transform(statusRetry(id))
 			.otherwiseReturn(createErrorTaskStatus(id));
 	}
 
