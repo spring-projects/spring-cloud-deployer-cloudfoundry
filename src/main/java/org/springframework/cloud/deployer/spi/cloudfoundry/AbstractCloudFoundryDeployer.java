@@ -19,13 +19,20 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.cloudfoundry.AbstractCloudFoundryException;
+import org.cloudfoundry.util.DelayUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
+import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
@@ -34,7 +41,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
 /**
- * Base class dealing with configuration overrides on a per-deployment basis.
+ * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *
  * @author Eric Bottard
  */
@@ -42,7 +49,7 @@ class AbstractCloudFoundryDeployer {
 
 	final CloudFoundryDeploymentProperties deploymentProperties;
 
-
+	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties) {
 		this.deploymentProperties = deploymentProperties;
@@ -76,5 +83,28 @@ class AbstractCloudFoundryDeployer {
 	Predicate<Throwable> isNotFoundError() {
 		return t -> t instanceof AbstractCloudFoundryException && ((AbstractCloudFoundryException) t).getStatusCode() == HttpStatus.NOT_FOUND.value();
 	}
+	/**
+	 * To be used in order to retry the status operation for an application or task.
+	 * @param id The application id or the task id
+	 * @param <T> The type of status object being queried for, usually AppStatus or TaskStatus
+	 * @return The function that executes the retry logic around for determining App or Task Status
+	 */
+	<T> Function<Mono<T>, Mono<T>> statusRetry(String id) {
+		long statusTimeout = this.deploymentProperties.getStatusTimeout();
+		long requestTimeout = Math.round(statusTimeout * 0.20); // wait 200ms with status timeout of 1000ms
+		long initialRetryDelay = Math.round(statusTimeout * 0.10); // wait 100ms with status timeout of 1000ms
+
+		return m -> m.timeout(Duration.ofMillis(requestTimeout))
+			.doOnError(e -> logger.error(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeout)))
+			.retryWhen(DelayUtils.exponentialBackOffError(
+				Duration.ofMillis(initialRetryDelay), //initial retry delay
+				Duration.ofMillis(statusTimeout / 2), // max retry delay
+				Duration.ofMillis(statusTimeout)) // max total retry time
+				.andThen(retries -> Flux.from(retries).doOnComplete(() ->
+					logger.info("Successfully retried getStatus operation status [{}] for {}", id))))
+			.doOnError(e -> logger.error(String.format("Retry operation on getStatus failed for %s.  Max retry time %sms", id, statusTimeout)));
+	}
+
+
 
 }
