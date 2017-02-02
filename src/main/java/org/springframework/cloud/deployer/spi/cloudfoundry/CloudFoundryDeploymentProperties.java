@@ -107,7 +107,7 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * Timeout for status API operations in milliseconds
 	 */
-	private long statusTimeout = 1_000L;
+	private long statusTimeout = 2_000L;
 
 	/**
 	 * Flag to indicate whether application properties are fed into SPRING_APPLICATION_JSON or ENVIRONMENT VARIABLES.
