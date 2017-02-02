@@ -90,26 +90,24 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	public String deploy(AppDeploymentRequest request) {
 		logger.trace("Entered deploy: Deploying AppDeploymentRequest: AppDefinition = {}, Resource = {}, Deployment Properties = {}",
 			request.getDefinition(), request.getResource(), request.getDeploymentProperties());
-		String deploymentId = deploymentId(request);
+		String applicationName = applicationName(request);
 
-		logger.trace("deploy: Getting Status for Deployment Id = {}", deploymentId);
-		getStatus(deploymentId)
-			.doOnNext(status -> assertApplicationDoesNotExist(deploymentId, status))
+		getStatus(applicationName)
+			.doOnNext(status -> assertApplicationDoesNotExist(applicationName, status))
 			// Need to block here to be able to throw exception early
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 
-		logger.trace("deploy: Pushing application");
-		pushApplication(deploymentId, request)
-			.then(setEnvironmentVariables(deploymentId, getEnvironmentVariables(deploymentId, request)))
-			.then(bindServices(deploymentId, request))
-			.then(startApplication(deploymentId))
+		pushApplication(applicationName, request)
+			.then(setEnvironmentVariables(applicationName, getEnvironmentVariables(applicationName, request)))
+			.then(bindServices(applicationName, request))
+			.then(startApplication(applicationName))
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
-			.doOnSuccess(v -> logger.info("Successfully deployed {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Failed to deploy %s", deploymentId), e))
+			.doOnSuccess(v -> logger.info("Successfully deployed app {}", applicationName))
+			.doOnError(e -> logger.error(String.format("Failed to deploy app %s", applicationName), e))
 			.subscribe();
 
-		logger.trace("Exiting deploy().  Deployment Id = {}", deploymentId);
-		return deploymentId;
+		logger.trace("Exiting deploy().  App {}", applicationName);
+		return applicationName;
 	}
 
 	@Override
@@ -135,26 +133,26 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.subscribe();
 	}
 
-	private void assertApplicationDoesNotExist(String deploymentId, AppStatus status) {
+	private void assertApplicationDoesNotExist(String applicationName, AppStatus status) {
 		DeploymentState state = status.getState();
 		if (state != DeploymentState.unknown && state != DeploymentState.error) {
-			throw new IllegalStateException(String.format("App %s is already deployed with state %s", deploymentId, state));
+			throw new IllegalStateException(String.format("App %s is already deployed with state %s", applicationName, state));
 		}
 	}
 
-	private Mono<Void> bindServices(String deploymentId, AppDeploymentRequest request) {
+	private Mono<Void> bindServices(String applicationName, AppDeploymentRequest request) {
 		return Flux.fromIterable(servicesToBind(request))
-			.flatMap(service -> requestBindService(deploymentId, service)
-				.doOnSuccess(v -> logger.debug("Binding service {} to app {}", service, deploymentId))
-				.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, deploymentId), e)))
+			.flatMap(service -> requestBindService(applicationName, service)
+				.doOnSuccess(v -> logger.debug("Binding service {} to app {}", service, applicationName))
+				.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, applicationName), e)))
 			.then();
 	}
 
-	private AppStatus createAppStatus(ApplicationDetail applicationDetail, String deploymentId) {
+	private AppStatus createAppStatus(ApplicationDetail applicationDetail, String applicationName) {
 		logger.trace("Gathering instances for " + applicationDetail);
 		logger.trace("InstanceDetails: " + applicationDetail.getInstanceDetails());
 
-		AppStatus.Builder builder = AppStatus.of(deploymentId);
+		AppStatus.Builder builder = AppStatus.of(applicationName);
 
 		int i = 0;
 		for (InstanceDetail instanceDetail : applicationDetail.getInstanceDetails()) {
@@ -167,18 +165,18 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		return builder.build();
 	}
 
-	private AppStatus createEmptyAppStatus(String deploymentId) {
-		return AppStatus.of(deploymentId)
+	private AppStatus createEmptyAppStatus(String applicationName) {
+		return AppStatus.of(applicationName)
 			.build();
 	}
 
-	private AppStatus createErrorAppStatus(String deploymentId) {
-		return AppStatus.of(deploymentId)
+	private AppStatus createErrorAppStatus(String applicationName) {
+		return AppStatus.of(applicationName)
 			.generalState(DeploymentState.error)
 			.build();
 	}
 
-	private String deploymentId(AppDeploymentRequest request) {
+	private String applicationName(AppDeploymentRequest request) {
 		String prefix = Optional.ofNullable(request.getDeploymentProperties().get(GROUP_PROPERTY_KEY))
 			.map(group -> String.format("%s-", group))
 			.orElse("");
@@ -201,13 +199,13 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		}
 	}
 
-	private Mono<String> getApplicationId(String deploymentId) {
-		return requestGetApplication(deploymentId)
+	private Mono<String> getApplicationId(String applicationName) {
+		return requestGetApplication(applicationName)
 			.map(ApplicationDetail::getId);
 	}
 
-	private Map<String, String> getApplicationProperties(String deploymentId, AppDeploymentRequest request) {
-		Map<String, String> applicationProperties = getSanitizedApplicationProperties(deploymentId, request);
+	private Map<String, String> getApplicationProperties(String applicationName, AppDeploymentRequest request) {
+		Map<String, String> applicationProperties = getSanitizedApplicationProperties(applicationName, request);
 
 		if (!useSpringApplicationJson(request)) {
 			return applicationProperties;
@@ -232,9 +230,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		return Collections.singletonMap("JBP_CONFIG_JAVA_MAIN", yaml);
 	}
 
-	private Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
+	private Map<String, String> getEnvironmentVariables(String applicationName, AppDeploymentRequest request) {
 		Map<String, String> envVariables = new HashMap<>();
-		envVariables.putAll(getApplicationProperties(deploymentId, request));
+		envVariables.putAll(getApplicationProperties(applicationName, request));
 		envVariables.putAll(getCommandLineArguments(request));
 		String group = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
 		if (group != null) {
@@ -243,25 +241,25 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		return envVariables;
 	}
 
-	private Map<String, String> getSanitizedApplicationProperties(String deploymentId, AppDeploymentRequest request) {
+	private Map<String, String> getSanitizedApplicationProperties(String applicationName, AppDeploymentRequest request) {
 		Map<String, String> applicationProperties = new HashMap<>(request.getDefinition().getProperties());
 
 		// Remove server.port as CF assigns a port for us, and we don't want to override that
 		Optional.ofNullable(applicationProperties.remove("server.port"))
-			.ifPresent(port -> logger.warn("Ignoring 'server.port={}' for app {}, as Cloud Foundry will assign a local dynamic port. Route to the app will use port 80.", port, deploymentId));
+			.ifPresent(port -> logger.warn("Ignoring 'server.port={}' for app {}, as Cloud Foundry will assign a local dynamic port. Route to the app will use port 80.", port, applicationName));
 
 		return applicationProperties;
 	}
 
-	private Mono<AppStatus> getStatus(String deploymentId) {
-		return requestGetApplication(deploymentId)
-			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
+	private Mono<AppStatus> getStatus(String applicationName) {
+		return requestGetApplication(applicationName)
+			.map(applicationDetail -> createAppStatus(applicationDetail, applicationName))
 			.otherwise(IllegalArgumentException.class, t -> {
-				logger.debug("Application for {} does not exist.", deploymentId);
-				return Mono.just(createEmptyAppStatus(deploymentId));
+				logger.debug("Application for {} does not exist.", applicationName);
+				return Mono.just(createEmptyAppStatus(applicationName));
 			})
-			.transform(statusRetry(deploymentId))
-			.otherwiseReturn(createErrorAppStatus(deploymentId));
+			.transform(statusRetry(applicationName))
+			.otherwiseReturn(createErrorAppStatus(applicationName));
 	}
 
 	private ApplicationHealthCheck healthCheck(AppDeploymentRequest request) {
@@ -281,7 +279,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.orElse(this.deploymentProperties.getInstances());
 	}
 
-	private Mono<Void> pushApplication(String deploymentId, AppDeploymentRequest request) {
+	private Mono<Void> pushApplication(String applicationName, AppDeploymentRequest request) {
 		return requestPushApplication(PushApplicationRequest.builder()
 			.application(getApplication(request))
 			.buildpack(buildpack(request))
@@ -291,50 +289,55 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.host(host(request))
 			.instances(instances(request))
 			.memory(memory(request))
-			.name(deploymentId)
+			.name(applicationName)
 			.noRoute(toggleNoRoute(request))
 			.noStart(true)
 			.routePath(routePath(request))
 			.build())
-			.doOnSuccess(v -> logger.info("Done uploading bits for {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Error creating app %s.  Exception Message %s", deploymentId, e.getMessage())));
+			.doOnSuccess(v -> logger.info("Done uploading bits for {}", applicationName))
+			.doOnError(e -> logger.error(String.format("Error creating app %s.  Exception Message %s", applicationName, e.getMessage())));
 	}
 
-	private Mono<Void> requestBindService(String deploymentId, String service) {
+	private Mono<Void> requestBindService(String applicationName, String service) {
 		return this.operations.services()
 			.bind(BindServiceInstanceRequest.builder()
-				.applicationName(deploymentId)
+				.applicationName(applicationName)
 				.serviceInstanceName(service)
-				.build());
+				.build())
+			.doOnSubscribe(v -> logger.trace("Binding services for app {}, ", applicationName));
 	}
 
-	private Mono<Void> requestDeleteApplication(String id) {
+	private Mono<Void> requestDeleteApplication(String applicationName) {
 		return this.operations.applications()
 			.delete(DeleteApplicationRequest.builder()
 				.deleteRoutes(true)
-				.name(id)
-				.build());
+				.name(applicationName)
+				.build())
+			.doOnSubscribe(v -> logger.trace("Deleting app {}", applicationName));
 	}
 
 	private Mono<ApplicationDetail> requestGetApplication(String id) {
 		return this.operations.applications()
 			.get(GetApplicationRequest.builder()
 				.name(id)
-				.build());
+				.build())
+			.doOnSubscribe(v -> logger.trace("Getting Status for app {}", id));
 	}
 
 	private Mono<Void> requestPushApplication(PushApplicationRequest request) {
 		return this.operations.applications()
-			.push(request);
+			.push(request)
+			.doOnSubscribe(v -> logger.trace("Pushing app {}", request.getName()));
 	}
 
-	private Mono<Void> requestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout) {
+	private Mono<Void> requestStartApplication(String applicationName, Duration stagingTimeout, Duration startupTimeout) {
 		return this.operations.applications()
 			.start(StartApplicationRequest.builder()
-				.name(name)
+				.name(applicationName)
 				.stagingTimeout(stagingTimeout)
 				.startupTimeout(startupTimeout)
-				.build());
+				.build())
+			.doOnSubscribe(v -> logger.trace("Starting app {}, ", applicationName));
 	}
 
 	private Mono<UpdateApplicationResponse> requestUpdateApplication(String applicationId, Map<String, String> environmentVariables) {
@@ -342,24 +345,25 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.update(UpdateApplicationRequest.builder()
 				.applicationId(applicationId)
 				.environmentJsons(environmentVariables)
-				.build());
+				.build())
+			.doOnSubscribe(v -> logger.trace("Setting environment variables for app {}, ", applicationId));
 	}
 
 	private String routePath(AppDeploymentRequest request) {
 		return request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
 	}
 
-	private Mono<UpdateApplicationResponse> setEnvironmentVariables(String deploymentId, Map<String, String> environmentVariables) {
-		return getApplicationId(deploymentId)
+	private Mono<UpdateApplicationResponse> setEnvironmentVariables(String applicationName, Map<String, String> environmentVariables) {
+		return getApplicationId(applicationName)
 			.then(applicationId -> requestUpdateApplication(applicationId, environmentVariables))
-			.doOnSuccess(v -> logger.debug("Setting individual env variables to {} for app {}", environmentVariables, deploymentId))
-			.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", deploymentId)));
+			.doOnSuccess(v -> logger.debug("Setting individual env variables to {} for app {}", environmentVariables, applicationName))
+			.doOnError(e -> logger.error(String.format("Unable to set individual env variables for app %s", applicationName)));
 	}
 
-	private Mono<Void> startApplication(String deploymentId) {
-		return requestStartApplication(deploymentId, this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout())
-			.doOnSuccess(v -> logger.info("Started app {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Failed to start app %s", deploymentId), e));
+	private Mono<Void> startApplication(String applicationName) {
+		return requestStartApplication(applicationName, this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout())
+			.doOnSuccess(v -> logger.info("Started app {}", applicationName))
+			.doOnError(e -> logger.error(String.format("Failed to start app %s", applicationName), e));
 	}
 
 	private ApplicationHealthCheck toApplicationHealthCheck(String raw) {
