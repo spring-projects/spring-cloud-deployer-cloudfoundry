@@ -254,10 +254,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<AppStatus> getStatus(String deploymentId) {
-
-		long requestTimeout = Math.round(this.deploymentProperties.getStatusTimeout()*0.20); // wait 200ms with status timeout of 1000ms
-		long initialRetryDelay =  Math.round(this.deploymentProperties.getStatusTimeout()*0.10); // wait 100ms with status timeout of 1000ms
-
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
 			.otherwise(IllegalArgumentException.class, t -> {
@@ -301,7 +297,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.routePath(routePath(request))
 			.build())
 			.doOnSuccess(v -> logger.info("Done uploading bits for {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Error creating app %s", deploymentId), e));
+			.doOnError(e -> logger.error(String.format("Error creating app %s.  Exception Message %s", deploymentId, e.getMessage())));
 	}
 
 	private Mono<Void> requestBindService(String deploymentId, String service) {
