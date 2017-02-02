@@ -91,11 +91,16 @@ class AbstractCloudFoundryDeployer {
 	 */
 	<T> Function<Mono<T>, Mono<T>> statusRetry(String id) {
 		long statusTimeout = this.deploymentProperties.getStatusTimeout();
-		long requestTimeout = Math.round(statusTimeout * 0.20); // wait 200ms with status timeout of 1000ms
-		long initialRetryDelay = Math.round(statusTimeout * 0.10); // wait 100ms with status timeout of 1000ms
+		long requestTimeout = Math.round(statusTimeout * 0.40); // wait 500ms with default status timeout of 2000ms
+		long initialRetryDelay = Math.round(statusTimeout * 0.10); // wait 200ms with status timeout of 2000ms
 
-		return m -> m.timeout(Duration.ofMillis(requestTimeout))
-			.doOnError(e -> logger.error(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeout)))
+		if (requestTimeout < 500L) {
+			logger.info("Computed statusRetry Request timeout = {} ms is below 500ms minimum value.  Setting to 500ms", requestTimeout);
+			requestTimeout = 500L;
+		}
+		final long requestTimeoutToUse = requestTimeout;
+		return m -> m.timeout(Duration.ofMillis(requestTimeoutToUse))
+			.doOnError(e -> logger.error(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeoutToUse)))
 			.retryWhen(DelayUtils.exponentialBackOffError(
 				Duration.ofMillis(initialRetryDelay), //initial retry delay
 				Duration.ofMillis(statusTimeout / 2), // max retry delay
