@@ -50,7 +50,7 @@ import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.operations.services.ServiceInstance;
+import org.cloudfoundry.operations.services.ServiceInstanceSummary;
 import org.cloudfoundry.operations.services.ServiceInstanceType;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.operations.spaces.Spaces;
@@ -522,12 +522,12 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
 
-		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-1")
 				.name("test-service-instance-1")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-2")
 				.name("test-service-instance-2")
 				.type(ServiceInstanceType.MANAGED)
@@ -589,17 +589,17 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
 
-		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-1")
 				.name("test-service-instance-1")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-2")
 				.name("test-service-instance-2")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-3")
 				.name("test-service-instance-3")
 				.type(ServiceInstanceType.MANAGED)
@@ -774,7 +774,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.willReturn(response);
 	}
 
-	private void givenRequestListServiceInstances(Flux<ServiceInstance> response) {
+	private void givenRequestListServiceInstances(Flux<ServiceInstanceSummary> response) {
 		given(this.operations.services()
 			.listInstances())
 			.willReturn(response);

@@ -63,7 +63,7 @@ import org.cloudfoundry.client.v3.servicebindings.ServiceBindingType;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.services.ServiceInstance;
+import org.cloudfoundry.operations.services.ServiceInstanceSummary;
 import org.cloudfoundry.operations.spaces.GetSpaceRequest;
 import org.cloudfoundry.operations.spaces.SpaceDetail;
 import org.cloudfoundry.util.DelayUtils;
@@ -161,7 +161,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 
 		return requestListServiceInstances()
 			.filter(instance -> servicesToBind.contains(instance.getName()))
-			.map(ServiceInstance::getId)
+			.map(ServiceInstanceSummary::getId)
 			.flatMap(serviceInstanceId -> requestCreateServiceBinding(application.getId(), serviceInstanceId))
 			.then();
 	}
@@ -339,7 +339,7 @@ public class CloudFoundry2620AndEarlierTaskLauncher extends AbstractCloudFoundry
 					.build()));
 	}
 
-	private Flux<ServiceInstance> requestListServiceInstances() {
+	private Flux<ServiceInstanceSummary> requestListServiceInstances() {
 		return this.operations.services()
 			.listInstances();
 	}

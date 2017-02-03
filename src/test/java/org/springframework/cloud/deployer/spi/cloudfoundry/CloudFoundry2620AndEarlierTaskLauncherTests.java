@@ -76,7 +76,7 @@ import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
 import org.cloudfoundry.client.v3.tasks.Tasks;
 import org.cloudfoundry.operations.CloudFoundryOperations;
-import org.cloudfoundry.operations.services.ServiceInstance;
+import org.cloudfoundry.operations.services.ServiceInstanceSummary;
 import org.cloudfoundry.operations.services.ServiceInstanceType;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.operations.spaces.GetSpaceRequest;
@@ -349,12 +349,12 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.state(org.cloudfoundry.client.v3.droplets.State.STAGED)
 			.build()));
 
-		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-1")
 				.name("test-service-instance-1")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-2")
 				.name("test-service-instance-2")
 				.type(ServiceInstanceType.MANAGED)
@@ -627,12 +627,12 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 				.id("test-droplet-id")
 				.build()));
 
-		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-1")
 				.name("test-service-instance-1")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-2")
 				.name("test-service-instance-2")
 				.type(ServiceInstanceType.MANAGED)
@@ -717,17 +717,17 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 				.id("test-droplet-id")
 				.build()));
 
-		givenRequestListServiceInstances(Flux.just(ServiceInstance.builder()
+		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-1")
 				.name("test-service-instance-1")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-2")
 				.name("test-service-instance-2")
 				.type(ServiceInstanceType.MANAGED)
 				.build(),
-			ServiceInstance.builder()
+			ServiceInstanceSummary.builder()
 				.id("test-service-instance-id-3")
 				.name("test-service-instance-3")
 				.type(ServiceInstanceType.MANAGED)
@@ -963,7 +963,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 			.willReturn(response);
 	}
 
-	private void givenRequestListServiceInstances(Flux<ServiceInstance> response) {
+	private void givenRequestListServiceInstances(Flux<ServiceInstanceSummary> response) {
 		given(this.operations.services()
 			.listInstances())
 			.willReturn(response);
