@@ -35,21 +35,21 @@ import org.springframework.beans.factory.annotation.Value;
  */
 public class CloudFoundryDeploymentProperties {
 
-	static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
+	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
 
-	static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
+	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
-	static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
+	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
-	static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
+	public static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
 
-	static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
+	public static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
 
-	static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
+	public static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
 
-	static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
+	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
 
-	static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
+	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
