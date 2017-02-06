@@ -22,6 +22,7 @@ import java.time.Duration;
 
 import com.github.zafarkhaja.semver.Version;
 import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.lib.CloudCredentials;
 import org.cloudfoundry.client.v2.info.GetInfoRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.DefaultCloudFoundryOperations;
@@ -43,6 +44,7 @@ import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * Creates a {@link CloudFoundryAppDeployer}
@@ -52,6 +54,7 @@ import org.springframework.core.Ordered;
  */
 @Configuration
 @EnableConfigurationProperties
+@EnableAsync
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 public class CloudFoundryDeployerAutoConfiguration {
 
@@ -120,11 +123,35 @@ public class CloudFoundryDeployerAutoConfiguration {
 			.space(properties.getSpace())
 			.build();
 	}
+//
+//	@Bean
+//	@ConditionalOnMissingBean(AppDeployer.class)
+//	public AppDeployer appDeployer(CloudFoundryOperations operations, CloudFoundryClient client, AppNameGenerator applicationNameGenerator) {
+//		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations);
+//	}
+
+	// V1 API configuration
 
 	@Bean
 	@ConditionalOnMissingBean(AppDeployer.class)
-	public AppDeployer appDeployer(CloudFoundryOperations operations, CloudFoundryClient client, AppNameGenerator applicationNameGenerator) {
-		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations);
+	public AppDeployer appDeployer(AppNameGenerator applicationNameGenerator, org.cloudfoundry.client.lib.CloudFoundryOperations v1Operations) {
+		return new CloudFoundryV1AppDeployer(applicationNameGenerator, appDeploymentProperties(), v1Operations);
+	}
+
+	@Bean
+	public org.cloudfoundry.client.lib.CloudFoundryOperations v1Operations(CloudCredentials cloudCredentials, CloudFoundryConnectionProperties properties) {
+		return new org.cloudfoundry.client.lib.CloudFoundryClient(cloudCredentials,
+			properties.getUrl(),
+			properties.getOrg(),
+			properties.getSpace(),
+			properties.isSkipSslValidation());
+	}
+
+	@Bean
+	public CloudCredentials cloudCredentials(CloudFoundryConnectionProperties properties) {
+	/*	public CloudFoundryClient(CloudCredentials credentials, URL cloudControllerUrl, String orgName, String spaceName,
+	                          boolean trustSelfSignedCerts) */
+		return new CloudCredentials(properties.getUsername(), properties.getPassword());
 	}
 
 	@Bean

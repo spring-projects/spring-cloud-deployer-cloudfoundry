@@ -33,7 +33,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
@@ -67,8 +66,6 @@ import org.springframework.util.StringUtils;
  * @author Ben Hale
  */
 public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements AppDeployer {
-
-	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
 	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryAppDeployer.class);
 
@@ -178,16 +175,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.build();
 	}
 
-	private String deploymentId(AppDeploymentRequest request) {
-		String prefix = Optional.ofNullable(request.getDeploymentProperties().get(GROUP_PROPERTY_KEY))
-			.map(group -> String.format("%s-", group))
-			.orElse("");
-
-		String appName = String.format("%s%s", prefix, request.getDefinition().getName());
-
-		return this.applicationNameGenerator.generateAppName(appName);
-	}
-
 	private String domain(AppDeploymentRequest request) {
 		return Optional.ofNullable(request.getDeploymentProperties().get(DOMAIN_PROPERTY))
 			.orElse(this.deploymentProperties.getDomain());
@@ -204,53 +191,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<String> getApplicationId(String deploymentId) {
 		return requestGetApplication(deploymentId)
 			.map(ApplicationDetail::getId);
-	}
-
-	private Map<String, String> getApplicationProperties(String deploymentId, AppDeploymentRequest request) {
-		Map<String, String> applicationProperties = getSanitizedApplicationProperties(deploymentId, request);
-
-		if (!useSpringApplicationJson(request)) {
-			return applicationProperties;
-		}
-
-		try {
-			return Collections.singletonMap("SPRING_APPLICATION_JSON", OBJECT_MAPPER.writeValueAsString(applicationProperties));
-		} catch (JsonProcessingException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private Map<String, String> getCommandLineArguments(AppDeploymentRequest request) {
-		if (request.getCommandlineArguments().isEmpty()) {
-			return Collections.emptyMap();
-		}
-
-		String argumentsAsString = request.getCommandlineArguments().stream()
-			.collect(Collectors.joining(" "));
-		String yaml = new Yaml().dump(Collections.singletonMap("arguments", argumentsAsString));
-
-		return Collections.singletonMap("JBP_CONFIG_JAVA_MAIN", yaml);
-	}
-
-	private Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
-		Map<String, String> envVariables = new HashMap<>();
-		envVariables.putAll(getApplicationProperties(deploymentId, request));
-		envVariables.putAll(getCommandLineArguments(request));
-		String group = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
-		if (group != null) {
-			envVariables.put("SPRING_CLOUD_APPLICATION_GROUP", group);
-		}
-		return envVariables;
-	}
-
-	private Map<String, String> getSanitizedApplicationProperties(String deploymentId, AppDeploymentRequest request) {
-		Map<String, String> applicationProperties = new HashMap<>(request.getDefinition().getProperties());
-
-		// Remove server.port as CF assigns a port for us, and we don't want to override that
-		Optional.ofNullable(applicationProperties.remove("server.port"))
-			.ifPresent(port -> logger.warn("Ignoring 'server.port={}' for app {}, as Cloud Foundry will assign a local dynamic port. Route to the app will use port 80.", port, deploymentId));
-
-		return applicationProperties;
 	}
 
 	private Mono<AppStatus> getStatus(String deploymentId) {
@@ -273,12 +213,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private String host(AppDeploymentRequest request) {
 		return Optional.ofNullable(request.getDeploymentProperties().get(HOST_PROPERTY))
 			.orElse(this.deploymentProperties.getHost());
-	}
-
-	private int instances(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(AppDeployer.COUNT_PROPERTY_KEY))
-			.map(Integer::parseInt)
-			.orElse(this.deploymentProperties.getInstances());
 	}
 
 	private Mono<Void> pushApplication(String deploymentId, AppDeploymentRequest request) {
@@ -377,10 +311,14 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.orElse(null);
 	}
 
-	private boolean useSpringApplicationJson(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(USE_SPRING_APPLICATION_JSON_KEY))
-			.map(Boolean::valueOf)
-			.orElse(this.deploymentProperties.isUseSpringApplicationJson());
+	public String deploymentId(AppDeploymentRequest request) {
+		String prefix = Optional.ofNullable(request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY))
+			.map(group -> String.format("%s-", group))
+			.orElse("");
+
+		String appName = String.format("%s%s", prefix, request.getDefinition().getName());
+
+		return this.applicationNameGenerator.generateAppName(appName);
 	}
 
 }
