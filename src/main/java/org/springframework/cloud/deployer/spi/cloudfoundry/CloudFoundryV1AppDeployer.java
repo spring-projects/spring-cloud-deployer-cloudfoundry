@@ -61,6 +61,21 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 			new ArrayList<String>(servicesToBind(request)));
 		Map<String, String> environmentVariables = getEnvironmentVariables(appName, request);
 
+		doAsync(request, appName, environmentVariables);
+
+		// What is missing
+		// Domain
+		// HealthCheck
+		// Host
+		// No Route
+		// Route path ?  is that the url above?
+
+		logger.info("deploy: returning from method {}", appName);
+		return appName;
+	}
+
+	@Async
+	public void doAsync(AppDeploymentRequest request, String appName, Map<String, String> environmentVariables) {
 		logger.info("deploy: Updating environment variables for app = {}", appName);
 		cloudFoundryOperations.updateApplicationEnv(appName, environmentVariables);
 
@@ -76,28 +91,17 @@ public class CloudFoundryV1AppDeployer extends AbstractCloudFoundryDeployer impl
 		logger.info("deploy: Updating application instances for app {}", appName);
 		cloudFoundryOperations.updateApplicationInstances(appName, instances(request));
 
-		// What is missing
-		// Domain
-		// HealthCheck
-		// Host
-		// No Route
-		// Route path ?  is that the url above?
-
-		startApplication(appName);
-
-		logger.info("deploy: returning after starting app {}", appName);
-		return appName;
-	}
-
-	@Async
-	public void startApplication(String appName) {
 		logger.info("deploy: Starting app {}", appName);
 		StartingInfo startingInfo = cloudFoundryOperations.startApplication(appName);
 
 		if (startingInfo != null) {
-			logger.info("deploy: StartingInfo staging file = {} ", startingInfo.getStagingFile());
+			if (startingInfo.getStagingFile() != null) {
+				logger.info("deploy: StartingInfo staging file = {} ", startingInfo.getStagingFile());
+			}
 		}
+		logger.info("deploy: Done starting application {}", appName);
 	}
+
 
 	@Override
 	public void undeploy(String id) {
