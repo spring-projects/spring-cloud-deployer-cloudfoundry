@@ -40,6 +40,7 @@ import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
@@ -56,6 +57,7 @@ import reactor.core.publisher.Mono;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
+import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.util.StringUtils;
 
@@ -66,7 +68,7 @@ import org.springframework.util.StringUtils;
  * @author Greg Turnquist
  * @author Ben Hale
  */
-public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements AppDeployer {
+public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -123,6 +125,24 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		catch (Exception timeoutDueToBlock) {
 			logger.error("Caught exception while querying for status of {}", id, timeoutDueToBlock);
 			return createErrorAppStatus(id);
+		}
+	}
+
+	@Override
+	public Map<String, DeploymentState> states(String... ids) {
+		return requestSummary(ids)
+			.collect(Collectors.toMap(as -> as.getName(), as -> mapShallowAppState(as)))
+			.block();
+	}
+
+	private DeploymentState mapShallowAppState(ApplicationSummary applicationSummary) {
+		if (applicationSummary.getRunningInstances() == applicationSummary.getInstances()) {
+			return DeploymentState.deployed;
+		}
+		else if (applicationSummary.getInstances() > 0) {
+			return DeploymentState.partial;
+		} else {
+			return DeploymentState.undeployed;
 		}
 	}
 
@@ -343,6 +363,10 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				.applicationId(applicationId)
 				.environmentJsons(environmentVariables)
 				.build());
+	}
+
+	private Flux<ApplicationSummary> requestSummary(String... names) {
+		return this.operations.applications().list();
 	}
 
 	private String routePath(AppDeploymentRequest request) {
