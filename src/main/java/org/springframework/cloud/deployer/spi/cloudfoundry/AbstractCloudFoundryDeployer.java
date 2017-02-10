@@ -53,7 +53,6 @@ class AbstractCloudFoundryDeployer {
 
 	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties) {
 		this.deploymentProperties = deploymentProperties;
-		Hooks.onOperator(op -> op.operatorStacktrace());
 	}
 
 	int memory(AppDeploymentRequest request) {
