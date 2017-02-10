@@ -26,13 +26,10 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,9 +37,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
 import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
-import org.cloudfoundry.client.v2.spaces.GetSpaceSummaryRequest;
-import org.cloudfoundry.client.v2.spaces.GetSpaceSummaryResponse;
-import org.cloudfoundry.client.v2.spaces.SpaceApplicationSummary;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
@@ -53,21 +47,18 @@ import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.operations.spaces.GetSpaceRequest;
-import org.cloudfoundry.operations.spaces.SpaceDetail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.AppStatus;
+import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
+import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.app.AppStatus;
-import org.springframework.cloud.deployer.spi.app.DeploymentState;
-import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
-import org.springframework.util.StringUtils;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -124,30 +115,19 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	@Override
 	public Map<String, DeploymentState> states(String... ids) {
-
-		List<String> applicationNames = Arrays.asList(ids);
-		Flux<ApplicationSummary> applicationSummaryFlux = operations.applications().list();
-		List<ApplicationSummary> applicationSummaryList = applicationSummaryFlux.collectList()
-			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
-
-		Map<String, DeploymentState> deploymentStateMap = new HashMap<>();
-		for (String applicationName : applicationNames) {
-			deploymentStateMap.put(applicationName, DeploymentState.unknown);
-		}
-		for(ApplicationSummary applicationSummary : applicationSummaryList ) {
-			if (deploymentStateMap.containsKey(applicationSummary.getName())) {
-				deploymentStateMap.put(applicationSummary.getName(), calculateDeploymentState(applicationSummary));
-			}
-		}
-
-		return deploymentStateMap;
+		return requestSummary()
+			.collect(Collectors.toMap(as -> as.getName(), as -> mapShallowAppState(as)))
+			.block();
 	}
 
-	private DeploymentState calculateDeploymentState(ApplicationSummary applicationSummary) {
-		if (applicationSummary.getInstances() == applicationSummary.getRunningInstances()) {
+	private DeploymentState mapShallowAppState(ApplicationSummary applicationSummary) {
+		if (applicationSummary.getRunningInstances() == applicationSummary.getInstances()) {
 			return DeploymentState.deployed;
+		}
+		else if (applicationSummary.getInstances() > 0) {
+			return DeploymentState.partial;
 		} else {
-			return DeploymentState.deploying;
+			return DeploymentState.undeployed;
 		}
 	}
 
@@ -382,6 +362,10 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				.applicationId(applicationId)
 				.environmentJsons(environmentVariables)
 				.build());
+	}
+
+	private Flux<ApplicationSummary> requestSummary() {
+		return this.operations.applications().list();
 	}
 
 	private String routePath(AppDeploymentRequest request) {
