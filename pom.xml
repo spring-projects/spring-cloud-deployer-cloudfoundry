@@ -20,7 +20,7 @@
 		<java.version>1.8</java.version>
 		<spring-cloud-deployer-spi.version>1.1.4.BUILD-SNAPSHOT</spring-cloud-deployer-spi.version>
 		<cloudfoundry-java-lib.version>2.4.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
-		<reactor-core.version>3.0.5.BUILD-SNAPSHOT</reactor-core.version>
+		<reactor-core.version>3.0.5.RELEASE</reactor-core.version>
 		<reactor-netty.version>0.6.0.RELEASE</reactor-netty.version>
 	</properties>
 
