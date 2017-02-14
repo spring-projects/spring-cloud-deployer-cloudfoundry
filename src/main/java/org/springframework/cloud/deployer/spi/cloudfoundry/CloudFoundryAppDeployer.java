@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,6 +147,10 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	@Override
 	public void undeploy(String id) {
+		getStatus(id)
+			.doOnNext(status -> assertApplicationExists(id, status))
+				// Need to block here to be able to throw exception early
+			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 		requestDeleteApplication(id)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
@@ -158,6 +162,13 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		DeploymentState state = status.getState();
 		if (state != DeploymentState.unknown && state != DeploymentState.error) {
 			throw new IllegalStateException(String.format("App %s is already deployed with state %s", deploymentId, state));
+		}
+	}
+
+	private void assertApplicationExists(String deploymentId, AppStatus status) {
+		DeploymentState state = status.getState();
+		if (state == DeploymentState.unknown) {
+			throw new IllegalStateException(String.format("App %s is not deployed", deploymentId));
 		}
 	}
 
