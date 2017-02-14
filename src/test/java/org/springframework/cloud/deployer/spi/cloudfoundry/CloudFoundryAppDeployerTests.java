@@ -717,6 +717,19 @@ public class CloudFoundryAppDeployerTests {
 
 	@Test
 	public void undeploy() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+			.diskQuota(0)
+			.id("test-application-id")
+			.instances(1)
+			.memoryLimit(0)
+			.name("test-application")
+			.requestedState("RUNNING")
+			.runningInstances(1)
+			.stack("test-stack")
+			.instanceDetail(InstanceDetail.builder()
+				.state("RUNNING")
+				.build())
+			.build()));
 		givenRequestDeleteApplication("test-application-id", Mono.empty());
 
 		this.deployer.undeploy("test-application-id");
