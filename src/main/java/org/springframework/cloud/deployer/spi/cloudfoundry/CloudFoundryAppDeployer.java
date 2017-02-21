@@ -49,16 +49,17 @@ import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.Yaml;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.util.StringUtils;
-import org.yaml.snakeyaml.Yaml;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -105,8 +106,16 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.then(bindServices(deploymentId, request))
 			.then(startApplication(deploymentId))
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
-			.doOnSuccess(v -> logger.info("Successfully deployed {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Failed to deploy %s", deploymentId), e))
+			.doOnTerminate((item, error) -> {
+				if (error == null) {
+					logger.info("Successfully deployed {}", deploymentId);
+				}
+				else if (isNotFoundError().test(error)) {
+					logger.warn("Unable to deploy application. It may have been destroyed before start completed: " + error.getMessage());
+				} else {
+					logger.error(String.format("Failed to deploy %s", deploymentId), error);
+				}
+			})
 			.subscribe();
 
 		logger.trace("Exiting deploy().  Deployment Id = {}", deploymentId);
@@ -381,6 +390,18 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	private Mono<Void> startApplication(String deploymentId) {
 		return requestStartApplication(deploymentId, this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout())
+			.doOnTerminate((item, error) -> {
+				if (error == null) {
+					logger.info("Started app {}", deploymentId);
+				}
+				else if (isNotFoundError().test(error)) {
+					logger.warn("Unable to start application. It may have been destroyed before start completed: " + error.getMessage());
+				} else {
+					logger.error(String.format("Failed to start app %s", deploymentId), error);
+				}
+
+			})
+			.otherwise(isNotFoundError(), e -> {logger.warn("Ignoring spurious 404 error during start: " + e.getMessage()); return Mono.empty();})
 			.doOnSuccess(v -> logger.info("Started app {}", deploymentId))
 			.doOnError(e -> logger.error(String.format("Failed to start app %s", deploymentId), e));
 	}
