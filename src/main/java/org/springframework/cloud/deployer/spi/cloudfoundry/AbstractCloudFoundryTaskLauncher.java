@@ -85,9 +85,6 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 	}
 
 	private Mono<TaskStatus> getStatus(String id) {
-		long requestTimeout = Math.round(this.deploymentProperties.getStatusTimeout()*0.20); // wait 200ms with status timeout of 1000ms
-		long initialRetryDelay =  Math.round(this.deploymentProperties.getStatusTimeout()*0.10); // wait 100ms with status timeout of 1000ms
-
 		return requestGetTask(id)
 			.map(this::toTaskStatus)
 			.otherwise(isNotFoundError(), t -> {
