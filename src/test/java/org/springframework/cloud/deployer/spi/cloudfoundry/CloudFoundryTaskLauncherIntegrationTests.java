@@ -50,10 +50,9 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	private TaskLauncher taskLauncher;
 
 	@Override
-	protected TaskLauncher taskLauncher() {
+	protected TaskLauncher provideTaskLauncher() {
 		return taskLauncher;
 	}
-
 
 	/*
 	 * Allow for a small pause so that each each TL.destroy() at the end of tests actually completes,

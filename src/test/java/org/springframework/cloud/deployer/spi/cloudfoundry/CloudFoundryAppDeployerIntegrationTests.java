@@ -50,7 +50,7 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	private AppDeployer appDeployer;
 
 	@Override
-	protected AppDeployer appDeployer() {
+	protected AppDeployer provideAppDeployer() {
 		return appDeployer;
 	}
 
