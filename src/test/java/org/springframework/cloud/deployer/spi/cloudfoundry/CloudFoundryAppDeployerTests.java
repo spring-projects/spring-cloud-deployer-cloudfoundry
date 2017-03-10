@@ -63,6 +63,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Mono;
 
+import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
@@ -102,6 +103,19 @@ public class CloudFoundryAppDeployerTests {
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private Services services;
+
+
+	@Before
+	public void setUp() {
+		MockitoAnnotations.initMocks(this);
+		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
+		given(this.operations.applications()).willReturn(this.applications);
+		given(this.operations.services()).willReturn(this.services);
+
+		this.deploymentProperties.setServices(new HashSet<>(Arrays.asList("test-service-1", "test-service-2")));
+
+		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.client, this.deploymentProperties, this.operations);
+	}
 
 	@SuppressWarnings("unchecked")
 	@Test
@@ -454,16 +468,56 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestStartApplication("test-group-test-application-id", null, null);
 	}
 
-	@Before
-	public void setUp() {
-		MockitoAnnotations.initMocks(this);
-		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
-		given(this.operations.applications()).willReturn(this.applications);
-		given(this.operations.services()).willReturn(this.services);
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployDockerResource() throws IOException {
+		Resource resource = new DockerResource("somecorp/someimage:latest");
 
-		this.deploymentProperties.setServices(new HashSet<>(Arrays.asList("test-service-1", "test-service-2")));
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
 
-		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.client, this.deploymentProperties, this.operations);
+		givenRequestGetApplication("test-application-id",
+			Mono.error(new IllegalArgumentException()),
+			Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(0)
+				.stack("test-stack")
+				.build()));
+
+		givenRequestPushApplication(PushApplicationRequest.builder()
+			.dockerImage("somecorp/someimage:latest")
+			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.diskQuota(1024)
+			.instances(1)
+			.memory(1024)
+			.name("test-application-id")
+			.noStart(true)
+			.build(), Mono.empty());
+
+		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+
+		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
+		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
+
+		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			new AppDefinition("test-application", Collections.emptyMap()),
+			resource,
+			Collections.emptyMap()));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+
+		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+
+		verifyRequestBindService("test-application-id", "test-service-1");
+		verifyRequestBindService("test-application-id", "test-service-2");
+
+		verifyRequestStartApplication("test-application-id", null, null);
 	}
 
 	@SuppressWarnings("unchecked")
