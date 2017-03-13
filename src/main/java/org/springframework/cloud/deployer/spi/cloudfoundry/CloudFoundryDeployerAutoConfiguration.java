@@ -39,9 +39,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.app.DeployerEnvironmentInfo;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.cloud.deployer.spi.util.DeployerVersionUtils;
+import org.springframework.cloud.deployer.spi.util.RuntimeVersionUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -136,12 +136,13 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public DeployerEnvironmentInfo deployerEnvironmentInfo(Version version, CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties) {
-		return new DeployerEnvironmentInfo.Builder()
-			.deployerName(CloudFoundryAppDeployer.class.getSimpleName())
-			.deployerImplementationVersion(DeployerVersionUtils.getVersion(CloudFoundryAppDeployer.class))
+	public RuntimeEnvironmentInfo runtimeEnvironmentInfo(Version version, CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties) {
+		return new RuntimeEnvironmentInfo.Builder()
+			.implementationName("Spring Cloud Deployer for Cloud Foundry")
+			.spiClass(CloudFoundryAppDeployer.class)
+			.implementationVersion(RuntimeVersionUtils.getVersion(CloudFoundryAppDeployer.class))
 			.platformType("Cloud Foundry")
-			.platformClientVersion(DeployerVersionUtils.getVersion(client.getClass()))
+			.platformClientVersion(RuntimeVersionUtils.getVersion(client.getClass()))
 			.platformApiVersion(version.toString())
 			.platformHostVersion("unknown")
 			.addPlatformSpecificInfo("API Endpoint", connectionProperties.getUrl().toString())
@@ -153,8 +154,8 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public AppDeployer appDeployer(CloudFoundryOperations operations,
 		CloudFoundryClient client,
 		AppNameGenerator applicationNameGenerator,
-		DeployerEnvironmentInfo deployerEnvironmentInfo) {
-		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations, deployerEnvironmentInfo);
+		RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
+		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations, runtimeEnvironmentInfo);
 	}
 
 	@Bean
@@ -168,13 +169,16 @@ public class CloudFoundryDeployerAutoConfiguration {
 	public TaskLauncher taskLauncher(CloudFoundryClient client,
 		CloudFoundryConnectionProperties connectionProperties,
 		CloudFoundryOperations operations,
-		Version version) {
+		Version version,
+		RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
 
 		if (version.greaterThanOrEqualTo(CF_TASKS_INFLECTION_POINT)) {
-			return new CloudFoundry2630AndLaterTaskLauncher(client, taskDeploymentProperties(), operations);
+			return new CloudFoundry2630AndLaterTaskLauncher(client,
+				taskDeploymentProperties(), operations, runtimeEnvironmentInfo);
 		}
 		else {
-			return new CloudFoundry2620AndEarlierTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
+			return new CloudFoundry2620AndEarlierTaskLauncher(client, taskDeploymentProperties(), operations,
+				connectionProperties.getSpace(), runtimeEnvironmentInfo);
 		}
 	}
 

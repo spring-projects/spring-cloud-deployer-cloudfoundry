@@ -52,6 +52,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 
 /**
@@ -77,8 +78,9 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 
 	public CloudFoundry2630AndLaterTaskLauncher(CloudFoundryClient client,
 												CloudFoundryDeploymentProperties deploymentProperties,
-												CloudFoundryOperations operations) {
-		super(client, deploymentProperties);
+												CloudFoundryOperations operations,
+											    RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
+		super(client, deploymentProperties, runtimeEnvironmentInfo);
 		this.client = client;
 		this.deploymentProperties = deploymentProperties;
 		this.operations = operations;

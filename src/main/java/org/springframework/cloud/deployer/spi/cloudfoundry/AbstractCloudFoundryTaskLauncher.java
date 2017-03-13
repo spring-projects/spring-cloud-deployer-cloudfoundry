@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
@@ -46,8 +47,10 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 
 	private final CloudFoundryClient client;
 
-	AbstractCloudFoundryTaskLauncher(CloudFoundryClient client, CloudFoundryDeploymentProperties deploymentProperties) {
-		super(deploymentProperties);
+	AbstractCloudFoundryTaskLauncher(CloudFoundryClient client,
+		CloudFoundryDeploymentProperties deploymentProperties,
+		RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
+		super(deploymentProperties, runtimeEnvironmentInfo);
 		this.client = client;
 	}
 

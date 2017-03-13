@@ -56,10 +56,10 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
-import org.springframework.cloud.deployer.spi.app.DeployerEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.util.StringUtils;
 
 /**
@@ -81,19 +81,16 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	private final CloudFoundryOperations operations;
 
-	private final DeployerEnvironmentInfo deployerEnvironmentInfo;
-
 	public CloudFoundryAppDeployer(AppNameGenerator applicationNameGenerator,
 		CloudFoundryClient client,
 		CloudFoundryDeploymentProperties deploymentProperties,
 		CloudFoundryOperations operations,
-		DeployerEnvironmentInfo deployerEnvironmentInfo
+		RuntimeEnvironmentInfo runtimeEnvironmentInfo
 	) {
-		super(deploymentProperties);
+		super(deploymentProperties, runtimeEnvironmentInfo);
 		this.operations = operations;
 		this.client = client;
 		this.applicationNameGenerator = applicationNameGenerator;
-		this.deployerEnvironmentInfo = deployerEnvironmentInfo;
 	}
 
 	@Override
@@ -173,11 +170,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
 			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e))
 			.subscribe();
-	}
-
-	@Override
-	public DeployerEnvironmentInfo environmentInfo() {
-		return deployerEnvironmentInfo;
 	}
 
 	private void assertApplicationDoesNotExist(String deploymentId, AppStatus status) {

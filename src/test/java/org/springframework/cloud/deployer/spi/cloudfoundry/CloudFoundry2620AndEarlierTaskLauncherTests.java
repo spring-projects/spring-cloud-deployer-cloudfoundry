@@ -19,6 +19,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.io.File;
@@ -92,6 +93,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
@@ -789,7 +791,7 @@ public class CloudFoundry2620AndEarlierTaskLauncherTests {
 		given(this.file.toPath()).willReturn(this.path);
 
 		this.deploymentProperties.setApiTimeout(1);
-		this.launcher = new CloudFoundry2620AndEarlierTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space");
+		this.launcher = new CloudFoundry2620AndEarlierTaskLauncher(this.client, this.deploymentProperties, this.operations, "test-space", mock(RuntimeEnvironmentInfo.class));
 	}
 
 	@Test

@@ -36,6 +36,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -47,12 +48,15 @@ import org.springframework.util.StringUtils;
  */
 class AbstractCloudFoundryDeployer {
 
+	protected final RuntimeEnvironmentInfo runtimeEnvironmentInfo;
+
 	final CloudFoundryDeploymentProperties deploymentProperties;
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties) {
+	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties, RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
 		this.deploymentProperties = deploymentProperties;
+		this.runtimeEnvironmentInfo = runtimeEnvironmentInfo;
 	}
 
 	int memory(AppDeploymentRequest request) {
@@ -110,5 +114,7 @@ class AbstractCloudFoundryDeployer {
 	}
 
 
-
+	public RuntimeEnvironmentInfo environmentInfo() {
+		return runtimeEnvironmentInfo;
+	}
 }
