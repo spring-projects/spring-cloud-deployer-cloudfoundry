@@ -107,3 +107,4 @@ local.properties
 # Code Recommenders
 .recommenders/
 
+.DS_Store

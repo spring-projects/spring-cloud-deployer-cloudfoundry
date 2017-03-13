@@ -39,7 +39,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.DeployerEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
+import org.springframework.cloud.deployer.spi.util.DeployerVersionUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -122,10 +124,37 @@ public class CloudFoundryDeployerAutoConfiguration {
 	}
 
 	@Bean
+	@ConditionalOnMissingBean
+	public Version version(CloudFoundryClient client) {
+		return client.info()
+				.get(GetInfoRequest.builder()
+					.build())
+				.map(response -> Version.valueOf(response.getApiVersion()))
+				.doOnNext(version -> logger.info("Connecting to Cloud Foundry with API Version {}", version))
+				.block(Duration.ofSeconds(appDeploymentProperties().getApiTimeout()));
+	}
+
+	@Bean
+	@ConditionalOnMissingBean
+	public DeployerEnvironmentInfo deployerEnvironmentInfo(Version version, CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties) {
+		return new DeployerEnvironmentInfo.Builder()
+			.deployerName(CloudFoundryAppDeployer.class.getSimpleName())
+			.deployerImplementationVersion(DeployerVersionUtils.getVersion(CloudFoundryAppDeployer.class))
+			.platformType("Cloud Foundry")
+			.platformClientVersion(DeployerVersionUtils.getVersion(client.getClass()))
+			.platformApiVersion(version.toString())
+			.platformHostVersion("unknown")
+			.addPlatformSpecificInfo("API Endpoint", connectionProperties.getUrl().toString())
+			.build();
+	}
+
+	@Bean
 	@ConditionalOnMissingBean(AppDeployer.class)
-	public AppDeployer appDeployer(CloudFoundryOperations operations, CloudFoundryClient client, AppNameGenerator applicationNameGenerator,
-								   CloudFoundryConnectionProperties cloudFoundryConnectionProperties) {
-		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations);
+	public AppDeployer appDeployer(CloudFoundryOperations operations,
+		CloudFoundryClient client,
+		AppNameGenerator applicationNameGenerator,
+		DeployerEnvironmentInfo deployerEnvironmentInfo) {
+		return new CloudFoundryAppDeployer(applicationNameGenerator, client, appDeploymentProperties(), operations, deployerEnvironmentInfo);
 	}
 
 	@Bean
@@ -136,20 +165,17 @@ public class CloudFoundryDeployerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(TaskLauncher.class)
-	public TaskLauncher taskLauncher(CloudFoundryClient client, CloudFoundryConnectionProperties connectionProperties, CloudFoundryOperations operations) {
-		return client.info()
-			.get(GetInfoRequest.builder()
-				.build())
-			.map(response -> Version.valueOf(response.getApiVersion()))
-			.doOnNext(version -> logger.info("Connecting to Cloud Foundry with API Version {}", version))
-			.map(version -> {
-				if (version.greaterThanOrEqualTo(CF_TASKS_INFLECTION_POINT)) {
-					return new CloudFoundry2630AndLaterTaskLauncher(client, taskDeploymentProperties(), operations);
-				} else {
-					return new CloudFoundry2620AndEarlierTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
-				}
-			})
-			.block(Duration.ofSeconds(taskDeploymentProperties().getApiTimeout()));
+	public TaskLauncher taskLauncher(CloudFoundryClient client,
+		CloudFoundryConnectionProperties connectionProperties,
+		CloudFoundryOperations operations,
+		Version version) {
+
+		if (version.greaterThanOrEqualTo(CF_TASKS_INFLECTION_POINT)) {
+			return new CloudFoundry2630AndLaterTaskLauncher(client, taskDeploymentProperties(), operations);
+		}
+		else {
+			return new CloudFoundry2620AndEarlierTaskLauncher(client, taskDeploymentProperties(), operations, connectionProperties.getSpace());
+		}
 	}
 
 	@Bean

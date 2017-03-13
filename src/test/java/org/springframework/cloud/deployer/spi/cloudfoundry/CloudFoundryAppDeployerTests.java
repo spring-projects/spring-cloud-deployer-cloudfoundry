@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
@@ -65,6 +66,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
+import org.springframework.cloud.deployer.spi.app.DeployerEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
@@ -463,7 +465,7 @@ public class CloudFoundryAppDeployerTests {
 
 		this.deploymentProperties.setServices(new HashSet<>(Arrays.asList("test-service-1", "test-service-2")));
 
-		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.client, this.deploymentProperties, this.operations);
+		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.client, this.deploymentProperties, this.operations, mock(DeployerEnvironmentInfo.class));
 	}
 
 	@SuppressWarnings("unchecked")
