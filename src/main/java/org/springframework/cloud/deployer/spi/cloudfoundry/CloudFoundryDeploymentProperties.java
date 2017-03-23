@@ -117,12 +117,12 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * If set, override the timeout allocated for staging the app by the client.
 	 */
-	private Duration stagingTimeout;
+	private Duration stagingTimeout = Duration.ofMinutes(15L);
 
 	/**
 	 * If set, override the timeout allocated for starting the app by the client.
 	 */
-	private Duration startupTimeout;
+	private Duration startupTimeout = Duration.ofMinutes(5L);
 
 	/**
 	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name.

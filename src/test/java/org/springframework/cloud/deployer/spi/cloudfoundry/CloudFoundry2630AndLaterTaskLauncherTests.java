@@ -106,6 +106,22 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private Tasks tasks;
 
+	@Before
+	public void setUp() throws IOException {
+		MockitoAnnotations.initMocks(this);
+		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
+		given(this.client.tasks()).willReturn(this.tasks);
+
+		given(this.operations.applications()).willReturn(this.applications);
+		given(this.operations.services()).willReturn(this.services);
+		given(this.operations.spaces()).willReturn(this.spaces);
+
+		this.deploymentProperties.setApiTimeout(1);
+		this.launcher = new CloudFoundry2630AndLaterTaskLauncher(this.client, this.deploymentProperties, this.operations, mock(RuntimeEnvironmentInfo.class));
+	}
+
+
+
 	@Test
 	public void cancel() {
 		givenRequestCancelTask("test-task-id", Mono.just(CancelTaskResponse.builder()
@@ -180,7 +196,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListServiceInstances(Flux.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.empty());
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -309,7 +325,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListServiceInstances(Flux.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.empty());
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -354,7 +370,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListServiceInstances(Flux.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.error(new UnsupportedOperationException
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.error(new UnsupportedOperationException
 			()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
@@ -396,7 +412,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListServiceInstances(Flux.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.empty());
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.error(new UnsupportedOperationException()));
 
@@ -439,7 +455,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListServiceInstances(Flux.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.empty());
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -537,7 +553,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestBindService("test-application", "test-service-instance-2", Mono.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.empty());
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -613,7 +629,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestBindService("test-application", "test-service-instance-3", Mono.empty());
 
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStagingTimeout(), Mono.empty());
+		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -662,20 +678,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap());
 
 		this.launcher.launch(request);
-	}
-
-	@Before
-	public void setUp() throws IOException {
-		MockitoAnnotations.initMocks(this);
-		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
-		given(this.client.tasks()).willReturn(this.tasks);
-
-		given(this.operations.applications()).willReturn(this.applications);
-		given(this.operations.services()).willReturn(this.services);
-		given(this.operations.spaces()).willReturn(this.spaces);
-
-		this.deploymentProperties.setApiTimeout(1);
-		this.launcher = new CloudFoundry2630AndLaterTaskLauncher(this.client, this.deploymentProperties, this.operations, mock(RuntimeEnvironmentInfo.class));
 	}
 
 	@Test

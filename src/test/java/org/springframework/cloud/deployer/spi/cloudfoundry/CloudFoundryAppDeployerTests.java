@@ -21,7 +21,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
@@ -67,10 +66,10 @@ import reactor.core.publisher.Mono;
 import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
-import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
@@ -158,7 +157,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -172,7 +171,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-application-id", null, null);
+		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -210,7 +209,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.singletonMap("test-key-1", "test-value-1")),
@@ -227,7 +226,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-application-id", null, null);
+		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -265,7 +264,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.singletonMap("test-key-1", "test-value-1")),
@@ -279,7 +278,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-application-id", null, null);
+		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -322,7 +321,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -346,7 +345,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-application-id", null, null);
+		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -395,7 +394,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -409,7 +408,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-application-id", null, null);
+		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -452,7 +451,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-group-test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-group-test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-group-test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-group-test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -471,7 +470,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-group-test-application-id", "test-service-1");
 		verifyRequestBindService("test-group-test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-group-test-application-id", null, null);
+		verifyRequestStartApplication("test-group-test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -509,7 +508,7 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
 
-		givenRequestStartApplication("test-application-id", null, null, Mono.empty());
+		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -523,7 +522,7 @@ public class CloudFoundryAppDeployerTests {
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
-		verifyRequestStartApplication("test-application-id", null, null);
+		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
