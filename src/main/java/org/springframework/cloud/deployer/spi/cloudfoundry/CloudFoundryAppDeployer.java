@@ -237,41 +237,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.orElse(this.deploymentProperties.getDomain());
 	}
 
-	/**
-	 * Return a Docker image identifier if the application Resource is for a Docker image, or {@literal null} otherwise.
-	 *
-	 * @see #getApplication(AppDeploymentRequest)
-	 */
-	private String getDockerImage(AppDeploymentRequest request) {
-		try {
-			String uri = request.getResource().getURI().toString();
-			if (uri.startsWith("docker:")) {
-				return uri.substring("docker:".length());
-			} else {
-				return null;
-			}
-		} catch (IOException e) {
-			throw Exceptions.propagate(e);
-		}
-	}
-
-	/**
-	 * Return a Path to the application Resource or {@literal null} if the request is for a Docker image.
-	 *
-	 * @see #getDockerImage(AppDeploymentRequest)
-	 */
-	private Path getApplication(AppDeploymentRequest request) {
-		try {
-			if (!request.getResource().getURI().toString().startsWith("docker:")) {
-				return request.getResource().getFile().toPath();
-			} else {
-				return null;
-			}
-		} catch (IOException e) {
-			throw Exceptions.propagate(e);
-		}
-	}
-
 	private Mono<String> getApplicationId(String deploymentId) {
 		return requestGetApplication(deploymentId)
 			.map(ApplicationDetail::getId);

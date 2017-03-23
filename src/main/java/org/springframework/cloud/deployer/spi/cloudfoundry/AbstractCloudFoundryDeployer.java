@@ -19,6 +19,8 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Optional;
@@ -30,8 +32,8 @@ import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
@@ -86,6 +88,43 @@ class AbstractCloudFoundryDeployer {
 	Predicate<Throwable> isNotFoundError() {
 		return t -> t instanceof AbstractCloudFoundryException && ((AbstractCloudFoundryException) t).getStatusCode() == HttpStatus.NOT_FOUND.value();
 	}
+
+	/**
+	 * Return a Docker image identifier if the application Resource is for a Docker image, or {@literal null} otherwise.
+	 *
+	 * @see #getApplication(AppDeploymentRequest)
+	 */
+	String getDockerImage(AppDeploymentRequest request) {
+		try {
+			String uri = request.getResource().getURI().toString();
+			if (uri.startsWith("docker:")) {
+				return uri.substring("docker:".length());
+			} else {
+				return null;
+			}
+		} catch (IOException e) {
+			throw Exceptions.propagate(e);
+		}
+	}
+
+	/**
+	 * Return a Path to the application Resource or {@literal null} if the request is for a Docker image.
+	 *
+	 * @see #getDockerImage(AppDeploymentRequest)
+	 */
+	Path getApplication(AppDeploymentRequest request) {
+		try {
+			if (!request.getResource().getURI().toString().startsWith("docker:")) {
+				return request.getResource().getFile().toPath();
+			} else {
+				return null;
+			}
+		} catch (IOException e) {
+			throw Exceptions.propagate(e);
+		}
+	}
+
+
 	/**
 	 * To be used in order to retry the status operation for an application or task.
 	 * @param id The application id or the task id

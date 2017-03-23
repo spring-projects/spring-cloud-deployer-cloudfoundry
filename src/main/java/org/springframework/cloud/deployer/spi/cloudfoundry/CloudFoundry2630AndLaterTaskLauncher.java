@@ -16,8 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
@@ -131,14 +129,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 				.then(Mono.just(application)));
 	}
 
-	private Path getApplication(AppDeploymentRequest request) {
-		try {
-			return request.getResource().getFile().toPath();
-		} catch (IOException e) {
-			throw Exceptions.propagate(e);
-		}
-	}
-
 	private String getCommand(SummaryApplicationResponse application, AppDeploymentRequest request) {
 		return Stream.concat(Stream.of(application.getDetectedStartCommand()), request.getCommandlineArguments().stream())
 			.collect(Collectors.joining(" "));
@@ -175,8 +165,9 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	private Mono<Void> pushApplication(String name, AppDeploymentRequest request) {
 		return requestPushApplication(PushApplicationRequest.builder()
 			.application(getApplication(request))
+			.dockerImage(getDockerImage(request))
 			.buildpack(buildpack(request))
-			.command("/bin/nc -l $PORT")
+			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota(diskQuota(request))
 			.healthCheckType(ApplicationHealthCheck.NONE)
 			.memory(memory(request))
