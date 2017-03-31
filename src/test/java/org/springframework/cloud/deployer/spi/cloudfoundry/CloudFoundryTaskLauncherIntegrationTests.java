@@ -16,7 +16,9 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import com.github.zafarkhaja.semver.Version;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -51,6 +53,9 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	@Autowired
 	private TaskLauncher taskLauncher;
 
+	@Autowired
+	private Version cloudControllerAPIVersion;
+
 	/**
 	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if
 	 * running in an environment that is known to be slow.
@@ -61,6 +66,9 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 
 	@Before
 	public void init() {
+		Assume.assumeTrue("Skipping TaskLauncher ITs on PCF<1.9 (2.65.0). Actual API version is " + cloudControllerAPIVersion,
+			cloudControllerAPIVersion.greaterThanOrEqualTo(Version.forIntegers(2, 65, 0)));
+
 		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
 		if (multiplier != null) {
 			timeoutMultiplier = Double.parseDouble(multiplier);
