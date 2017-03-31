@@ -17,6 +17,7 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -26,6 +27,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.test.AbstractTaskLauncherIntegrationTests;
+import org.springframework.cloud.deployer.spi.test.Timeout;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -49,6 +51,22 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	@Autowired
 	private TaskLauncher taskLauncher;
 
+	/**
+	 * Execution environments may override this default value to have tests wait longer for a deployment, for example if
+	 * running in an environment that is known to be slow.
+	 */
+	protected double timeoutMultiplier = 1.0D;
+
+	protected int maxRetries = 60;
+
+	@Before
+	public void init() {
+		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
+		if (multiplier != null) {
+			timeoutMultiplier = Double.parseDouble(multiplier);
+		}
+	}
+
 	@Override
 	protected TaskLauncher provideTaskLauncher() {
 		return taskLauncher;
@@ -69,6 +87,18 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	public void testSimpleCancel() throws InterruptedException {
 		super.testSimpleCancel();
 	}
+
+	@Override
+	protected Timeout deploymentTimeout() {
+		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
+	}
+
+	@Override
+	protected Timeout undeploymentTimeout() {
+		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
+	}
+
+
 
 	/**
 	 * This triggers the use of {@link CloudFoundryDeployerAutoConfiguration}.
