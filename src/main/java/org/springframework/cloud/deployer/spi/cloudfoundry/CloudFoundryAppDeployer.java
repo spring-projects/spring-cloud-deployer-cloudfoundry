@@ -23,8 +23,6 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,11 +44,11 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
+import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
-import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -165,7 +163,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnNext(status -> assertApplicationExists(id, status))
 				// Need to block here to be able to throw exception early
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
-		requestDeleteApplication(id)
+		requestStopApplication(id)
+			.doOnSuccess(v -> logger.info("Successfully stopped app {}", id))
+			.then(requestDeleteApplication(id))
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
 			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e))
@@ -372,6 +372,13 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				.stagingTimeout(stagingTimeout)
 				.startupTimeout(startupTimeout)
 				.build());
+	}
+
+	private Mono<Void> requestStopApplication(String name) {
+		return this.operations.applications()
+			.stop(StopApplicationRequest.builder()
+				.name(name)
+			.build());
 	}
 
 	private Mono<UpdateApplicationResponse> requestUpdateApplication(String applicationId, Map<String, String> environmentVariables) {
