@@ -144,7 +144,7 @@ public class CloudFoundryAppDeployerTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.diskQuota(1024)
 			.instances(1)
 			.memory(1024)
@@ -196,7 +196,7 @@ public class CloudFoundryAppDeployerTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.diskQuota(1024)
 			.instances(1)
 			.memory(1024)
@@ -251,7 +251,7 @@ public class CloudFoundryAppDeployerTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.diskQuota(1024)
 			.instances(1)
 			.memory(1024)
@@ -433,7 +433,7 @@ public class CloudFoundryAppDeployerTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.diskQuota(1024)
 			.instances(1)
 			.memory(1024)
@@ -495,7 +495,7 @@ public class CloudFoundryAppDeployerTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.dockerImage("somecorp/someimage:latest")
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.diskQuota(1024)
 			.instances(1)
 			.memory(1024)

@@ -171,7 +171,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -237,7 +237,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -276,7 +276,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -300,7 +300,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -345,7 +345,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -387,7 +387,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -430,7 +430,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -480,7 +480,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -517,7 +517,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -584,7 +584,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
@@ -662,7 +662,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestPushApplication(PushApplicationRequest.builder()
 			.application(resource.getFile().toPath())
-			.buildpack("https://github.com/cloudfoundry/java-buildpack.git")
+			.buildpack(deploymentProperties.getBuildpack())
 			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 			.diskQuota((int) ByteSizeUtils.parseToMebibytes( this.deploymentProperties.getDisk()))
 			.healthCheckType(ApplicationHealthCheck.NONE)
