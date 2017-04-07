@@ -70,7 +70,7 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * The buildpack to use for deploying the application.
 	 */
-	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git";
+	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v3.14";
 
 	/**
 	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
