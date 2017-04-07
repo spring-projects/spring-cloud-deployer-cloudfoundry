@@ -20,13 +20,15 @@ import java.net.URL;
 
 import javax.validation.constraints.NotNull;
 
+import org.springframework.validation.annotation.Validated;
+
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
  *
  * @author Eric Bottard
  * @author Greg Turnquist
  */
-
+@Validated
 public class CloudFoundryConnectionProperties {
 
 	/**
