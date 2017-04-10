@@ -23,8 +23,6 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,7 +48,6 @@ import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
-import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -118,7 +115,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				else if (isNotFoundError().test(error)) {
 					logger.warn("Unable to deploy application. It may have been destroyed before start completed: " + error.getMessage());
 				} else {
-					logger.error(String.format("Failed to deploy %s", deploymentId), error);
+					logError(String.format("Failed to deploy %s", deploymentId)).accept(error);
 				}
 			})
 			.subscribe();
@@ -150,7 +147,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		try {
 			return getStatus(id)
 				.doOnSuccess(v -> logger.info("Successfully computed status [{}] for {}", v, id))
-				.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id), e))
+				.doOnError(logError(String.format("Failed to compute status for %s", id)))
 				.block(Duration.ofMillis(this.deploymentProperties.getStatusTimeout()));
 		}
 		catch (Exception timeoutDueToBlock) {
@@ -168,7 +165,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		requestDeleteApplication(id)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
-			.doOnError(e -> logger.error(String.format("Failed to undeploy app %s", id), e))
+			.doOnError(logError(String.format("Failed to undeploy app %s", id)))
 			.subscribe();
 	}
 
@@ -190,7 +187,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		return Flux.fromIterable(servicesToBind(request))
 			.flatMap(service -> requestBindService(deploymentId, service)
 				.doOnSuccess(v -> logger.debug("Binding service {} to app {}", service, deploymentId))
-				.doOnError(e -> logger.error(String.format("Failed to bind service %s to app %s", service, deploymentId), e)))
+				.doOnError(logError(String.format("Failed to bind service %s to app %s", service, deploymentId))))
 			.then();
 	}
 
@@ -408,13 +405,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				else if (isNotFoundError().test(error)) {
 					logger.warn("Unable to start application. It may have been destroyed before start completed: " + error.getMessage());
 				} else {
-					logger.error(String.format("Failed to start app %s", deploymentId), error);
+					logError(String.format("Failed to start app %s", deploymentId)).accept(error);
 				}
-
-			})
-			.otherwise(isNotFoundError(), e -> {logger.warn("Ignoring spurious 404 error during start: " + e.getMessage()); return Mono.empty();})
-			.doOnSuccess(v -> logger.info("Started app {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Failed to start app %s", deploymentId), e));
+			});
 	}
 
 	private ApplicationHealthCheck toApplicationHealthCheck(String raw) {

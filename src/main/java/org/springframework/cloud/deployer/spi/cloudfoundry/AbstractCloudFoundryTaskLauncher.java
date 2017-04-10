@@ -64,7 +64,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 		requestCancelTask(id)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(r -> logger.info("Task {} cancellation successful", id))
-			.doOnError(t -> logger.error(String.format("Task %s cancellation failed", id), t))
+			.doOnError(logError(String.format("Task %s cancellation failed", id)))
 			.subscribe();
 	}
 
@@ -79,7 +79,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 		try {
 			return getStatus(id)
 				.doOnSuccess(v -> logger.info("Successfully computed status [{}] for id={}", v, id))
-				.doOnError(e -> logger.error(String.format("Failed to compute status for %s", id),e))
+				.doOnError(logError(String.format("Failed to compute status for %s", id)))
 				.block(Duration.ofMillis(this.deploymentProperties.getStatusTimeout()));
 		} catch (Exception timeoutDueToBlock) {
 			logger.error("Caught exception while querying for status of id={}", id, timeoutDueToBlock);
