@@ -276,6 +276,8 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		if (group != null) {
 			envVariables.put("SPRING_CLOUD_APPLICATION_GROUP", group);
 		}
+		envVariables.put("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}");
+		envVariables.put("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}");
 		return envVariables;
 	}
 
