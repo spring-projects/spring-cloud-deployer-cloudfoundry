@@ -16,8 +16,8 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.InstanceDetail;
@@ -37,6 +37,8 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 	private final ApplicationDetail applicationDetail;
 
 	private final int index;
+
+	private final Map<String, String> attributes = new TreeMap<>();
 
 	public CloudFoundryAppInstanceStatus(ApplicationDetail applicationDetail, InstanceDetail instanceDetail, int index) {
 		this.applicationDetail = applicationDetail;
@@ -74,18 +76,19 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 
 	@Override
 	public Map<String, String> getAttributes() {
-		Map<String, String> attributes = new LinkedHashMap<>();
 		if (instanceDetail != null) {
 			if (instanceDetail.getCpu() != null) {
-				attributes.put("cpu", String.format("%.1f%%", instanceDetail.getCpu() * 100d));
+				attributes.put("metrics.machine.cpu", String.format("%.1f%%", instanceDetail.getCpu() * 100d));
 			}
 			if (instanceDetail.getDiskQuota() != null && instanceDetail.getDiskUsage() != null) {
-				attributes.put("disk", String.format("%.1f%%", 100d * instanceDetail.getDiskUsage() / instanceDetail.getDiskQuota()));
+				attributes.put("metrics.machine.disk", String.format("%.1f%%", 100d * instanceDetail.getDiskUsage() / instanceDetail.getDiskQuota()));
 			}
 			if (instanceDetail.getMemoryQuota() != null && instanceDetail.getMemoryUsage() != null) {
-				attributes.put("memory", String.format("%.1f%%", 100d * instanceDetail.getMemoryUsage() / instanceDetail.getMemoryQuota()));
+				attributes.put("metrics.machine.memory", String.format("%.1f%%", 100d * instanceDetail.getMemoryUsage() / instanceDetail.getMemoryQuota()));
 			}
 		}
+		// TODO cf-java-client versions > 2.8 will have an index formally added ot InstanceDetail
+		attributes.put("guid", applicationDetail.getName() + ":" + index);
 		return attributes;
 	}
 
