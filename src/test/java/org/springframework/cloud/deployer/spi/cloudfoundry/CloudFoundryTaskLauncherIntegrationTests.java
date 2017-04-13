@@ -23,7 +23,6 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -44,11 +43,11 @@ import org.springframework.test.context.ContextConfiguration;
  * @author Michael Minella
  * @author Ben Hale
  */
-@ContextConfiguration(classes=CloudFoundryTaskLauncherIntegrationTests.Config.class)
+@ContextConfiguration(classes = CloudFoundryTaskLauncherIntegrationTests.Config.class)
 public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLauncherIntegrationTests {
 
 	@ClassRule
-	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+	public static CloudFoundryTaskLauncherTestSupport cfAvailable = new CloudFoundryTaskLauncherTestSupport();
 
 	@Autowired
 	private TaskLauncher taskLauncher;
@@ -105,7 +104,6 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	protected Timeout undeploymentTimeout() {
 		return new Timeout(maxRetries, (int) (5000 * timeoutMultiplier));
 	}
-
 
 
 	/**
