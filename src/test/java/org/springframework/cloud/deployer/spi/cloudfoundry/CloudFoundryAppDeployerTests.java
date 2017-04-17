@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -152,7 +153,7 @@ public class CloudFoundryAppDeployerTests {
 			.noStart(true)
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
 
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
@@ -166,7 +167,7 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
 
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
@@ -204,7 +205,12 @@ public class CloudFoundryAppDeployerTests {
 			.noStart(true)
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("test-key-1", "test-value-1"), Mono.empty());
+
+		Map<String, String> environmentVariables = new HashMap<>();
+		environmentVariables.put("test-key-1", "test-value-1");
+		addGuidAndIndex(environmentVariables);
+
+		givenRequestUpdateApplication("test-application-id", environmentVariables, Mono.empty());
 
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
@@ -221,7 +227,7 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("test-key-1", "test-value-1"));
+		verifyRequestUpdateApplication("test-application-id", environmentVariables);
 
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
@@ -259,7 +265,11 @@ public class CloudFoundryAppDeployerTests {
 			.noStart(true)
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{\"test-key-1\":\"test-value-1\"}"), Mono.empty());
+		Map<String, String> environmentVariables = new HashMap<>();
+		environmentVariables.put("SPRING_APPLICATION_JSON", "{\"test-key-1\":\"test-value-1\"}");
+		addGuidAndIndex(environmentVariables);
+
+		givenRequestUpdateApplication("test-application-id", environmentVariables, Mono.empty());
 
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
@@ -273,13 +283,14 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{\"test-key-1\":\"test-value-1\"}"));
+		verifyRequestUpdateApplication("test-application-id", environmentVariables);
 
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
 
 		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
+
 
 	@SuppressWarnings("unchecked")
 	@Test
@@ -316,7 +327,7 @@ public class CloudFoundryAppDeployerTests {
 			.routePath("test-route-path")
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
 
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
@@ -340,7 +351,7 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
 
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
@@ -389,7 +400,7 @@ public class CloudFoundryAppDeployerTests {
 			.noStart(true)
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
 
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
@@ -403,7 +414,7 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
 
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
@@ -445,6 +456,8 @@ public class CloudFoundryAppDeployerTests {
 			FluentMap.<String, String>builder()
 				.entry("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
 				.entry("SPRING_APPLICATION_JSON", "{}")
+				.entry("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}")
+				.entry("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}")
 				.build(),
 			Mono.empty());
 
@@ -464,6 +477,8 @@ public class CloudFoundryAppDeployerTests {
 			FluentMap.<String, String>builder()
 				.entry("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
 				.entry("SPRING_APPLICATION_JSON", "{}")
+				.entry("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}")
+				.entry("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}")
 				.build()
 		);
 
@@ -503,7 +518,7 @@ public class CloudFoundryAppDeployerTests {
 			.noStart(true)
 			.build(), Mono.empty());
 
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
+		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
 
 		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
 		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
@@ -517,7 +532,7 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"));
+		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
 
 		verifyRequestBindService("test-application-id", "test-service-1");
 		verifyRequestBindService("test-application-id", "test-service-2");
@@ -539,6 +554,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("CRASHED")
+				.index("1")
 				.build())
 			.build()));
 
@@ -561,6 +577,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("DOWN")
+				.index("1")
 				.build())
 			.build()));
 
@@ -583,6 +600,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("FLAPPING")
+				.index("1")
 				.build())
 			.build()));
 
@@ -605,6 +623,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("RUNNING")
+				.index("1")
 				.build())
 			.build()));
 
@@ -612,7 +631,7 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(status.getState(), equalTo(DeploymentState.deployed));
 		assertThat(status.getInstances().get("test-application-0").toString(), equalTo("CloudFoundryAppInstanceStatus[test-application-0 : deployed]"));
-		assertThat(status.getInstances().get("test-application-0").getAttributes(), equalTo(Collections.emptyMap()));
+		assertThat(status.getInstances().get("test-application-0").getAttributes(), equalTo(Collections.singletonMap("guid","test-application:0")));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -629,6 +648,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("STARTING")
+				.index("1")
 				.build())
 			.build()));
 
@@ -651,6 +671,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("UNKNOWN")
+				.index("1")
 				.build())
 			.build()));
 
@@ -673,6 +694,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("ABNORMAL")
+				.index("1")
 				.build())
 			.build()));
 
@@ -701,6 +723,7 @@ public class CloudFoundryAppDeployerTests {
 					.stack("test-stack")
 					.instanceDetail(InstanceDetail.builder()
 						.state("UNKNOWN")
+						.index("1")
 						.build())
 					.build());
 			}
@@ -731,6 +754,7 @@ public class CloudFoundryAppDeployerTests {
 					.stack("test-stack")
 					.instanceDetail(InstanceDetail.builder()
 						.state("UNKNOWN")
+						.index("1")
 						.build())
 					.build());
 			}
@@ -763,6 +787,7 @@ public class CloudFoundryAppDeployerTests {
 					.stack("test-stack")
 					.instanceDetail(InstanceDetail.builder()
 						.state("UNKNOWN")
+						.index("1")
 						.build())
 					.build());
 		}));
@@ -787,6 +812,7 @@ public class CloudFoundryAppDeployerTests {
 			.stack("test-stack")
 			.instanceDetail(InstanceDetail.builder()
 				.state("RUNNING")
+				.index("1")
 				.build())
 			.build()));
 		givenRequestDeleteApplication("test-application-id", Mono.empty());
@@ -881,4 +907,15 @@ public class CloudFoundryAppDeployerTests {
 				.build());
 	}
 
+	private Map<String,String> defaultEnvironmentVariables() {
+		Map<String, String> environmentVariables = new HashMap<>();
+		environmentVariables.put("SPRING_APPLICATION_JSON", "{}");
+		addGuidAndIndex(environmentVariables);
+		return environmentVariables;
+	}
+
+	private void addGuidAndIndex(Map<String, String> environmentVariables) {
+		environmentVariables.put("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}");
+		environmentVariables.put("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}");
+	}
 }
