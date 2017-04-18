@@ -167,12 +167,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
-
-		verifyRequestBindService("test-application-id", "test-service-1");
-		verifyRequestBindService("test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -227,12 +221,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", environmentVariables);
-
-		verifyRequestBindService("test-application-id", "test-service-1");
-		verifyRequestBindService("test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -283,12 +271,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", environmentVariables);
-
-		verifyRequestBindService("test-application-id", "test-service-1");
-		verifyRequestBindService("test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 
@@ -351,12 +333,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
-
-		verifyRequestBindService("test-application-id", "test-service-1");
-		verifyRequestBindService("test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -414,12 +390,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
-
-		verifyRequestBindService("test-application-id", "test-service-1");
-		verifyRequestBindService("test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -473,19 +443,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-group-test-application-id"));
 
-		verifyRequestUpdateApplication("test-group-test-application-id",
-			FluentMap.<String, String>builder()
-				.entry("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
-				.entry("SPRING_APPLICATION_JSON", "{}")
-				.entry("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}")
-				.entry("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}")
-				.build()
-		);
-
-		verifyRequestBindService("test-group-test-application-id", "test-service-1");
-		verifyRequestBindService("test-group-test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-group-test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -532,12 +489,6 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 
-		verifyRequestUpdateApplication("test-application-id", defaultEnvironmentVariables());
-
-		verifyRequestBindService("test-application-id", "test-service-1");
-		verifyRequestBindService("test-application-id", "test-service-2");
-
-		verifyRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -819,7 +770,6 @@ public class CloudFoundryAppDeployerTests {
 
 		this.deployer.undeploy("test-application-id");
 
-		verifyRequestDeleteApplication("test-application-id");
 	}
 
 	private void givenRequestBindService(String deploymentId, String service, Mono<Void> response) {
@@ -872,39 +822,6 @@ public class CloudFoundryAppDeployerTests {
 				.environmentJsons(environmentVariables)
 				.build()))
 			.willReturn(response);
-	}
-
-	private void verifyRequestBindService(String deploymentId, String service) {
-		verify(this.operations.services())
-			.bind(BindServiceInstanceRequest.builder()
-				.applicationName(deploymentId)
-				.serviceInstanceName(service)
-				.build());
-	}
-
-	private void verifyRequestDeleteApplication(String id) {
-		verify(this.operations.applications())
-			.delete(DeleteApplicationRequest.builder()
-				.deleteRoutes(true)
-				.name(id)
-				.build());
-	}
-
-	private void verifyRequestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout) {
-		verify(this.operations.applications())
-			.start(StartApplicationRequest.builder()
-				.name(name)
-				.stagingTimeout(stagingTimeout)
-				.startupTimeout(startupTimeout)
-				.build());
-	}
-
-	private void verifyRequestUpdateApplication(String applicationId, Map<String, String> environmentVariables) {
-		verify(this.client.applicationsV2())
-			.update(UpdateApplicationRequest.builder()
-				.applicationId(applicationId)
-				.environmentJsons(environmentVariables)
-				.build());
 	}
 
 	private Map<String,String> defaultEnvironmentVariables() {
