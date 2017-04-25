@@ -35,8 +35,7 @@ import org.springframework.cloud.deployer.spi.task.TaskStatus;
 
 /**
  * Abstract class to provide base functionality for launching Tasks on Cloud Foundry.
- * This class provides the base SPI for  {@link CloudFoundry2620AndEarlierTaskLauncher}
- * and {@link CloudFoundry2630AndLaterTaskLauncher}.
+ * This class provides the base SPI for the {@link CloudFoundry2630AndLaterTaskLauncher}.
  *
  * Does not override the default no-op implementation for {@link TaskLauncher#cleanup(String)}
  * and {@link TaskLauncher#destroy(String)}.

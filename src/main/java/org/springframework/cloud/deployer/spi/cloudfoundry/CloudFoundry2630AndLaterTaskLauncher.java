@@ -19,7 +19,6 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -27,22 +26,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
-import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
-import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.AbstractApplicationSummary;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.cloudfoundry.operations.applications.ApplicationManifest;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
-import org.cloudfoundry.operations.applications.PushApplicationRequest;
-import org.cloudfoundry.operations.applications.StartApplicationRequest;
+import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
-import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.operations.services.ServiceInstanceSummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
@@ -108,25 +103,13 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.subscribe();
 	}
 
-	private Mono<Void> bindServices(String name, AppDeploymentRequest request) {
-		Set<String> servicesToBind = servicesToBind(request);
-
-		return requestListServiceInstances()
-			.filter(serviceInstance -> servicesToBind.contains(serviceInstance.getName()))
-			.flatMap(serviceInstance -> requestBindService(name, serviceInstance.getName()))
-			.then();
-	}
-
 	private Mono<AbstractApplicationSummary> deployApplication(AppDeploymentRequest request) {
 		String name = request.getDefinition().getName();
 
 		return pushApplication(name, request)
+			.then(requestStopApplication(name))
 			.then(requestGetApplication(name))
-			.then(application -> setEnvironmentVariables(application.getId(), getEnvironmentVariables(request.getDefinition().getProperties()))
-				.then(bindServices(name, request))
-				.then(startApplication(name))
-				.then(stopApplication(name))
-				.then(Mono.just(application)));
+			.cast(AbstractApplicationSummary.class);
 	}
 
 	private String getCommand(SummaryApplicationResponse application, AppDeploymentRequest request) {
@@ -163,26 +146,23 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	}
 
 	private Mono<Void> pushApplication(String name, AppDeploymentRequest request) {
-		return requestPushApplication(PushApplicationRequest.builder()
-			.application(getApplication(request))
-			.dockerImage(getDockerImage(request))
-			.buildpack(buildpack(request))
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota(diskQuota(request))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory(memory(request))
-			.name(name)
-			.noRoute(true)
-			.noStart(true)
+		return requestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(getApplication(request))
+				.dockerImage(getDockerImage(request))
+				.buildpack(buildpack(request))
+				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+				.disk(diskQuota(request))
+				.environmentVariables(getEnvironmentVariables(request.getDefinition().getProperties()))
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.memory(memory(request))
+				.name(name)
+				.noRoute(true)
+				.services(servicesToBind(request))
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build());
-	}
-
-	private Mono<Void> requestBindService(String applicationName, String serviceInstanceName) {
-		return this.operations.services()
-			.bind(BindServiceInstanceRequest.builder()
-				.applicationName(applicationName)
-				.serviceInstanceName(serviceInstanceName)
-				.build());
 	}
 
 	private Mono<CreateTaskResponse> requestCreateTask(String applicationId, String command, int memory, String name) {
@@ -191,6 +171,14 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 				.applicationId(applicationId)
 				.command(command)
 				.memoryInMb(memory)
+				.name(name)
+				.build());
+	}
+
+	private Mono<Void> requestDeleteApplication(String name) {
+		return this.operations.applications()
+			.delete(DeleteApplicationRequest.builder()
+				.deleteRoutes(true)
 				.name(name)
 				.build());
 	}
@@ -214,23 +202,9 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.list();
 	}
 
-	private Flux<ServiceInstanceSummary> requestListServiceInstances() {
-		return this.operations.services()
-			.listInstances();
-	}
-
-	private Mono<Void> requestPushApplication(PushApplicationRequest request) {
+	private Mono<Void> requestPushApplication(PushApplicationManifestRequest request) {
 		return this.operations.applications()
-			.push(request);
-	}
-
-	private Mono<Void> requestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout) {
-		return this.operations.applications()
-			.start(StartApplicationRequest.builder()
-				.name(name)
-				.stagingTimeout(stagingTimeout)
-				.startupTimeout(startupTimeout)
-				.build());
+			.pushManifest(request);
 	}
 
 	private Mono<Void> requestStopApplication(String name) {
@@ -238,34 +212,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.stop(StopApplicationRequest.builder()
 				.name(name)
 				.build());
-	}
-
-	private Mono<Void> requestDeleteApplication(String name) {
-		return this.operations.applications()
-			.delete(DeleteApplicationRequest.builder()
-				.deleteRoutes(true)
-				.name(name)
-				.build());
-	}
-
-	private Mono<UpdateApplicationResponse> requestUpdateApplication(String applicationId, Map<String, String> environmentVariables) {
-		return this.client.applicationsV2()
-			.update(UpdateApplicationRequest.builder()
-				.applicationId(applicationId)
-				.environmentJsons(environmentVariables)
-				.build());
-	}
-
-	private Mono<UpdateApplicationResponse> setEnvironmentVariables(String applicationId, Map<String, String> environmentVariables) {
-		return requestUpdateApplication(applicationId, environmentVariables);
-	}
-
-	private Mono<Void> startApplication(String name) {
-		return requestStartApplication(name, this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout());
-	}
-
-	private Mono<Void> stopApplication(String name) {
-		return requestStopApplication(name);
 	}
 
 }
