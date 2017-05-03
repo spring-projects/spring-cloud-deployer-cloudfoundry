@@ -100,9 +100,7 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * Timeout for blocking API calls, in seconds.
 	 */
-	private long apiTimeout = 30L;
-
-
+	private long apiTimeout = 360L;
 
 	/**
 	 * Timeout for status API operations in milliseconds
