@@ -19,9 +19,9 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<spring-cloud-deployer-spi.version>1.2.0.RELEASE</spring-cloud-deployer-spi.version>
-		<cloudfoundry-java-lib.version>2.11.0.RELEASE</cloudfoundry-java-lib.version>
+		<cloudfoundry-java-lib.version>2.14.0.RELEASE</cloudfoundry-java-lib.version>
 		<reactor-core.version>3.0.7.RELEASE</reactor-core.version>
-		<reactor-netty.version>0.6.3.RELEASE</reactor-netty.version>
+		<reactor-netty.version>0.6.4.RELEASE</reactor-netty.version>
 	</properties>
 
 	<dependencies>
