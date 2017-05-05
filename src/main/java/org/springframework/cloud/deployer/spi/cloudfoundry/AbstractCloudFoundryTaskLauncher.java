@@ -90,12 +90,12 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 	private Mono<TaskStatus> getStatus(String id) {
 		return requestGetTask(id)
 			.map(this::toTaskStatus)
-			.otherwise(isNotFoundError(), t -> {
+			.onErrorResume(isNotFoundError(), t -> {
 				logger.debug("Task for id={} does not exist", id);
 				return Mono.just(new TaskStatus(id, LaunchState.unknown, null));
 			})
 			.transform(statusRetry(id))
-			.otherwiseReturn(createErrorTaskStatus(id));
+			.onErrorReturn(createErrorTaskStatus(id));
 	}
 
 	private TaskStatus createErrorTaskStatus(String id) {
