@@ -93,11 +93,9 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(AppDeployer.class)
 	public AppDeployer appDeployer(CloudFoundryOperations operations,
-		CloudFoundryClient client,
 		AppNameGenerator applicationNameGenerator) {
 		return new CloudFoundryAppDeployer(
 			applicationNameGenerator,
-			client,
 			connectionConfiguration.appDeploymentProperties(),
 			operations,
 			runtimeEnvironmentInfo(AppDeployer.class, CloudFoundryAppDeployer.class)
@@ -113,7 +111,6 @@ public class CloudFoundryDeployerAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(TaskLauncher.class)
 	public TaskLauncher taskLauncher(CloudFoundryClient client,
-		CloudFoundryConnectionProperties connectionProperties,
 		CloudFoundryOperations operations,
 		Version version) {
 

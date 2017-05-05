@@ -16,17 +16,18 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Map;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
-import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
-import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
@@ -37,16 +38,13 @@ import org.cloudfoundry.client.v3.tasks.Tasks;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.cloudfoundry.operations.applications.ApplicationManifest;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.Applications;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
-import org.cloudfoundry.operations.applications.PushApplicationRequest;
-import org.cloudfoundry.operations.applications.StartApplicationRequest;
+import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
-import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.operations.services.ServiceInstanceSummary;
-import org.cloudfoundry.operations.services.ServiceInstanceType;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.operations.spaces.Spaces;
 import org.junit.Before;
@@ -89,9 +87,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private CloudFoundryClient client;
 
-	@Mock(answer = Answers.RETURNS_SMART_NULLS)
-	private InputStream inputStream;
-
 	private CloudFoundry2630AndLaterTaskLauncher launcher;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
@@ -120,8 +115,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		this.deploymentProperties.setStatusTimeout(1_250L);
 		this.launcher = new CloudFoundry2630AndLaterTaskLauncher(this.client, this.deploymentProperties, this.operations, mock(RuntimeEnvironmentInfo.class));
 	}
-
-
 
 	@Test
 	public void cancel() {
@@ -170,17 +163,23 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.empty());
+		givenRequestPushApplication(
+			PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+					.path(resource.getFile().toPath())
+					.buildpack(deploymentProperties.getBuildpack())
+					.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+					.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+					.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+					.healthCheckType(ApplicationHealthCheck.NONE)
+					.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+					.name("test-application")
+					.noRoute(true)
+					.services(Collections.emptySet())
+					.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
 			.diskQuota(0)
@@ -192,12 +191,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.runningInstances(1)
 			.stack("test-stack")
 			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -231,61 +224,28 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
-	public void launchTaskWithNonExistentApplicationAndListingServiceFails() throws IOException {
-		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		givenRequestListApplications(Flux.empty());
-
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.empty());
-
-		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
-			.diskQuota(0)
-			.id("test-application-id")
-			.instances(1)
-			.memoryLimit(0)
-			.name("test-application")
-			.requestedState("RUNNING")
-			.runningInstances(1)
-			.stack("test-stack")
-			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.error(new UnsupportedOperationException()));
-
-		AppDefinition definition = new AppDefinition("test-application", null);
-		AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap());
-
-		this.launcher.launch(request);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
 	public void launchTaskWithNonExistentApplicationAndPushFails() throws IOException {
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.error(new UnsupportedOperationException()));
+		givenRequestPushApplication(
+			PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+					.path(resource.getFile().toPath())
+					.buildpack(deploymentProperties.getBuildpack())
+					.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+					.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+					.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+					.healthCheckType(ApplicationHealthCheck.NONE)
+					.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+					.name("test-application")
+					.noRoute(true)
+					.services(Collections.emptySet())
+					.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.error(new UnsupportedOperationException()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
 		AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap());
@@ -299,17 +259,23 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.empty());
+		givenRequestPushApplication(
+			PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+					.path(resource.getFile().toPath())
+					.buildpack(deploymentProperties.getBuildpack())
+					.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+					.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+					.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+					.healthCheckType(ApplicationHealthCheck.NONE)
+					.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+					.name("test-application")
+					.noRoute(true)
+					.services(Collections.emptySet())
+					.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
 			.diskQuota(0)
@@ -321,58 +287,10 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.runningInstances(1)
 			.stack("test-stack")
 			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
 		givenRequestGetApplicationSummary("test-application-id", Mono.error(new UnsupportedOperationException()));
-
-		AppDefinition definition = new AppDefinition("test-application", null);
-		AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap());
-
-		this.launcher.launch(request);
-	}
-
-	@Test(expected = UnsupportedOperationException.class)
-	public void launchTaskWithNonExistentApplicationAndStartingApplicationFails() throws IOException {
-		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		givenRequestListApplications(Flux.empty());
-
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.empty());
-
-		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
-			.diskQuota(0)
-			.id("test-application-id")
-			.instances(1)
-			.memoryLimit(0)
-			.name("test-application")
-			.requestedState("RUNNING")
-			.runningInstances(1)
-			.stack("test-stack")
-			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.error(new UnsupportedOperationException
-			()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
 		AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap());
@@ -386,17 +304,23 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.empty());
+		givenRequestPushApplication(
+			PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+					.path(resource.getFile().toPath())
+					.buildpack(deploymentProperties.getBuildpack())
+					.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+					.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+					.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+					.healthCheckType(ApplicationHealthCheck.NONE)
+					.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+					.name("test-application")
+					.noRoute(true)
+					.services(Collections.emptySet())
+					.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
 			.diskQuota(0)
@@ -408,12 +332,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.runningInstances(1)
 			.stack("test-stack")
 			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.error(new UnsupportedOperationException()));
 
@@ -429,16 +347,21 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+				.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+				.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+				.name("test-application")
+				.noRoute(true)
+				.services(Collections.emptySet())
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
@@ -451,12 +374,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.runningInstances(1)
 			.stack("test-stack")
 			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -473,59 +390,27 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		this.launcher.launch(request);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
-	public void launchTaskWithNonExistentApplicationAndUpdatingApplicationFails() throws IOException {
-		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
-
-		givenRequestListApplications(Flux.empty());
-
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
-			.build(), Mono.empty());
-
-		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
-			.diskQuota(0)
-			.id("test-application-id")
-			.instances(1)
-			.memoryLimit(0)
-			.name("test-application")
-			.requestedState("RUNNING")
-			.runningInstances(1)
-			.stack("test-stack")
-			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.error(new UnsupportedOperationException()));
-
-		AppDefinition definition = new AppDefinition("test-application", null);
-		AppDeploymentRequest request = new AppDeploymentRequest(definition, resource, Collections.emptyMap());
-
-		this.launcher.launch(request);
-	}
-
 	@Test
 	public void launchTaskWithNonExistentApplicationBindingOneService() throws IOException {
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+				.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+				.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+				.name("test-application")
+				.noRoute(true)
+				.service("test-service-instance-2")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
@@ -538,23 +423,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.runningInstances(1)
 			.stack("test-stack")
 			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
-				.id("test-service-instance-id-1")
-				.name("test-service-instance-1")
-				.type(ServiceInstanceType.MANAGED)
-				.build(),
-			ServiceInstanceSummary.builder()
-				.id("test-service-instance-id-2")
-				.name("test-service-instance-2")
-				.type(ServiceInstanceType.MANAGED)
-				.build()));
-
-		givenRequestBindService("test-application", "test-service-instance-2", Mono.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -574,7 +442,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		String taskId = this.launcher.launch(request);
 
 		assertThat(taskId, equalTo("test-task-id"));
-		verifyRequestBindService("test-application", "test-service-instance-2");
 	}
 
 	@Test
@@ -583,16 +450,23 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+				.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+				.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+				.name("test-application")
+				.noRoute(true)
+				.service("test-service-instance-1")
+				.service("test-service-instance-2")
+				.service("test-service-instance-3")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.just(ApplicationDetail.builder()
@@ -605,32 +479,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.runningInstances(1)
 			.stack("test-stack")
 			.build()));
-
-		givenRequestUpdateApplication("test-application-id", Collections.singletonMap("SPRING_APPLICATION_JSON", "{}"), Mono.empty());
-
-		givenRequestListServiceInstances(Flux.just(ServiceInstanceSummary.builder()
-				.id("test-service-instance-id-1")
-				.name("test-service-instance-1")
-				.type(ServiceInstanceType.MANAGED)
-				.build(),
-			ServiceInstanceSummary.builder()
-				.id("test-service-instance-id-2")
-				.name("test-service-instance-2")
-				.type(ServiceInstanceType.MANAGED)
-				.build(),
-			ServiceInstanceSummary.builder()
-				.id("test-service-instance-id-3")
-				.name("test-service-instance-3")
-				.type(ServiceInstanceType.MANAGED)
-				.build()));
-
-		givenRequestBindService("test-application", "test-service-instance-1", Mono.empty());
-
-		givenRequestBindService("test-application", "test-service-instance-2", Mono.empty());
-
-		givenRequestBindService("test-application", "test-service-instance-3", Mono.empty());
-
-		givenRequestStartApplication("test-application", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		givenRequestStopApplication("test-application", Mono.empty());
 
@@ -650,9 +498,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		String taskId = this.launcher.launch(request);
 
 		assertThat(taskId, equalTo("test-task-id"));
-		verifyRequestBindService("test-application", "test-service-instance-1");
-		verifyRequestBindService("test-application", "test-service-instance-2");
-		verifyRequestBindService("test-application", "test-service-instance-3");
 	}
 
 	@Test(expected = UnsupportedOperationException.class)
@@ -661,17 +506,24 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestListApplications(Flux.empty());
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
-			.diskQuota((int) ByteSizeUtils.parseToMebibytes( this.deploymentProperties.getDisk()))
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.memory((int) ByteSizeUtils.parseToMebibytes( this.deploymentProperties.getMemory()))
-			.name("test-application")
-			.noRoute(true)
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
+				.disk((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk()))
+				.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.memory((int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory()))
+				.name("test-application")
+				.noRoute(true)
+				.services(Collections.emptySet())
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
+
+		givenRequestStopApplication("test-application", Mono.empty());
 
 		givenRequestGetApplication("test-application", Mono.error(new UnsupportedOperationException()));
 
@@ -715,24 +567,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		this.launcher.destroy("test-application");
 	}
 
-	private void givenRequestDeleteApplication(String appName) {
-		given(this.operations.applications()
-			.delete(DeleteApplicationRequest.builder()
-				.name(appName)
-				.deleteRoutes(true)
-				.build()))
-			.willReturn(Mono.empty());
-	}
-
-	private void givenRequestBindService(String applicationName, String serviceInstanceName, Mono<Void> response) {
-		given(this.operations.services()
-			.bind(BindServiceInstanceRequest.builder()
-				.applicationName(applicationName)
-				.serviceInstanceName(serviceInstanceName)
-				.build()))
-			.willReturn(response);
-	}
-
 	private void givenRequestCancelTask(String taskId, Mono<CancelTaskResponse> response) {
 		given(this.client.tasks()
 			.cancel(CancelTaskRequest.builder()
@@ -750,6 +584,15 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 				.name(name)
 				.build()))
 			.willReturn(response);
+	}
+
+	private void givenRequestDeleteApplication(String appName) {
+		given(this.operations.applications()
+			.delete(DeleteApplicationRequest.builder()
+				.name(appName)
+				.deleteRoutes(true)
+				.build()))
+			.willReturn(Mono.empty());
 	}
 
 	private void givenRequestGetApplication(String name, Mono<ApplicationDetail> response) {
@@ -782,25 +625,9 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.willReturn(response);
 	}
 
-	private void givenRequestListServiceInstances(Flux<ServiceInstanceSummary> response) {
-		given(this.operations.services()
-			.listInstances())
-			.willReturn(response);
-	}
-
-	private void givenRequestPushApplication(PushApplicationRequest request, Mono<Void> response) {
+	private void givenRequestPushApplication(PushApplicationManifestRequest request, Mono<Void> response) {
 		given(this.operations.applications()
-			.push(request))
-			.willReturn(response);
-	}
-
-	private void givenRequestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout, Mono<Void> response) {
-		given(this.operations.applications()
-			.start(StartApplicationRequest.builder()
-				.name(name)
-				.stagingTimeout(stagingTimeout)
-				.startupTimeout(startupTimeout)
-				.build()))
+			.pushManifest(request))
 			.willReturn(response);
 	}
 
@@ -810,23 +637,6 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 				.name(name)
 				.build()))
 			.willReturn(response);
-	}
-
-	private void givenRequestUpdateApplication(String applicationId, Map<String, String> environmentVariables, Mono<UpdateApplicationResponse> response) {
-		given(this.client.applicationsV2()
-			.update(UpdateApplicationRequest.builder()
-				.applicationId(applicationId)
-				.environmentJsons(environmentVariables)
-				.build()))
-			.willReturn(response);
-	}
-
-	private void verifyRequestBindService(String applicationName, String serviceInstanceName) {
-		verify(this.operations.services())
-			.bind(BindServiceInstanceRequest.builder()
-				.applicationName(applicationName)
-				.serviceInstanceName(serviceInstanceName)
-				.build());
 	}
 
 }

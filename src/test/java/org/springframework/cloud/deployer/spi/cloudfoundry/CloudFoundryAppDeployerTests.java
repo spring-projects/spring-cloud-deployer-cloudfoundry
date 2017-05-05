@@ -21,7 +21,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
@@ -40,20 +39,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.cloudfoundry.client.CloudFoundryClient;
-import org.cloudfoundry.client.v2.applications.ApplicationsV2;
-import org.cloudfoundry.client.v2.applications.UpdateApplicationRequest;
-import org.cloudfoundry.client.v2.applications.UpdateApplicationResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.cloudfoundry.operations.applications.ApplicationManifest;
 import org.cloudfoundry.operations.applications.Applications;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
-import org.cloudfoundry.operations.applications.PushApplicationRequest;
-import org.cloudfoundry.operations.applications.StartApplicationRequest;
-import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
+import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
+import org.cloudfoundry.operations.applications.Route;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.util.FluentMap;
 import org.junit.Assert;
@@ -92,12 +87,6 @@ public class CloudFoundryAppDeployerTests {
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private Applications applications;
 
-	@Mock(answer = Answers.RETURNS_SMART_NULLS)
-	private ApplicationsV2 applicationsV2;
-
-	@Mock(answer = Answers.RETURNS_SMART_NULLS)
-	private CloudFoundryClient client;
-
 	private CloudFoundryAppDeployer deployer;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
@@ -113,13 +102,12 @@ public class CloudFoundryAppDeployerTests {
 	@Before
 	public void setUp() {
 		MockitoAnnotations.initMocks(this);
-		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
 		given(this.operations.applications()).willReturn(this.applications);
 		given(this.operations.services()).willReturn(this.services);
 
 		this.deploymentProperties.setServices(new HashSet<>(Arrays.asList("test-service-1", "test-service-2")));
 
-		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.client, this.deploymentProperties,
+		this.deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, this.deploymentProperties,
 			this.operations, this.runtimeEnvironmentInfo);
 	}
 
@@ -143,22 +131,21 @@ public class CloudFoundryAppDeployerTests {
 				.stack("test-stack")
 				.build()));
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.diskQuota(1024)
-			.instances(1)
-			.memory(1024)
-			.name("test-application-id")
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.disk(1024)
+				.environmentVariables(defaultEnvironmentVariables())
+				.instances(1)
+				.memory(1024)
+				.name("test-application-id")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
-
-		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
-
-		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -166,7 +153,6 @@ public class CloudFoundryAppDeployerTests {
 			Collections.emptyMap()));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -189,27 +175,25 @@ public class CloudFoundryAppDeployerTests {
 				.stack("test-stack")
 				.build()));
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.diskQuota(1024)
-			.instances(1)
-			.memory(1024)
-			.name("test-application-id")
-			.noStart(true)
-			.build(), Mono.empty());
-
-
 		Map<String, String> environmentVariables = new HashMap<>();
 		environmentVariables.put("test-key-1", "test-value-1");
 		addGuidAndIndex(environmentVariables);
 
-		givenRequestUpdateApplication("test-application-id", environmentVariables, Mono.empty());
-
-		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.disk(1024)
+				.environmentVariables(environmentVariables)
+				.instances(1)
+				.memory(1024)
+				.name("test-application-id")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
+			.build(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.singletonMap("test-key-1", "test-value-1")),
@@ -220,7 +204,6 @@ public class CloudFoundryAppDeployerTests {
 				.build()));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -243,26 +226,25 @@ public class CloudFoundryAppDeployerTests {
 				.stack("test-stack")
 				.build()));
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.diskQuota(1024)
-			.instances(1)
-			.memory(1024)
-			.name("test-application-id")
-			.noStart(true)
-			.build(), Mono.empty());
-
 		Map<String, String> environmentVariables = new HashMap<>();
 		environmentVariables.put("SPRING_APPLICATION_JSON", "{\"test-key-1\":\"test-value-1\"}");
 		addGuidAndIndex(environmentVariables);
 
-		givenRequestUpdateApplication("test-application-id", environmentVariables, Mono.empty());
-
-		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.disk(1024)
+				.environmentVariables(environmentVariables)
+				.instances(1)
+				.memory(1024)
+				.name("test-application-id")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
+			.build(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.singletonMap("test-key-1", "test-value-1")),
@@ -270,7 +252,6 @@ public class CloudFoundryAppDeployerTests {
 			Collections.singletonMap("test-key-2", "test-value-2")));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
-
 	}
 
 
@@ -294,27 +275,26 @@ public class CloudFoundryAppDeployerTests {
 				.stack("test-stack")
 				.build()));
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack("test-buildpack")
-			.diskQuota(0)
-			.domain("test-domain")
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.host("test-host")
-			.instances(0)
-			.memory(0)
-			.name("test-application-id")
-			.noRoute(false)
-			.noStart(true)
-			.routePath("test-route-path")
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack("test-buildpack")
+				.disk(0)
+				.environmentVariables(defaultEnvironmentVariables())
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.instances(0)
+				.memory(0)
+				.name("test-application-id")
+				.noRoute(false)
+				.host("test-host")
+				.domain("test-domain")
+				.routePath("/test-route-path")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
-
-		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
-
-		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -328,11 +308,10 @@ public class CloudFoundryAppDeployerTests {
 				.entry(COUNT_PROPERTY_KEY, "0")
 				.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
 				.entry(NO_ROUTE_PROPERTY, "false")
-				.entry(ROUTE_PATH_PROPERTY, "test-route-path")
+				.entry(ROUTE_PATH_PROPERTY, "/test-route-path")
 				.build()));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -363,25 +342,24 @@ public class CloudFoundryAppDeployerTests {
 		this.deploymentProperties.setInstances(0);
 		this.deploymentProperties.setMemory("0");
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack("test-buildpack")
-			.diskQuota(0)
-			.domain("test-domain")
-			.healthCheckType(ApplicationHealthCheck.NONE)
-			.host("test-host")
-			.instances(0)
-			.memory(0)
-			.name("test-application-id")
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack("test-buildpack")
+				.disk(0)
+				.domain("test-domain")
+				.environmentVariables(defaultEnvironmentVariables())
+				.healthCheckType(ApplicationHealthCheck.NONE)
+				.host("test-host")
+				.instances(0)
+				.memory(0)
+				.name("test-application-id")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
-
-		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
-
-		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -389,7 +367,6 @@ public class CloudFoundryAppDeployerTests {
 			Collections.emptyMap()));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -412,29 +389,24 @@ public class CloudFoundryAppDeployerTests {
 				.stack("test-stack")
 				.build()));
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.application(resource.getFile().toPath())
-			.buildpack(deploymentProperties.getBuildpack())
-			.diskQuota(1024)
-			.instances(1)
-			.memory(1024)
-			.name("test-group-test-application-id")
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.path(resource.getFile().toPath())
+				.buildpack(deploymentProperties.getBuildpack())
+				.disk(1024)
+				.environmentVariable("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
+				.environmentVariable("SPRING_APPLICATION_JSON", "{}")
+				.environmentVariable("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}")
+				.environmentVariable("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}")
+				.instances(1)
+				.memory(1024)
+				.name("test-group-test-application-id")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
-
-		givenRequestUpdateApplication("test-group-test-application-id",
-			FluentMap.<String, String>builder()
-				.entry("SPRING_CLOUD_APPLICATION_GROUP", "test-group")
-				.entry("SPRING_APPLICATION_JSON", "{}")
-				.entry("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}")
-				.entry("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}")
-				.build(),
-			Mono.empty());
-
-		givenRequestBindService("test-group-test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-group-test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-group-test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -442,7 +414,6 @@ public class CloudFoundryAppDeployerTests {
 			Collections.singletonMap(GROUP_PROPERTY_KEY, "test-group")));
 
 		assertThat(deploymentId, equalTo("test-group-test-application-id"));
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -465,22 +436,21 @@ public class CloudFoundryAppDeployerTests {
 				.stack("test-stack")
 				.build()));
 
-		givenRequestPushApplication(PushApplicationRequest.builder()
-			.dockerImage("somecorp/someimage:latest")
-			.buildpack(deploymentProperties.getBuildpack())
-			.diskQuota(1024)
-			.instances(1)
-			.memory(1024)
-			.name("test-application-id")
-			.noStart(true)
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(ApplicationManifest.builder()
+				.dockerImage("somecorp/someimage:latest")
+				.buildpack(deploymentProperties.getBuildpack())
+				.disk(1024)
+				.environmentVariables(defaultEnvironmentVariables())
+				.instances(1)
+				.memory(1024)
+				.name("test-application-id")
+				.service("test-service-2")
+				.service("test-service-1")
+				.build())
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
 			.build(), Mono.empty());
-
-		givenRequestUpdateApplication("test-application-id", defaultEnvironmentVariables(), Mono.empty());
-
-		givenRequestBindService("test-application-id", "test-service-1", Mono.empty());
-		givenRequestBindService("test-application-id", "test-service-2", Mono.empty());
-
-		givenRequestStartApplication("test-application-id", this.deploymentProperties.getStagingTimeout(), this.deploymentProperties.getStartupTimeout(), Mono.empty());
 
 		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
 			new AppDefinition("test-application", Collections.emptyMap()),
@@ -488,7 +458,6 @@ public class CloudFoundryAppDeployerTests {
 			Collections.emptyMap()));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
-
 	}
 
 	@SuppressWarnings("unchecked")
@@ -772,15 +741,6 @@ public class CloudFoundryAppDeployerTests {
 
 	}
 
-	private void givenRequestBindService(String deploymentId, String service, Mono<Void> response) {
-		given(this.operations.services()
-			.bind(BindServiceInstanceRequest.builder()
-				.applicationName(deploymentId)
-				.serviceInstanceName(service)
-				.build()))
-			.willReturn(response);
-	}
-
 	private void givenRequestDeleteApplication(String id, Mono<Void> response) {
 		given(this.operations.applications()
 			.delete(DeleteApplicationRequest.builder()
@@ -799,28 +759,9 @@ public class CloudFoundryAppDeployerTests {
 			.willReturn(response, responses);
 	}
 
-	private void givenRequestPushApplication(PushApplicationRequest request, Mono<Void> response) {
+	private void givenRequestPushApplication(PushApplicationManifestRequest request, Mono<Void> response) {
 		given(this.operations.applications()
-			.push(request))
-			.willReturn(response);
-	}
-
-	private void givenRequestStartApplication(String name, Duration stagingTimeout, Duration startupTimeout, Mono<Void> response) {
-		given(this.operations.applications()
-			.start(StartApplicationRequest.builder()
-				.name(name)
-				.stagingTimeout(stagingTimeout)
-				.startupTimeout(startupTimeout)
-				.build()))
-			.willReturn(response);
-	}
-
-	private void givenRequestUpdateApplication(String applicationId, Map<String, String> environmentVariables, Mono<UpdateApplicationResponse> response) {
-		given(this.client.applicationsV2()
-			.update(UpdateApplicationRequest.builder()
-				.applicationId(applicationId)
-				.environmentJsons(environmentVariables)
-				.build()))
+			.pushManifest(request))
 			.willReturn(response);
 	}
 
