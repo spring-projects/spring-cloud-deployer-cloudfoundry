@@ -291,12 +291,12 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<AppStatus> getStatus(String deploymentId) {
 		return requestGetApplication(deploymentId)
 			.map(applicationDetail -> createAppStatus(applicationDetail, deploymentId))
-			.otherwise(IllegalArgumentException.class, t -> {
+			.onErrorResume(IllegalArgumentException.class, t -> {
 				logger.debug("Application for {} does not exist.", deploymentId);
 				return Mono.just(createEmptyAppStatus(deploymentId));
 			})
 			.transform(statusRetry(deploymentId))
-			.otherwiseReturn(createErrorAppStatus(deploymentId));
+			.onErrorReturn(createErrorAppStatus(deploymentId));
 	}
 
 	private ApplicationHealthCheck healthCheck(AppDeploymentRequest request) {

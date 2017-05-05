@@ -153,7 +153,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 
 	private Mono<SummaryApplicationResponse> getOrDeployApplication(AppDeploymentRequest request) {
 		return getOptionalApplication(request)
-			.otherwiseIfEmpty(deployApplication(request))
+			.switchIfEmpty(deployApplication(request))
 			.then(application -> requestGetApplicationSummary(application.getId()));
 	}
 
