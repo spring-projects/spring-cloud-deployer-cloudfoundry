@@ -53,6 +53,7 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
+import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.util.FluentMap;
@@ -767,6 +768,7 @@ public class CloudFoundryAppDeployerTests {
 				.build())
 			.build()));
 		givenRequestDeleteApplication("test-application-id", Mono.empty());
+		givenRequestStopApplication("test-application-id", Mono.empty());
 
 		this.deployer.undeploy("test-application-id");
 
@@ -811,6 +813,14 @@ public class CloudFoundryAppDeployerTests {
 				.name(name)
 				.stagingTimeout(stagingTimeout)
 				.startupTimeout(startupTimeout)
+				.build()))
+			.willReturn(response);
+	}
+
+	private void givenRequestStopApplication(String name, Mono<Void> response) {
+		given(this.operations.applications()
+			.stop(StopApplicationRequest.builder()
+				.name(name)
 				.build()))
 			.willReturn(response);
 	}
