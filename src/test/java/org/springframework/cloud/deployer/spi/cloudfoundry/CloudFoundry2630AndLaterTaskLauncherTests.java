@@ -16,12 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.Assert.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -72,6 +66,12 @@ import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 /**
  * @author Michael Minella
  * @author Ben Hale
@@ -117,6 +117,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 		given(this.operations.spaces()).willReturn(this.spaces);
 
 		this.deploymentProperties.setApiTimeout(1);
+		this.deploymentProperties.setStatusTimeout(1_250L);
 		this.launcher = new CloudFoundry2630AndLaterTaskLauncher(this.client, this.deploymentProperties, this.operations, mock(RuntimeEnvironmentInfo.class));
 	}
 
@@ -694,8 +695,11 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 	@Test
 	public void testStatusTimeout() {
+		// Delay twice as much as 40% of statusTimeout, which is what the deployer uses
+		long delay = (long) (this.deploymentProperties.getStatusTimeout() * .4f * 2);
+
 		givenRequestGetTask("test-task-id", Mono
-			.delay(Duration.ofSeconds(2))
+			.delay(Duration.ofMillis(delay))
 			.then(Mono.just(GetTaskResponse.builder()
 				.id("test-task-id")
 				.state(org.cloudfoundry.client.v3.tasks.State.SUCCEEDED_STATE)
