@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -85,6 +86,13 @@ public class CloudFoundryAppInstanceStatus implements AppInstanceStatus {
 			}
 			if (instanceDetail.getMemoryQuota() != null && instanceDetail.getMemoryUsage() != null) {
 				attributes.put("metrics.machine.memory", String.format("%.1f%%", 100d * instanceDetail.getMemoryUsage() / instanceDetail.getMemoryQuota()));
+			}
+		}
+		List<String> urls = applicationDetail.getUrls();
+		if (!urls.isEmpty()) {
+			attributes.put("url", "http://" + urls.get(0));
+			for (int i = 0; i < urls.size() ; i++) {
+				attributes.put("url." + i, "http://" + urls.get(i));
 			}
 		}
 		// TODO cf-java-client versions > 2.8 will have an index formally added ot InstanceDetail
