@@ -23,9 +23,11 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -36,6 +38,7 @@ import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.ApplicationManifest;
+import org.cloudfoundry.operations.applications.ApplicationManifestUtils;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
@@ -61,6 +64,7 @@ import org.springframework.util.StringUtils;
  * @author Eric Bottard
  * @author Greg Turnquist
  * @author Ben Hale
+ * @author Ilayaperumal Gopinathan
  */
 public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
@@ -293,26 +297,32 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<Void> pushApplication(String deploymentId, AppDeploymentRequest request) {
-		ApplicationManifest.Builder manifest = ApplicationManifest.builder()
-			.path(getApplication(request)) // Only one of the two is non-null
-			.dockerImage(getDockerImage(request)) // Only one of the two is non-null
-			.buildpack(buildpack(request))
-			.disk(diskQuota(request))
-			.environmentVariables(getEnvironmentVariables(deploymentId, request))
-			.healthCheckType(healthCheck(request))
-			.instances(instances(request))
-			.memory(memory(request))
-			.name(deploymentId)
-			.noRoute(toggleNoRoute(request))
-			.services(servicesToBind(request));
-
-		Optional.ofNullable(host(request)).ifPresent(manifest::host);
-		Optional.ofNullable(domain(request)).ifPresent(manifest::domain);
-		Optional.ofNullable(routePath(request)).ifPresent(manifest::routePath);
-
-		return requestPushApplication(
-			PushApplicationManifestRequest.builder()
-				.manifest(manifest.build())
+		Path manifestsPath = getManifestsPath(request);
+		ApplicationManifest.Builder manifest = ApplicationManifest.builder();
+		PushApplicationManifestRequest.Builder pushRequestBuilder = PushApplicationManifestRequest.builder();
+		if (manifestsPath != null) {
+			List<ApplicationManifest> applicationManifestList = ApplicationManifestUtils.read(manifestsPath);
+			pushRequestBuilder.manifests(applicationManifestList);
+		}
+		else {
+			manifest
+					.path(getApplication(request)) // Only one of the two is non-null
+					.dockerImage(getDockerImage(request)) // Only one of the two is non-null
+					.buildpack(buildpack(request))
+					.disk(diskQuota(request))
+					.environmentVariables(getEnvironmentVariables(deploymentId, request))
+					.healthCheckType(healthCheck(request))
+					.instances(instances(request))
+					.memory(memory(request))
+					.name(deploymentId)
+					.noRoute(toggleNoRoute(request))
+					.services(servicesToBind(request));
+			Optional.ofNullable(host(request)).ifPresent(manifest::host);
+			Optional.ofNullable(domain(request)).ifPresent(manifest::domain);
+			Optional.ofNullable(routePath(request)).ifPresent(manifest::routePath);
+			pushRequestBuilder.manifest(manifest.build());
+		}
+		return requestPushApplication(pushRequestBuilder
 				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
 				.startupTimeout(this.deploymentProperties.getStartupTimeout())
 				.build())
