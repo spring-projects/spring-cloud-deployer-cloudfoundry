@@ -128,6 +128,11 @@ public class CloudFoundryDeploymentProperties {
 	@Value("${spring.application.name:}")
 	private String appNamePrefix;
 
+	/**
+	 * Whether to also delete routes when un-deploying an application.
+	 */
+	private boolean deleteRoutes = true;
+
 	public Set<String> getServices() {
 		return services;
 	}
@@ -245,5 +250,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setStatusTimeout(long statusTimeout) {
 		this.statusTimeout = statusTimeout;
+	}
+
+	public boolean isDeleteRoutes() {
+		return deleteRoutes;
+	}
+
+	public void setDeleteRoutes(boolean deleteRoutes) {
+		this.deleteRoutes = deleteRoutes;
 	}
 }

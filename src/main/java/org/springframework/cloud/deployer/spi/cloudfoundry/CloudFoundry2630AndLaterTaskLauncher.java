@@ -178,7 +178,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	private Mono<Void> requestDeleteApplication(String name) {
 		return this.operations.applications()
 			.delete(DeleteApplicationRequest.builder()
-				.deleteRoutes(true)
+				.deleteRoutes(deploymentProperties.isDeleteRoutes())
 				.name(name)
 				.build());
 	}

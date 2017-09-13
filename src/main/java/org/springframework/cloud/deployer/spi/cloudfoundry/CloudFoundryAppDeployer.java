@@ -323,7 +323,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<Void> requestDeleteApplication(String id) {
 		return this.operations.applications()
 			.delete(DeleteApplicationRequest.builder()
-				.deleteRoutes(true)
+				.deleteRoutes(deploymentProperties.isDeleteRoutes())
 				.name(id)
 				.build());
 	}
