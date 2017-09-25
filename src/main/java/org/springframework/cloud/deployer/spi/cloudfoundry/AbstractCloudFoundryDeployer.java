@@ -16,9 +16,7 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -34,6 +32,7 @@ import org.cloudfoundry.UnknownCloudFoundryException;
 import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.ResourceUtils;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -45,10 +44,14 @@ import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+
 /**
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *
  * @author Eric Bottard
+ * @author Ilayaperumal Gopinathan
  */
 class AbstractCloudFoundryDeployer {
 
@@ -121,6 +124,21 @@ class AbstractCloudFoundryDeployer {
 			} else {
 				return null;
 			}
+		} catch (IOException e) {
+			throw Exceptions.propagate(e);
+		}
+	}
+
+	/**
+	 * Return the Path to manifests.
+	 *
+	 */
+	Path getManifestsPath(AppDeploymentRequest request) {
+		try {
+			String manifestsPath = request.getDefinition().getProperties().get("manifests-path");
+			return (StringUtils.hasText(manifestsPath)) ? ResourceUtils.getFile(manifestsPath).toPath() : null;
+		} catch (FileNotFoundException e) {
+			throw Exceptions.propagate(e);
 		} catch (IOException e) {
 			throw Exceptions.propagate(e);
 		}
