@@ -41,6 +41,8 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
+	public static final String ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route";
+
 	public static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
 
 	public static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";

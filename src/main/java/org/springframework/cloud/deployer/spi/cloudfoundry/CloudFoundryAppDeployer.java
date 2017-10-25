@@ -21,6 +21,7 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
 import java.time.Duration;
@@ -41,6 +42,7 @@ import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
+import org.cloudfoundry.operations.applications.Route;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -304,12 +306,16 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.memory(memory(request))
 			.name(deploymentId)
 			.noRoute(toggleNoRoute(request))
+
 			.services(servicesToBind(request));
 
 		Optional.ofNullable(host(request)).ifPresent(manifest::host);
 		Optional.ofNullable(domain(request)).ifPresent(manifest::domain);
 		Optional.ofNullable(routePath(request)).ifPresent(manifest::routePath);
-
+		if (route(request) != null) {
+			manifest.route(Route.builder().route(route(request)).build());
+		}
+		logger.debug("Pushing manifest" + manifest.build().toString());
 		return requestPushApplication(
 			PushApplicationManifestRequest.builder()
 				.manifest(manifest.build())
@@ -346,6 +352,10 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	private String routePath(AppDeploymentRequest request) {
 		return request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
+	}
+
+	private String route(AppDeploymentRequest request) {
+		return request.getDeploymentProperties().get(ROUTE_PROPERTY);
 	}
 
 	private ApplicationHealthCheck toApplicationHealthCheck(String raw) {
