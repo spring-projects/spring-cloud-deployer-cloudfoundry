@@ -56,7 +56,7 @@ class AbstractCloudFoundryDeployer {
 
 	final CloudFoundryDeploymentProperties deploymentProperties;
 
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = LoggerFactory.getLogger(AbstractCloudFoundryDeployer.class);
 
 	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties, RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
 		this.deploymentProperties = deploymentProperties;
@@ -158,7 +158,7 @@ class AbstractCloudFoundryDeployer {
 		}
 		final long requestTimeoutToUse = requestTimeout;
 		return m -> m.timeout(Duration.ofMillis(requestTimeoutToUse))
-			.doOnError(e -> logger.error(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeoutToUse)))
+			.doOnError(e -> logger.warn(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeoutToUse)))
 			.retryWhen(DelayUtils.exponentialBackOffError(
 				Duration.ofMillis(initialRetryDelay), //initial retry delay
 				Duration.ofMillis(statusTimeout / 2), // max retry delay
