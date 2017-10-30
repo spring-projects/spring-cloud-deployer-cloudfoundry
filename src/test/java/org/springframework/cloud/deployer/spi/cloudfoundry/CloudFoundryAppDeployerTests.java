@@ -49,6 +49,7 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
+import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.util.FluentMap;
 import org.junit.Assert;
@@ -738,6 +739,33 @@ public class CloudFoundryAppDeployerTests {
 		givenRequestDeleteApplication("test-application-id", Mono.empty());
 
 		this.deployer.undeploy("test-application-id");
+
+	}
+
+	@Test
+	public void scale() throws Exception{
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(1)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(1)
+				.stack("test-stack")
+				.instanceDetail(InstanceDetail.builder()
+						.state("RUNNING")
+						.index("1")
+						.build())
+				.build()));
+		given(this.operations
+				.applications()
+				.scale(ScaleApplicationRequest.builder()
+				.name("test-application-id")
+						.instances(2)
+						.build()
+				)).willReturn(Mono.empty());
+		this.deployer.scale("test-application-id", 2);
 
 	}
 

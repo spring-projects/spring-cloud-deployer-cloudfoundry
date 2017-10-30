@@ -43,6 +43,7 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
+import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -55,6 +56,7 @@ import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -63,6 +65,7 @@ import org.springframework.util.StringUtils;
  * @author Eric Bottard
  * @author Greg Turnquist
  * @author Ben Hale
+ * @author Vinicius Carvalho
  */
 public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
@@ -158,6 +161,23 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
 			.doOnError(logError(String.format("Failed to undeploy app %s", id)))
 			.subscribe();
+	}
+
+	public void scale(String id, int desiredCount){
+		Assert.isTrue(desiredCount >= 0, "desiredCount must be greater or equal zero");
+		getStatus(id)
+				.doOnNext(status -> assertApplicationExists(id, status))
+				.block();
+		this.operations
+				.applications()
+				.scale(ScaleApplicationRequest.builder()
+						.name(id)
+						.instances(desiredCount)
+						.build())
+				.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
+				.doOnSuccess(v -> logger.info("Successfully scaled app {} to {} instances", id, desiredCount))
+				.doOnError(logError(String.format("Failed to scale app %s", id)))
+				.subscribe();
 	}
 
 	private void assertApplicationDoesNotExist(String deploymentId, AppStatus status) {
