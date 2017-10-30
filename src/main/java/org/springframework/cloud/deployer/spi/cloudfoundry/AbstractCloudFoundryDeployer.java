@@ -56,7 +56,7 @@ class AbstractCloudFoundryDeployer {
 
 	final CloudFoundryDeploymentProperties deploymentProperties;
 
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = LoggerFactory.getLogger(AbstractCloudFoundryDeployer.class);
 
 	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties, RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
 		this.deploymentProperties = deploymentProperties;
