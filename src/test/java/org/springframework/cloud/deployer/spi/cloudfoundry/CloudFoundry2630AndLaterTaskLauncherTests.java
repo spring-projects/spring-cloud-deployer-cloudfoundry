@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Date;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
@@ -34,6 +35,7 @@ import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
+import org.cloudfoundry.client.v3.tasks.TaskState;
 import org.cloudfoundry.client.v3.tasks.Tasks;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
@@ -51,6 +53,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -120,7 +123,14 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	public void cancel() {
 		givenRequestCancelTask("test-task-id", Mono.just(CancelTaskResponse.builder()
 			.id("test-task-id")
-			.state(org.cloudfoundry.client.v3.tasks.State.CANCELING_STATE)
+			.memoryInMb(1024)
+			.diskInMb(1024)
+			.dropletId("1")
+			.createdAt(new Date().toString())
+			.updatedAt(new Date().toString())
+			.sequenceId(1)
+			.name("test-task-id")
+			.state(TaskState.CANCELING)
 			.build()));
 
 		this.launcher.cancel("test-task-id");
@@ -147,6 +157,14 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestCreateTask("test-application-id", "test-command", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
 			.id("test-task-id")
+				.memoryInMb(1024)
+				.diskInMb(1024)
+				.dropletId("1")
+				.createdAt(new Date().toString())
+				.updatedAt(new Date().toString())
+				.sequenceId(1)
+				.name("test-task-id")
+				.state(TaskState.FAILED)
 			.build()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
@@ -201,6 +219,14 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestCreateTask("test-application-id", "test-command", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
 			.id("test-task-id")
+				.memoryInMb(1024)
+				.diskInMb(1024)
+				.dropletId("1")
+				.createdAt(new Date().toString())
+				.updatedAt(new Date().toString())
+				.sequenceId(1)
+				.name("test-task-id")
+				.state(TaskState.SUCCEEDED)
 			.build()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
@@ -428,11 +454,20 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestGetApplicationSummary("test-application-id", Mono.just(SummaryApplicationResponse.builder()
 			.id("test-application-id")
+
 			.detectedStartCommand("test-command")
 			.build()));
 
 		givenRequestCreateTask("test-application-id", "test-command", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
 			.id("test-task-id")
+				.memoryInMb(1024)
+				.diskInMb(1024)
+				.dropletId("1")
+				.createdAt(new Date().toString())
+				.updatedAt(new Date().toString())
+				.sequenceId(1)
+				.name("test-task-id")
+				.state(TaskState.SUCCEEDED)
 			.build()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
@@ -489,6 +524,14 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 		givenRequestCreateTask("test-application-id", "test-command", this.deploymentProperties.getMemory(), "test-application", Mono.just(CreateTaskResponse.builder()
 			.id("test-task-id")
+				.memoryInMb(1024)
+				.diskInMb(1024)
+				.dropletId("1")
+				.createdAt(new Date().toString())
+				.updatedAt(new Date().toString())
+				.sequenceId(1)
+				.name("test-task-id")
+				.state(TaskState.SUCCEEDED)
 			.build()));
 
 		AppDefinition definition = new AppDefinition("test-application", null);
@@ -537,7 +580,14 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	public void status() {
 		givenRequestGetTask("test-task-id", Mono.just(GetTaskResponse.builder()
 			.id("test-task-id")
-			.state(org.cloudfoundry.client.v3.tasks.State.SUCCEEDED_STATE)
+				.memoryInMb(1024)
+				.diskInMb(1024)
+				.dropletId("1")
+				.createdAt(new Date().toString())
+				.updatedAt(new Date().toString())
+				.sequenceId(1)
+				.name("test-task-id")
+			.state(TaskState.SUCCEEDED)
 			.build()));
 
 		TaskStatus status = this.launcher.status("test-task-id");
@@ -554,7 +604,14 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.delay(Duration.ofMillis(delay))
 			.then(Mono.just(GetTaskResponse.builder()
 				.id("test-task-id")
-				.state(org.cloudfoundry.client.v3.tasks.State.SUCCEEDED_STATE)
+					.memoryInMb(1024)
+					.diskInMb(1024)
+					.dropletId("1")
+					.createdAt(new Date().toString())
+					.updatedAt(new Date().toString())
+					.sequenceId(1)
+					.name("test-task-id")
+				.state(TaskState.SUCCEEDED)
 				.build())));
 
 		assertThat(this.launcher.status("test-task-id").getState(), equalTo(LaunchState.error));
@@ -627,7 +684,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 	private void givenRequestPushApplication(PushApplicationManifestRequest request, Mono<Void> response) {
 		given(this.operations.applications()
-			.pushManifest(request))
+			.pushManifest(Mockito.any(PushApplicationManifestRequest.class)))
 			.willReturn(response);
 	}
 

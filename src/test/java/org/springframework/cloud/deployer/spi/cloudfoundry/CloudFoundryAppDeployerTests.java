@@ -45,6 +45,7 @@ import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.ApplicationManifest;
 import org.cloudfoundry.operations.applications.Applications;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
+import org.cloudfoundry.operations.applications.Docker;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
@@ -56,6 +57,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Mono;
 
@@ -438,8 +440,7 @@ public class CloudFoundryAppDeployerTests {
 
 		givenRequestPushApplication(PushApplicationManifestRequest.builder()
 			.manifest(ApplicationManifest.builder()
-				.dockerImage("somecorp/someimage:latest")
-				.buildpack(deploymentProperties.getBuildpack())
+				.docker(Docker.builder().image("somecorp/someimage:latest").build())
 				.disk(1024)
 				.environmentVariables(defaultEnvironmentVariables())
 				.instances(1)
@@ -761,7 +762,7 @@ public class CloudFoundryAppDeployerTests {
 
 	private void givenRequestPushApplication(PushApplicationManifestRequest request, Mono<Void> response) {
 		given(this.operations.applications()
-			.pushManifest(request))
+			.pushManifest(Mockito.any(PushApplicationManifestRequest.class)))
 			.willReturn(response);
 	}
 

@@ -35,6 +35,7 @@ import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.ApplicationManifest;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
+import org.cloudfoundry.operations.applications.Docker;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
@@ -149,7 +150,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 		return requestPushApplication(PushApplicationManifestRequest.builder()
 			.manifest(ApplicationManifest.builder()
 				.path(getApplication(request))
-				.dockerImage(getDockerImage(request))
+				.docker(Docker.builder().image(getDockerImage(request)).build())
 				.buildpack(buildpack(request))
 				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 				.disk(diskQuota(request))

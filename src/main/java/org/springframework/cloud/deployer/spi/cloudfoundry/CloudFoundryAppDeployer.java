@@ -39,6 +39,7 @@ import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.cloudfoundry.operations.applications.ApplicationManifest;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
+import org.cloudfoundry.operations.applications.Docker;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
@@ -297,8 +298,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private Mono<Void> pushApplication(String deploymentId, AppDeploymentRequest request) {
 		ApplicationManifest.Builder manifest = ApplicationManifest.builder()
 			.path(getApplication(request)) // Only one of the two is non-null
-			.dockerImage(getDockerImage(request)) // Only one of the two is non-null
-			.buildpack(buildpack(request))
 			.disk(diskQuota(request))
 			.environmentVariables(getEnvironmentVariables(deploymentId, request))
 			.healthCheckType(healthCheck(request))
@@ -314,6 +313,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		Optional.ofNullable(routePath(request)).ifPresent(manifest::routePath);
 		if (route(request) != null) {
 			manifest.route(Route.builder().route(route(request)).build());
+		}
+		if(getDockerImage(request) != null){
+			manifest.docker(Docker.builder().image(getDockerImage(request)).build());
+		}else {
+			manifest.buildpack(buildpack(request));
 		}
 		logger.debug("Pushing manifest" + manifest.build().toString());
 		return requestPushApplication(

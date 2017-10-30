@@ -103,15 +103,15 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 
 	protected TaskStatus toTaskStatus(GetTaskResponse response) {
 		switch (response.getState()) {
-			case SUCCEEDED_STATE:
+			case SUCCEEDED:
 				return new TaskStatus(response.getId(), LaunchState.complete, null);
-			case RUNNING_STATE:
+			case RUNNING:
 				return new TaskStatus(response.getId(), LaunchState.running, null);
-			case PENDING_STATE:
+			case PENDING:
 				return new TaskStatus(response.getId(), LaunchState.launching, null);
-			case CANCELING_STATE:
+			case CANCELING:
 				return new TaskStatus(response.getId(), LaunchState.cancelled, null);
-			case FAILED_STATE:
+			case FAILED:
 				return new TaskStatus(response.getId(), LaunchState.failed, null);
 			default:
 				throw new IllegalStateException(String.format("Unsupported CF task state %s", response.getState()));
