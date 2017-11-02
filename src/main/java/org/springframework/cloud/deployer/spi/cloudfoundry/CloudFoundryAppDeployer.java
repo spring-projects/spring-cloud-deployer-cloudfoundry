@@ -167,7 +167,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		Assert.isTrue(desiredCount >= 0, "desiredCount must be greater or equal zero");
 		getStatus(id)
 				.doOnNext(status -> assertApplicationExists(id, status))
-				.block();
+				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 		this.operations
 				.applications()
 				.scale(ScaleApplicationRequest.builder()
@@ -176,7 +176,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 						.build())
 				.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 				.doOnSuccess(v -> logger.info("Successfully scaled app {} to {} instances", id, desiredCount))
-				.doOnError(logError(String.format("Failed to scale app %s", id)))
+				.doOnError(logError(String.format("Failed to scale app %s to %s instances", id, desiredCount)))
 				.subscribe();
 	}
 
