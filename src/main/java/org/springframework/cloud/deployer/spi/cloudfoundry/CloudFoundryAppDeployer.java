@@ -16,7 +16,9 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_ENDPOINT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
@@ -284,6 +286,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.orElse(this.deploymentProperties.getHealthCheck());
 	}
 
+	private String healthEndpoint(AppDeploymentRequest request) {
+		return Optional.ofNullable(request.getDeploymentProperties().get(HEALTHCHECK_ENDPOINT_PROPERTY_KEY))
+				.orElse(this.deploymentProperties.getHealthCheckHttpEndpoint());
+	}
+
 	private String host(AppDeploymentRequest request) {
 		return Optional.ofNullable(request.getDeploymentProperties().get(HOST_PROPERTY))
 			.orElse(this.deploymentProperties.getHost());
@@ -301,11 +308,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.disk(diskQuota(request))
 			.environmentVariables(getEnvironmentVariables(deploymentId, request))
 			.healthCheckType(healthCheck(request))
+			.healthCheckHttpEndpoint(healthEndpoint(request))
 			.instances(instances(request))
 			.memory(memory(request))
 			.name(deploymentId)
 			.noRoute(toggleNoRoute(request))
-
 			.services(servicesToBind(request));
 
 		Optional.ofNullable(host(request)).ifPresent(manifest::host);

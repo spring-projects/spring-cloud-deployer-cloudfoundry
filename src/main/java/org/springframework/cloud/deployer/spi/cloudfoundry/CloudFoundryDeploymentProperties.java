@@ -39,6 +39,8 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
+	public static final String HEALTHCHECK_ENDPOINT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-endpoint";
+
 	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
 	public static final String ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route";
@@ -85,9 +87,14 @@ public class CloudFoundryDeploymentProperties {
 	private String disk = "1024m";
 
 	/**
-	 * The type of health check to perform on deployed application, if not overridden per-app.
+	 * The type of health check to perform on deployed application, if not overridden per-app.  Defaults to HTTP
 	 */
-	private ApplicationHealthCheck healthCheck = null;
+	private ApplicationHealthCheck healthCheck = ApplicationHealthCheck.HTTP;
+
+	/**
+	 * The path that the http health check will use, defaults to @{code /health}
+	 */
+	private String healthCheckHttpEndpoint = "/health";
 
 	/**
 	 * The number of instances to run.
@@ -213,6 +220,15 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setHealthCheck(ApplicationHealthCheck healthCheck) {
 		this.healthCheck = healthCheck;
+	}
+
+
+	public String getHealthCheckHttpEndpoint() {
+		return healthCheckHttpEndpoint;
+	}
+
+	public void setHealthCheckHttpEndpoint(String healthCheckHttpEndpoint) {
+		this.healthCheckHttpEndpoint = healthCheckHttpEndpoint;
 	}
 
 	public String getDomain() {
