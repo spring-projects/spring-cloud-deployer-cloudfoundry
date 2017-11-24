@@ -16,10 +16,10 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_ENDPOINT_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_TIMEOUT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
@@ -286,9 +286,15 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.orElse(this.deploymentProperties.getHealthCheck());
 	}
 
-	private String healthEndpoint(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(HEALTHCHECK_ENDPOINT_PROPERTY_KEY))
+	private String healthCheckEndpoint(AppDeploymentRequest request) {
+		return Optional.ofNullable(request.getDeploymentProperties().get(HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY))
 				.orElse(this.deploymentProperties.getHealthCheckHttpEndpoint());
+	}
+
+	private Integer healthCheckTimeout(AppDeploymentRequest request) {
+		String timeoutString = request.getDeploymentProperties()
+				.getOrDefault(HEALTHCHECK_TIMEOUT_PROPERTY_KEY, this.deploymentProperties.getHealthCheckTimeout());
+		return Integer.parseInt(timeoutString);
 	}
 
 	private String host(AppDeploymentRequest request) {
@@ -308,7 +314,8 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.disk(diskQuota(request))
 			.environmentVariables(getEnvironmentVariables(deploymentId, request))
 			.healthCheckType(healthCheck(request))
-			.healthCheckHttpEndpoint(healthEndpoint(request))
+			.healthCheckHttpEndpoint(healthCheckEndpoint(request))
+			.timeout(healthCheckTimeout(request))
 			.instances(instances(request))
 			.memory(memory(request))
 			.name(deploymentId)

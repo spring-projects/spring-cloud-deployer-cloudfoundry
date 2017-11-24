@@ -39,7 +39,9 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
-	public static final String HEALTHCHECK_ENDPOINT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-endpoint";
+	public static final String HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-http-endpoint";
+
+	public static final String HEALTHCHECK_TIMEOUT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-timeout";
 
 	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
@@ -95,6 +97,11 @@ public class CloudFoundryDeploymentProperties {
 	 * The path that the http health check will use, defaults to @{code /health}
 	 */
 	private String healthCheckHttpEndpoint = "/health";
+
+	/**
+	 * The timeout value for health checks in seconds.  Defaults to 120 seconds.
+	 */
+	private String healthCheckTimeout = "120";
 
 	/**
 	 * The number of instances to run.
@@ -229,6 +236,14 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setHealthCheckHttpEndpoint(String healthCheckHttpEndpoint) {
 		this.healthCheckHttpEndpoint = healthCheckHttpEndpoint;
+	}
+
+	public String getHealthCheckTimeout() {
+		return healthCheckTimeout;
+	}
+
+	public void setHealthCheckTimeout(String healthCheckTimeout) {
+		this.healthCheckTimeout = healthCheckTimeout;
 	}
 
 	public String getDomain() {
