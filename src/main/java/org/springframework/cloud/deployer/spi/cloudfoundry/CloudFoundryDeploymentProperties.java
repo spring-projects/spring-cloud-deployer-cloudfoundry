@@ -89,9 +89,9 @@ public class CloudFoundryDeploymentProperties {
 	private String disk = "1024m";
 
 	/**
-	 * The type of health check to perform on deployed application, if not overridden per-app.  Defaults to PROCESS
+	 * The type of health check to perform on deployed application, if not overridden per-app.  Defaults to PORT
 	 */
-	private ApplicationHealthCheck healthCheck = ApplicationHealthCheck.PROCESS;
+	private ApplicationHealthCheck healthCheck = ApplicationHealthCheck.PORT;
 
 	/**
 	 * The path that the http health check will use, defaults to @{code /health}
