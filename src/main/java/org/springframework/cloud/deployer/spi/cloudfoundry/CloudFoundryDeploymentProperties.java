@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
-
 import org.springframework.beans.factory.annotation.Value;
 
 /**
@@ -76,7 +75,7 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * The buildpack to use for deploying the application.
 	 */
-	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v3.14";
+	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v4.7.1";
 
 	/**
 	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
