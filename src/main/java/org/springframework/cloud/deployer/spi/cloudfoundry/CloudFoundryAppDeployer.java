@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -369,7 +369,12 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private String routePath(AppDeploymentRequest request) {
-		return request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
+		String routePath = request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
+		if (StringUtils.hasText(routePath) && !routePath.startsWith("/")) {
+			throw new IllegalArgumentException(
+					"Cloud Foundry routes must start with \"/\". Route passed = [" + routePath + "].");
+		}
+		return routePath;
 	}
 
 	private String route(AppDeploymentRequest request) {

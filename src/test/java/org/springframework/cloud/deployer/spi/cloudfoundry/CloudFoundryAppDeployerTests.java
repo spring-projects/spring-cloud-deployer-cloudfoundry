@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
@@ -314,6 +315,69 @@ public class CloudFoundryAppDeployerTests {
 				.build()));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithInvalidRoutePathProperty() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+				Mono.error(new IllegalArgumentException()),
+				Mono.just(ApplicationDetail.builder()
+								  .diskQuota(0)
+								  .id("test-application-id")
+								  .instances(1)
+								  .memoryLimit(0)
+								  .name("test-application")
+								  .requestedState("RUNNING")
+								  .runningInstances(0)
+								  .stack("test-stack")
+								  .build()));
+
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+											.manifest(ApplicationManifest.builder()
+															  .path(resource.getFile().toPath())
+															  .buildpack("test-buildpack")
+															  .disk(0)
+															  .environmentVariables(defaultEnvironmentVariables())
+															  .healthCheckType(ApplicationHealthCheck.NONE)
+															  .instances(0)
+															  .memory(0)
+															  .name("test-application-id")
+															  .noRoute(false)
+															  .host("test-host")
+															  .domain("test-domain")
+															  .routePath("/test-route-path")
+															  .service("test-service-2")
+															  .service("test-service-1")
+															  .build())
+											.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+											.startupTimeout(this.deploymentProperties.getStartupTimeout())
+											.build(), Mono.empty());
+		try {
+			String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+					new AppDefinition("test-application", Collections.emptyMap()),
+					resource,
+					FluentMap.<String, String>builder()
+							.entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
+							.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
+							.entry(DOMAIN_PROPERTY, "test-domain")
+							.entry(HEALTHCHECK_PROPERTY_KEY, "none")
+							.entry(HOST_PROPERTY, "test-host")
+							.entry(COUNT_PROPERTY_KEY, "0")
+							.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
+							.entry(NO_ROUTE_PROPERTY, "false")
+							.entry(ROUTE_PATH_PROPERTY, "test-route-path")
+							.build()));
+			fail("Illegal Argument exception is expected.");
+		}
+		catch (IllegalArgumentException e) {
+			assertThat(e.getMessage(), equalTo(
+					"Cloud Foundry routes must start with \"/\". Route passed = [test-route-path]."));
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -621,7 +685,7 @@ public class CloudFoundryAppDeployerTests {
 
 		try {
 			this.deployer.status("test-application-id").getState();
-			Assert.fail();
+			fail();
 		} catch (IllegalStateException e) {
 			assertThat(e.getMessage(), containsString("Unsupported CF state"));
 		}
