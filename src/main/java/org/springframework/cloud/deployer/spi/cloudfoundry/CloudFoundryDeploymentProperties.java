@@ -16,14 +16,14 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
-import org.springframework.beans.factory.annotation.Value;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
