@@ -16,15 +16,14 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
-
-import org.springframework.beans.factory.annotation.Value;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
 /**
  * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
@@ -76,7 +75,7 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * The buildpack to use for deploying the application.
 	 */
-	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v3.14";
+	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v4.7.1";
 
 	/**
 	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
