@@ -46,6 +46,8 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route";
 
+	public static final String ROUTES_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".routes";
+
 	public static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
 
 	public static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
@@ -71,6 +73,12 @@ public class CloudFoundryDeploymentProperties {
 	 * The domain to use when mapping routes for applications.
 	 */
 	private String domain;
+
+	/**
+	 * The routes that the application should be bound to.
+	 * Mutually exclusive with host and domain.
+	 */
+	private Set<String> routes = new HashSet<>();
 
 	/**
 	 * The buildpack to use for deploying the application.
@@ -228,7 +236,6 @@ public class CloudFoundryDeploymentProperties {
 		this.healthCheck = healthCheck;
 	}
 
-
 	public String getHealthCheckHttpEndpoint() {
 		return healthCheckHttpEndpoint;
 	}
@@ -261,6 +268,14 @@ public class CloudFoundryDeploymentProperties {
 		this.host = host;
 	}
 
+	public Set<String> getRoutes() {
+		return routes;
+	}
+
+	public void setRoutes(Set<String> routes) {
+		this.routes = routes;
+	}
+
 	public Duration getStagingTimeout() {
 		return stagingTimeout;
 	}
@@ -276,6 +291,7 @@ public class CloudFoundryDeploymentProperties {
 	public void setStartupTimeout(Duration startupTimeout) {
 		this.startupTimeout = startupTimeout;
 	}
+
 	public long getStatusTimeout() {
 		return statusTimeout;
 	}

@@ -24,13 +24,16 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTES_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -329,6 +332,12 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		if (route(request) != null) {
 			manifest.route(Route.builder().route(route(request)).build());
 		}
+		if (! routes(request).isEmpty()){
+		    Set<Route> routes = routes(request).stream()
+                    .map(r -> Route.builder().route(r).build())
+                    .collect(Collectors.toSet());
+		    manifest.routes(routes);
+        }
 		if(getDockerImage(request) != null){
 			manifest.docker(Docker.builder().image(getDockerImage(request)).build());
 		}else {
@@ -381,6 +390,13 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private String route(AppDeploymentRequest request) {
 		return request.getDeploymentProperties().get(ROUTE_PROPERTY);
 	}
+
+    private Set<String> routes(AppDeploymentRequest request) {
+        Set<String> routes = new HashSet<>();
+        routes.addAll(this.deploymentProperties.getRoutes());
+        routes.addAll(StringUtils.commaDelimitedListToSet(request.getDeploymentProperties().get(ROUTES_PROPERTY)));
+        return routes;
+    }
 
 	private ApplicationHealthCheck toApplicationHealthCheck(String raw) {
 		try {

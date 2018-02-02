@@ -38,8 +38,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.compress.utils.Sets;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
@@ -434,6 +436,91 @@ public class CloudFoundryAppDeployerTests {
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 	}
+
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithMultipleRoutes() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+				Mono.error(new IllegalArgumentException()),
+				Mono.just(ApplicationDetail.builder()
+						.diskQuota(0)
+						.id("test-application-id")
+						.instances(1)
+						.memoryLimit(0)
+						.name("test-application")
+						.requestedState("RUNNING")
+						.runningInstances(0)
+						.stack("test-stack")
+						.build()));
+
+		this.deploymentProperties.setBuildpack("test-buildpack");
+		this.deploymentProperties.setDisk("0");
+		this.deploymentProperties.setHealthCheck(ApplicationHealthCheck.NONE);
+		this.deploymentProperties.setRoutes(Sets.newHashSet("route1.test-domain", "route2.test-domain"));
+		this.deploymentProperties.setInstances(0);
+		this.deploymentProperties.setMemory("0");
+
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+						.path(resource.getFile().toPath())
+						.buildpack("test-buildpack")
+						.disk(0)
+						.routes(Sets.newHashSet(
+								Route.builder().route("route1.test-domain").build(),
+								Route.builder().route("route2.test-domain").build()
+						))
+						.environmentVariables(defaultEnvironmentVariables())
+						.healthCheckType(ApplicationHealthCheck.NONE)
+						.instances(0)
+						.memory(0)
+						.name("test-application-id")
+						.service("test-service-2")
+						.service("test-service-1")
+						.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.empty());
+
+		String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+				new AppDefinition("test-application", Collections.emptyMap()),
+				resource,
+				Collections.emptyMap()));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+	}
+
+
+	@SuppressWarnings("unchecked")
+	@Test(expected = IllegalStateException.class)
+	public void deployWithMultipleRoutesAndHostOrDomainMutuallyExclusive() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+				Mono.error(new IllegalArgumentException()),
+				Mono.just(ApplicationDetail.builder()
+						.id("test-application-id")
+						.name("test-application")
+						.build()));
+
+		this.deploymentProperties.setHost("route0");
+		this.deploymentProperties.setDomain("test-domain");
+		this.deploymentProperties.setRoutes(Sets.newHashSet("route1.test-domain", "route2.test-domain"));
+
+		this.deployer.deploy(new AppDeploymentRequest(
+				new AppDefinition("test-application", Collections.emptyMap()),
+				resource,
+				Collections.emptyMap()));
+
+		fail("routes and hosts cannot be set, expect cf java client to throw an exception");
+	}
+
 
 	@SuppressWarnings("unchecked")
 	@Test
