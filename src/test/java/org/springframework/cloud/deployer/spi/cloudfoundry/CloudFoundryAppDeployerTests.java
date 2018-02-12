@@ -496,6 +496,33 @@ public class CloudFoundryAppDeployerTests {
 
 
 	@SuppressWarnings("unchecked")
+	@Test(expected = IllegalStateException.class)
+	public void deployWithMultipleRoutesAndHostOrDomainMutuallyExclusive() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id",
+				Mono.error(new IllegalArgumentException()),
+				Mono.just(ApplicationDetail.builder()
+						.id("test-application-id")
+						.name("test-application")
+						.build()));
+
+		this.deploymentProperties.setHost("route0");
+		this.deploymentProperties.setDomain("test-domain");
+		this.deploymentProperties.setRoutes(Sets.newHashSet("route1.test-domain", "route2.test-domain"));
+
+		this.deployer.deploy(new AppDeploymentRequest(
+				new AppDefinition("test-application", Collections.emptyMap()),
+				resource,
+				Collections.emptyMap()));
+
+		fail("routes and hosts cannot be set, expect cf java client to throw an exception");
+	}
+
+
+	@SuppressWarnings("unchecked")
 	@Test
 	public void deployWithGroup() throws IOException {
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
