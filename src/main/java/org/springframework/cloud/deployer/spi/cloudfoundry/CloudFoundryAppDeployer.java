@@ -102,13 +102,14 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		logger.trace("deploy: Pushing application");
 		pushApplication(deploymentId, request)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
-			.doOnTerminate((item, error) -> {
-				if (error == null) {
-					logger.info("Successfully deployed {}", deploymentId);
-				}
-				else if (isNotFoundError().test(error)) {
+			.doOnSuccess(item -> {
+				logger.info("Successfully deployed {}", deploymentId);
+			})
+			.doOnError(error -> {
+				if (isNotFoundError().test(error)) {
 					logger.warn("Unable to deploy application. It may have been destroyed before start completed: " + error.getMessage());
-				} else {
+				}
+				else {
 					logError(String.format("Failed to deploy %s", deploymentId)).accept(error);
 				}
 			})

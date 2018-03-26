@@ -89,7 +89,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	@Override
 	public String launch(AppDeploymentRequest request) {
 		return getOrDeployApplication(request)
-			.then(application -> launchTask(application, request))
+			.flatMap(application -> launchTask(application, request))
 			.doOnSuccess(r -> logger.info("Task {} launch successful", request.getDefinition().getName()))
 			.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
@@ -138,7 +138,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	private Mono<SummaryApplicationResponse> getOrDeployApplication(AppDeploymentRequest request) {
 		return getOptionalApplication(request)
 			.switchIfEmpty(deployApplication(request))
-			.then(application -> requestGetApplicationSummary(application.getId()));
+			.flatMap(application -> requestGetApplicationSummary(application.getId()));
 	}
 
 	private Mono<String> launchTask(SummaryApplicationResponse application, AppDeploymentRequest request) {
