@@ -69,6 +69,7 @@ import org.springframework.util.StringUtils;
  * @author Eric Bottard
  * @author Greg Turnquist
  * @author Ben Hale
+ * @author Ilayaperumal Gopinathan
  */
 public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
@@ -254,8 +255,12 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		Map<String, String> envVariables = new HashMap<>();
 		envVariables.putAll(getApplicationProperties(deploymentId, request));
 		envVariables.putAll(getCommandLineArguments(request));
+		String javaOpts = javaOpts(request);
+		if (StringUtils.hasText(javaOpts)) {
+			envVariables.put("JAVA_OPTS", javaOpts(request));
+		}
 		String group = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
-		if (group != null) {
+		if (StringUtils.hasText(group)) {
 			envVariables.put("SPRING_CLOUD_APPLICATION_GROUP", group);
 		}
 		envVariables.put("SPRING_CLOUD_APPLICATION_GUID", "${vcap.application.name}:${vcap.application.instance_index}");

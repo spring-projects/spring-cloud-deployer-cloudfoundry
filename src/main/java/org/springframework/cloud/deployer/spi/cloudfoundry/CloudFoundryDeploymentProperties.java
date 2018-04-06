@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
  *
  * @author Eric Bottard
  * @author Greg Turnquist
+ * @author Ilayaperumal Gopinathan
  */
 public class CloudFoundryDeploymentProperties {
 
@@ -55,6 +56,8 @@ public class CloudFoundryDeploymentProperties {
 	public static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
 
 	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
+
+	public static final String JAVA_OPTS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
 
@@ -155,6 +158,8 @@ public class CloudFoundryDeploymentProperties {
 	 * Whether to also delete routes when un-deploying an application.
 	 */
 	private boolean deleteRoutes = true;
+
+	private String javaOpts;
 
 	public Set<String> getServices() {
 		return services;
@@ -306,5 +311,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setDeleteRoutes(boolean deleteRoutes) {
 		this.deleteRoutes = deleteRoutes;
+	}
+
+	public String getJavaOpts() {
+		return javaOpts;
+	}
+
+	public void setJavaOpts(String javaOpts) {
+		this.javaOpts = javaOpts;
 	}
 }

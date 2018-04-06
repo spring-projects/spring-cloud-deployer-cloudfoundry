@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 
 import java.io.IOException;
@@ -49,6 +50,7 @@ import org.springframework.util.StringUtils;
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *
  * @author Eric Bottard
+ * @author Ilayaperumal Gopinathan
  */
 class AbstractCloudFoundryDeployer {
 
@@ -85,6 +87,11 @@ class AbstractCloudFoundryDeployer {
 	String buildpack(AppDeploymentRequest request) {
 		return Optional.ofNullable(request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY))
 			.orElse(this.deploymentProperties.getBuildpack());
+	}
+
+	String javaOpts(AppDeploymentRequest request) {
+		return Optional.ofNullable(request.getDeploymentProperties().get(JAVA_OPTS_PROPERTY_KEY))
+				.orElse(this.deploymentProperties.getJavaOpts());
 	}
 
 	Predicate<Throwable> isNotFoundError() {
