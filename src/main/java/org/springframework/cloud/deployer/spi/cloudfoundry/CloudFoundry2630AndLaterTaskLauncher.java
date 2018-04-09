@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,6 +48,7 @@ import reactor.core.publisher.Mono;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
+import org.springframework.util.StringUtils;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -57,6 +58,7 @@ import org.springframework.cloud.deployer.spi.task.TaskLauncher;
  * @author Greg Turnquist
  * @author Michael Minella
  * @author Ben Hale
+ * @author Ilayaperumal Gopinathan
  */
 public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 
@@ -118,9 +120,16 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.collect(Collectors.joining(" "));
 	}
 
-	private Map<String, String> getEnvironmentVariables(Map<String, String> properties) {
+	private Map<String, String> getEnvironmentVariables(AppDeploymentRequest request) {
 		try {
-			return Collections.singletonMap("SPRING_APPLICATION_JSON", OBJECT_MAPPER.writeValueAsString(properties));
+			Map<String, String> envVariables = new HashMap<>();
+			envVariables.put("SPRING_APPLICATION_JSON",
+					OBJECT_MAPPER.writeValueAsString(request.getDefinition().getProperties()));
+			String javaOpts = javaOpts(request);
+			if (StringUtils.hasText(javaOpts)) {
+				envVariables.put("JAVA_OPTS", javaOpts(request));
+			}
+			return envVariables;
 		} catch (JsonProcessingException e) {
 			throw Exceptions.propagate(e);
 		}
@@ -154,7 +163,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 				.buildpack(buildpack(request))
 				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 				.disk(diskQuota(request))
-				.environmentVariables(getEnvironmentVariables(request.getDefinition().getProperties()))
+				.environmentVariables(getEnvironmentVariables(request))
 				.healthCheckType(ApplicationHealthCheck.NONE)
 				.memory(memory(request))
 				.name(name)
