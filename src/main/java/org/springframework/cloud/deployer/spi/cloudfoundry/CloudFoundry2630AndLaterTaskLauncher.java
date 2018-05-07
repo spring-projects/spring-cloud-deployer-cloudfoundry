@@ -59,6 +59,7 @@ import org.springframework.util.StringUtils;
  * @author Michael Minella
  * @author Ben Hale
  * @author Ilayaperumal Gopinathan
+ * @author Glenn Renfro
  */
 public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 
@@ -106,6 +107,31 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.subscribe();
 	}
 
+	/**
+	 * Set up a reactor flow to stage a task. Before staging check if the base
+	 * application exists. If not, then stage it.
+	 *
+	 * @param request description of the application to be staged.
+	 * @return SummaryApplicationResponse containing the status of the staging.
+	 */
+	public SummaryApplicationResponse stage(AppDeploymentRequest request) {
+		return getOrDeployApplication(request).doOnSuccess(r -> logger.info("Task {} launch successful", request.getDefinition().getName()))
+				.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
+				.cache()
+				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+	}
+
+	/**
+	 * Creates the command string required to launch a task by a service on Cloud Foundry.
+	 * @param application the {@link SummaryApplicationResponse} containing the result of the requested staging.
+	 * @param request The {@link AppDeploymentRequest} associated with the task staging.
+	 * @return the command string
+	 */
+	public String getCommand(SummaryApplicationResponse application, AppDeploymentRequest request) {
+		return Stream.concat(Stream.of(application.getDetectedStartCommand()), request.getCommandlineArguments().stream())
+				.collect(Collectors.joining(" "));
+	}
+
 	private Mono<AbstractApplicationSummary> deployApplication(AppDeploymentRequest request) {
 		String name = request.getDefinition().getName();
 
@@ -113,11 +139,6 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.then(requestStopApplication(name))
 			.then(requestGetApplication(name))
 			.cast(AbstractApplicationSummary.class);
-	}
-
-	private String getCommand(SummaryApplicationResponse application, AppDeploymentRequest request) {
-		return Stream.concat(Stream.of(application.getDetectedStartCommand()), request.getCommandlineArguments().stream())
-			.collect(Collectors.joining(" "));
 	}
 
 	private Map<String, String> getEnvironmentVariables(AppDeploymentRequest request) {
