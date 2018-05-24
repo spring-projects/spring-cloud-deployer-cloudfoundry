@@ -84,7 +84,8 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	}
 
 	/**
-	 * Set up a reactor flow to launch a task. Before launch, check if the base application exists. If not, deploy then launch task.
+	 * Set up a reactor flow to launch a task. Before launch, check if the base application exists. If not, deploy
+	 * then launch task.
 	 *
 	 * @param request description of the application to be launched
 	 * @return name of the launched task, returned without waiting for reactor pipeline to complete
@@ -115,7 +116,8 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	 * @return SummaryApplicationResponse containing the status of the staging.
 	 */
 	public SummaryApplicationResponse stage(AppDeploymentRequest request) {
-		return getOrDeployApplication(request).doOnSuccess(r -> logger.info("Task {} launch successful", request.getDefinition().getName()))
+		return getOrDeployApplication(request).doOnSuccess(r ->
+					logger.info("Task {} launch successful", request.getDefinition().getName()))
 				.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
 				.cache()
 				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
@@ -172,7 +174,10 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	}
 
 	private Mono<String> launchTask(SummaryApplicationResponse application, AppDeploymentRequest request) {
-		return requestCreateTask(application.getId(), getCommand(application, request), memory(request), request.getDefinition().getName())
+		return requestCreateTask(application.getId(),
+				getCommand(application, request),
+				memory(request),
+				request.getDefinition().getName())
 			.map(CreateTaskResponse::getId);
 	}
 
