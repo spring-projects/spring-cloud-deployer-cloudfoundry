@@ -117,7 +117,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	 */
 	public SummaryApplicationResponse stage(AppDeploymentRequest request) {
 		return getOrDeployApplication(request).doOnSuccess(r ->
-					logger.info("Task {} launch successful", request.getDefinition().getName()))
+					logger.info("Task {} staged successfully", request.getDefinition().getName()))
 				.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
 				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
