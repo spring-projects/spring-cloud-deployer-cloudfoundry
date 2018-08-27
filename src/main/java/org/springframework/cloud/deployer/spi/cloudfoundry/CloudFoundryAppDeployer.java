@@ -16,17 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_TIMEOUT_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTES_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,6 +38,7 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
+import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -63,6 +53,17 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.util.StringUtils;
 
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_TIMEOUT_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTES_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
+
 /**
  * A deployer that targets Cloud Foundry using the public API.
  *
@@ -70,6 +71,7 @@ import org.springframework.util.StringUtils;
  * @author Greg Turnquist
  * @author Ben Hale
  * @author Ilayaperumal Gopinathan
+ * @author David Turanski
  */
 public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
 
@@ -348,18 +350,56 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
         }
 		if(getDockerImage(request) != null){
 			manifest.docker(Docker.builder().image(getDockerImage(request)).build());
-		}else {
+		} else {
 			manifest.buildpack(buildpack(request));
 		}
-		logger.debug("Pushing manifest" + manifest.build().toString());
-		return requestPushApplication(
-			PushApplicationManifestRequest.builder()
-				.manifest(manifest.build())
-				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
-				.startupTimeout(this.deploymentProperties.getStartupTimeout())
-				.build())
+		
+		if (!includesServiceParameters(request)) {
+			return pushApplicationWithNoServiceParameters(manifest.build(), deploymentId);
+		} else {
+			return pushApplicationWithServiceParameters(manifest.build(), request, deploymentId);
+		}
+	}
+
+	private Mono<Void> pushApplicationWithNoServiceParameters(ApplicationManifest manifest, String deploymentId) {
+		logger.debug("Pushing application manifest");
+		return requestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(manifest)
+			.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+			.startupTimeout(this.deploymentProperties.getStartupTimeout())
+			.build())
 			.doOnSuccess(v -> logger.info("Done uploading bits for {}", deploymentId))
-			.doOnError(e -> logger.error(String.format("Error creating app %s.  Exception Message %s", deploymentId, e.getMessage())));
+			.doOnError(e -> logger.error("Error: {} creating app {}", e.getMessage(), deploymentId));
+	}
+
+	private Mono<Void> pushApplicationWithServiceParameters(ApplicationManifest manifest,
+		AppDeploymentRequest request, String deploymentId) {
+
+		logger.debug("Pushing application manifest with no start");
+
+		return requestPushApplication(PushApplicationManifestRequest.builder()
+			.manifest(manifest)
+			.noStart(true)
+			.build())
+			.doOnSuccess(v -> logger.info("Done uploading bits for {}", deploymentId))
+			.doOnError(e -> logger.error(String.format("Error creating app %s.  Exception Message %s", deploymentId, e.getMessage())))
+
+			.thenMany(Flux.fromStream(bindParameterizedServiceInstanceRequests(request, deploymentId)))
+			.flatMap(bindRequest -> this.operations.services()
+				.bind(bindRequest)
+				.doOnSuccess(bv -> logger.info("Done binding service {} for {}", bindRequest.getServiceInstanceName(), deploymentId))
+				.doOnError(e -> logger.error("Error: {} binding service {}", e.getMessage(), bindRequest.getServiceInstanceName())))
+
+			.then(this.operations.applications()
+				.start(StartApplicationRequest.builder()
+					.name(deploymentId)
+					.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+					.startupTimeout(this.deploymentProperties.getStartupTimeout())
+					.build())
+				.doOnSuccess(sv -> logger.info("Started app for {} ", deploymentId))
+				.doOnError(e -> logger.error("Error: {} starting app for {}.", e.getMessage(), deploymentId)))
+
+			.doOnError(e -> logger.error(String.format("Error: %s creating app %s", e.getMessage(), deploymentId), e));
 	}
 
 	private Mono<Void> requestDeleteApplication(String id) {
