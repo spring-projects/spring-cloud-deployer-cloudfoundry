@@ -24,15 +24,23 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.UnknownCloudFoundryException;
+import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,11 +63,14 @@ import org.springframework.util.StringUtils;
  */
 class AbstractCloudFoundryDeployer {
 
+
+
 	protected final RuntimeEnvironmentInfo runtimeEnvironmentInfo;
 
 	final CloudFoundryDeploymentProperties deploymentProperties;
 
 	private final Logger logger = LoggerFactory.getLogger(AbstractCloudFoundryDeployer.class);
+
 
 	AbstractCloudFoundryDeployer(CloudFoundryDeploymentProperties deploymentProperties, RuntimeEnvironmentInfo runtimeEnvironmentInfo) {
 		this.deploymentProperties = deploymentProperties;
@@ -73,10 +84,41 @@ class AbstractCloudFoundryDeployer {
 	}
 
 	Set<String> servicesToBind(AppDeploymentRequest request) {
-		Set<String> services = new HashSet<>();
-		services.addAll(this.deploymentProperties.getServices());
-		services.addAll(StringUtils.commaDelimitedListToSet(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)));
+
+		Set<String> services = this.deploymentProperties.getServices().stream().filter(s->!ServiceParser
+			.getServiceParameters(s).isPresent())
+			.collect(Collectors.toSet());
+
+		Set<String> requestServices = ServiceParser.splitServiceProperties(request.getDeploymentProperties().get
+			(SERVICES_PROPERTY_KEY))
+			.stream()
+			.filter(s-> !ServiceParser.getServiceParameters(s).isPresent())
+			.collect(Collectors.toSet());
+
+		services.addAll(requestServices);
 		return services;
+	}
+
+	boolean includesServiceParameters(AppDeploymentRequest request) {
+		return
+			this.deploymentProperties.getServices().stream()
+				.anyMatch(s-> ServiceParser.getServiceParameters(s).isPresent()) ||
+				ServiceParser.splitServiceProperties(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()
+					.anyMatch(s-> ServiceParser.getServiceParameters(s).isPresent());
+	}
+
+	Stream<BindServiceInstanceRequest> bindParameterizedServiceInstanceRequests(AppDeploymentRequest request,
+		String deploymentId) {
+		return ServiceParser.splitServiceProperties(request.getDeploymentProperties().get
+			(SERVICES_PROPERTY_KEY)).stream()
+			.filter(s-> ServiceParser.getServiceParameters(s).isPresent())
+			.map(s->
+				BindServiceInstanceRequest.builder()
+					.applicationName(deploymentId)
+					.serviceInstanceName(ServiceParser.getServiceInstanceName(s))
+					.parameters(ServiceParser.getServiceParameters(s).get())
+					.build()
+			);
 	}
 
 	int diskQuota(AppDeploymentRequest request) {
