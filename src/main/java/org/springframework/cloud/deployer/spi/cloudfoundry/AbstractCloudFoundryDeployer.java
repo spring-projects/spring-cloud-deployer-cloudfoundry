@@ -20,6 +20,7 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -173,6 +174,25 @@ class AbstractCloudFoundryDeployer {
 				.andThen(retries -> Flux.from(retries).doOnComplete(() ->
 					logger.info("Successfully retried getStatus operation status [{}] for {}", id))))
 			.doOnError(e -> logger.error(String.format("Retry operation on getStatus failed for %s.  Max retry time %sms", id, statusTimeout)));
+	}
+
+	protected void deleteLocalApplicationResourceFile(AppDeploymentRequest appDeploymentRequest) {
+
+		try {
+			File applicationFile = appDeploymentRequest.getResource().getFile();
+			logger.info("Free Disk Space = {} bytes, Total Disk Space = {} bytes",
+					applicationFile.getFreeSpace(),
+					applicationFile.getTotalSpace());
+			if (appDeploymentRequest.getResource().getURI().getScheme().toLowerCase().startsWith("http")) {
+				boolean deleted = applicationFile.delete();
+				logger.debug((deleted) ? "Successfully deleted the application resource: "+ applicationFile.getCanonicalPath() :
+						"Could not delete the application resource: "+ applicationFile.getCanonicalPath());
+			}
+		}
+		catch (IOException e) {
+			logger.warn("Exception deleting the application resource after successful CF push request."
+					+ " This could cause increase in disk space usage. Exception message: " + e.getMessage());
+		}
 	}
 
 

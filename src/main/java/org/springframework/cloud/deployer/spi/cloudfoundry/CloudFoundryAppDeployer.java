@@ -117,6 +117,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 					logError(String.format("Failed to deploy %s", deploymentId)).accept(error);
 				}
 			})
+			.doOnSuccessOrError((r, e) -> {
+				deleteLocalApplicationResourceFile(request);
+			})
 			.subscribe();
 
 		logger.trace("Exiting deploy().  Deployment Id = {}", deploymentId);
