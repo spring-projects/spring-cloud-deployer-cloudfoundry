@@ -94,7 +94,10 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	public String launch(AppDeploymentRequest request) {
 		return getOrDeployApplication(request)
 			.flatMap(application -> launchTask(application, request))
-			.doOnSuccess(r -> logger.info("Task {} launch successful", request.getDefinition().getName()))
+			.doOnSuccess(r -> {
+				logger.info("Task {} launch successful", request.getDefinition().getName());
+				deleteLocalApplicationResourceFile(request);
+			})
 			.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
