@@ -108,7 +108,6 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(item -> {
 				logger.info("Successfully deployed {}", deploymentId);
-				deleteLocalApplicationResourceFile(request);
 			})
 			.doOnError(error -> {
 				if (isNotFoundError().test(error)) {
@@ -117,6 +116,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 				else {
 					logError(String.format("Failed to deploy %s", deploymentId)).accept(error);
 				}
+			})
+			.doOnSuccessOrError((r, e) -> {
+				deleteLocalApplicationResourceFile(request);
 			})
 			.subscribe();
 

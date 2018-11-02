@@ -96,9 +96,11 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.flatMap(application -> launchTask(application, request))
 			.doOnSuccess(r -> {
 				logger.info("Task {} launch successful", request.getDefinition().getName());
-				deleteLocalApplicationResourceFile(request);
 			})
 			.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
+			.doOnSuccessOrError((r, e) -> {
+				deleteLocalApplicationResourceFile(request);
+			})
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 

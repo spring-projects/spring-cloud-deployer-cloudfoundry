@@ -178,7 +178,7 @@ class AbstractCloudFoundryDeployer {
 
 	protected void deleteLocalApplicationResourceFile(AppDeploymentRequest appDeploymentRequest) {
 		try {
-			if (!appDeploymentRequest.getResource().getURI().toString().startsWith("docker:")) {
+			if (!appDeploymentRequest.getResource().getURI().getScheme().toLowerCase().startsWith("http")) {
 				File applicationFile = appDeploymentRequest.getResource().getFile();
 				boolean deleted = applicationFile.delete();
 				logger.debug((deleted) ? "Successfully deleted the application resource: "+ applicationFile.getCanonicalPath() :
