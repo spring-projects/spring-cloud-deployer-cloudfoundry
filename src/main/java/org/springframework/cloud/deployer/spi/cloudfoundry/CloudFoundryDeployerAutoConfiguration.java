@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
+import org.cloudfoundry.uaa.UaaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,6 +171,9 @@ public class CloudFoundryDeployerAutoConfiguration {
 				.get(GetInfoRequest.builder()
 					.build())
 				.map(response -> Version.valueOf(response.getApiVersion()))
+				.doOnError(e -> {
+					throw new RuntimeException("Bad credentials connecting to Cloud Foundry.", e);
+				})
 				.doOnNext(version -> logger.info("Connecting to Cloud Foundry with API Version {}", version))
 				.block(Duration.ofSeconds(appDeploymentProperties().getApiTimeout()));
 		}
