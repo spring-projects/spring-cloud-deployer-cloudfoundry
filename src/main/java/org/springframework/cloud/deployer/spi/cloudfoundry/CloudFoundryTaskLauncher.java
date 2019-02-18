@@ -61,11 +61,11 @@ import org.springframework.util.StringUtils;
  * @author Ilayaperumal Gopinathan
  * @author Glenn Renfro
  */
-public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTaskLauncher {
+public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-	private static final Logger logger = LoggerFactory.getLogger(CloudFoundry2630AndLaterTaskLauncher.class);
+	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryTaskLauncher.class);
 
 	private final CloudFoundryClient client;
 
@@ -73,7 +73,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 
 	private final CloudFoundryOperations operations;
 
-	public CloudFoundry2630AndLaterTaskLauncher(CloudFoundryClient client,
+	public CloudFoundryTaskLauncher(CloudFoundryClient client,
 												CloudFoundryDeploymentProperties deploymentProperties,
 												CloudFoundryOperations operations,
 											    RuntimeEnvironmentInfo runtimeEnvironmentInfo) {

@@ -34,7 +34,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
 
 /**
- * Runs integration tests for {@link CloudFoundry2630AndLaterTaskLauncher}, using the production configuration,
+ * Runs integration tests for {@link CloudFoundryTaskLauncher}, using the production configuration,
  * that may be configured via {@link CloudFoundryConnectionProperties}.
  *
  * Tests are only run if a successful connection can be made at startup.
