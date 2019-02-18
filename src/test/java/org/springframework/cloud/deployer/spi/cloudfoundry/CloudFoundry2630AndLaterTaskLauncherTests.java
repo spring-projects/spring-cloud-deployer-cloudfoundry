@@ -73,7 +73,7 @@ import static org.mockito.Mockito.mock;
  * @author Ben Hale
  * @author Glenn Renfro
  */
-public class CloudFoundryTaskLauncherTests {
+public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
 
@@ -86,7 +86,7 @@ public class CloudFoundryTaskLauncherTests {
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private CloudFoundryClient client;
 
-	private CloudFoundryTaskLauncher launcher;
+	private CloudFoundry2630AndLaterTaskLauncher launcher;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private CloudFoundryOperations operations;
@@ -114,7 +114,7 @@ public class CloudFoundryTaskLauncherTests {
 
 		this.deploymentProperties.setApiTimeout(1);
 		this.deploymentProperties.setStatusTimeout(1_250L);
-		this.launcher = new CloudFoundryTaskLauncher(this.client,
+		this.launcher = new CloudFoundry2630AndLaterTaskLauncher(this.client,
 				this.deploymentProperties,
 				this.operations,
 				mock(RuntimeEnvironmentInfo.class));
