@@ -22,8 +22,10 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.validation.constraints.Min;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
@@ -32,7 +34,9 @@ import org.springframework.beans.factory.annotation.Value;
  * @author Eric Bottard
  * @author Greg Turnquist
  * @author Ilayaperumal Gopinathan
+ * @author David Turanski
  */
+@Validated
 public class CloudFoundryDeploymentProperties {
 
 	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
@@ -158,6 +162,12 @@ public class CloudFoundryDeploymentProperties {
 	 * Whether to also delete routes when un-deploying an application.
 	 */
 	private boolean deleteRoutes = true;
+
+	/**
+	 * The maximum concurrent tasks allowed.
+	 */
+	@Min(1)
+	private int maximumConcurrentTasks = 20;
 
 	private String javaOpts;
 
@@ -319,5 +329,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setJavaOpts(String javaOpts) {
 		this.javaOpts = javaOpts;
+	}
+
+	public int getMaximumConcurrentTasks() {
+		return maximumConcurrentTasks;
+	}
+
+	public void setMaximumConcurrentTasks(int maximumConcurrentTasks) {
+		this.maximumConcurrentTasks = maximumConcurrentTasks;
 	}
 }
