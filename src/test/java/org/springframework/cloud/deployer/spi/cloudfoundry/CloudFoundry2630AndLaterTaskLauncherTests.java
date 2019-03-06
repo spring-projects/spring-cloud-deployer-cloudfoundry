@@ -18,19 +18,27 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
+import org.cloudfoundry.client.v3.Pagination;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
 import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.GetTaskResponse;
+import org.cloudfoundry.client.v3.tasks.ListTasksResponse;
+import org.cloudfoundry.client.v3.tasks.TaskResource;
 import org.cloudfoundry.client.v3.tasks.TaskState;
 import org.cloudfoundry.client.v3.tasks.Tasks;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -49,7 +57,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -65,6 +72,7 @@ import org.springframework.core.io.Resource;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -72,8 +80,10 @@ import static org.mockito.Mockito.mock;
  * @author Michael Minella
  * @author Ben Hale
  * @author Glenn Renfro
+ * @author David Turanski
  */
 public class CloudFoundry2630AndLaterTaskLauncherTests {
+	private final static int TASK_EXECUTION_COUNT = 10;
 
 	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
 
@@ -105,6 +115,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	@Before
 	public void setUp() throws IOException {
 		MockitoAnnotations.initMocks(this);
+		given(this.tasks.list(any())).willReturn(this.runningTasksResponse());
 		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
 		given(this.client.tasks()).willReturn(this.tasks);
 
@@ -135,6 +146,11 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 			.build()));
 
 		this.launcher.cancel("test-task-id");
+	}
+
+	@Test
+	public void currentExecutionCount() {
+		assertThat(this.launcher.getRunningTaskExecutionCount(), equalTo(this.TASK_EXECUTION_COUNT));
 	}
 
 	@Test
@@ -463,7 +479,7 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 
 	private void givenRequestPushApplication(PushApplicationManifestRequest request, Mono<Void> response) {
 		given(this.operations.applications()
-			.pushManifest(Mockito.any(PushApplicationManifestRequest.class)))
+			.pushManifest(any(PushApplicationManifestRequest.class)))
 			.willReturn(response);
 	}
 
@@ -804,5 +820,25 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	private AppDeploymentRequest deploymentRequest(Resource resource, Map<String,String> deploymentProperties) {
 		AppDefinition definition = new AppDefinition("test-application", null);
 		return new AppDeploymentRequest(definition, resource, deploymentProperties);
+	}
+
+	private Mono<ListTasksResponse> runningTasksResponse() {
+		List<TaskResource> taskResources = new ArrayList<>();
+		for (int i=0; i< TASK_EXECUTION_COUNT; i++) {
+			taskResources.add(TaskResource.builder()
+				.name("task-" + i)
+				.dropletId(UUID.randomUUID().toString())
+				.id(UUID.randomUUID().toString())
+				.diskInMb(2048)
+				.sequenceId(i)
+				.state(TaskState.RUNNING)
+				.memoryInMb(2048)
+				.createdAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+				.build());
+		}
+		ListTasksResponse listTasksResponse = ListTasksResponse.builder().resources(taskResources)
+			.pagination(Pagination.builder().totalResults(taskResources.size()).build())
+			.build();
+		return Mono.just(listTasksResponse);
 	}
 }

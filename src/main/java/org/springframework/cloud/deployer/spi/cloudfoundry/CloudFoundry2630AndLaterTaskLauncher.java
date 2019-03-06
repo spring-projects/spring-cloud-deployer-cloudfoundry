@@ -60,6 +60,7 @@ import org.springframework.util.StringUtils;
  * @author Ben Hale
  * @author Ilayaperumal Gopinathan
  * @author Glenn Renfro
+ * @author David Turanski
  */
 public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 
@@ -92,6 +93,13 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	 */
 	@Override
 	public String launch(AppDeploymentRequest request) {
+		if (this.maxConcurrentExecutionsReached()) {
+			throw new IllegalStateException(
+				String.format("Cannot launch task %s. The maximum concurrent task executions is at its limit [%d].",
+					request.getDefinition().getName(), this.getMaximumConcurrentTasks())
+			);
+		}
+
 		return getOrDeployApplication(request)
 			.flatMap(application -> launchTask(application, request))
 			.doOnSuccess(r -> {
