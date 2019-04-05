@@ -52,6 +52,7 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 
@@ -150,6 +151,10 @@ class AbstractCloudFoundryDeployer {
 		try {
 			String uri = request.getResource().getURI().toString();
 			if (uri.startsWith("docker:")) {
+				logger.info(
+					"Preparing to build an application from  {}" +
+						". This may take some time if the image must be downloaded from a remote Docker registry.",
+					request.getResource());
 				return uri.substring("docker:".length());
 			} else {
 				return null;
@@ -167,6 +172,12 @@ class AbstractCloudFoundryDeployer {
 	Path getApplication(AppDeploymentRequest request) {
 		try {
 			if (!request.getResource().getURI().toString().startsWith("docker:")) {
+				if (request.getResource() instanceof UrlResource) {
+					logger.info(
+						"Preparing to build an application from {}" +
+							". This may take some time if the artifact must be downloaded from a remote host.",
+						request.getResource());
+				}
 				return request.getResource().getFile().toPath();
 			} else {
 				return null;
