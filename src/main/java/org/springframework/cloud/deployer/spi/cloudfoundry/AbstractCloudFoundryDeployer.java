@@ -24,20 +24,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.UnknownCloudFoundryException;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
@@ -54,8 +48,6 @@ import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.StringUtils;
-
 /**
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *
@@ -63,8 +55,6 @@ import org.springframework.util.StringUtils;
  * @author Ilayaperumal Gopinathan
  */
 class AbstractCloudFoundryDeployer {
-
-
 
 	protected final RuntimeEnvironmentInfo runtimeEnvironmentInfo;
 
@@ -151,10 +141,6 @@ class AbstractCloudFoundryDeployer {
 		try {
 			String uri = request.getResource().getURI().toString();
 			if (uri.startsWith("docker:")) {
-				logger.info(
-					"Preparing to build an application from  {}" +
-						". This may take some time if the image must be downloaded from a remote Docker registry.",
-					request.getResource());
 				return uri.substring("docker:".length());
 			} else {
 				return null;
@@ -171,13 +157,11 @@ class AbstractCloudFoundryDeployer {
 	 */
 	Path getApplication(AppDeploymentRequest request) {
 		try {
+			logger.info(
+				"Preparing to build an application from {}" +
+					". This may take some time if the artifact must be downloaded from a remote host.",
+				request.getResource());
 			if (!request.getResource().getURI().toString().startsWith("docker:")) {
-				if (request.getResource() instanceof UrlResource) {
-					logger.info(
-						"Preparing to build an application from {}" +
-							". This may take some time if the artifact must be downloaded from a remote host.",
-						request.getResource());
-				}
 				return request.getResource().getFile().toPath();
 			} else {
 				return null;
