@@ -158,7 +158,7 @@ class AbstractCloudFoundryDeployer {
 	Path getApplication(AppDeploymentRequest request) {
 		try {
 			logger.info(
-				"Preparing to build an application from {}" +
+				"Preparing to push an application from {}" +
 					". This may take some time if the artifact must be downloaded from a remote host.",
 				request.getResource());
 			if (!request.getResource().getURI().toString().startsWith("docker:")) {
