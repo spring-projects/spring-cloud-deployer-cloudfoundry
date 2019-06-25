@@ -107,13 +107,20 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			})
 			.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
 			.doOnSuccessOrError((r, e) -> {
-				deleteLocalApplicationResourceFile(request);
+				if (pushTaskAppsEnabled()) {
+					deleteLocalApplicationResourceFile(request);
+				}
 			})
 			.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 
 	@Override
 	public void destroy(String appName) {
+		if (!pushTaskAppsEnabled()) {
+			logger.warn("The application {} will not be deleted since 'pushTaskApps' is not enabled.", appName);
+
+			return;
+		}
 		requestDeleteApplication(appName)
 			.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
 			.doOnSuccess(v -> logger.info("Successfully destroyed app {}", appName))
@@ -131,7 +138,7 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	public SummaryApplicationResponse stage(AppDeploymentRequest request) {
 		return getOrDeployApplication(request).doOnSuccess(r ->
 					logger.info("Task {} staged successfully", request.getDefinition().getName()))
-				.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
+				.doOnError(logError(String.format("Task %s stage failed", request.getDefinition().getName())))
 				.block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
 	}
 
@@ -146,7 +153,12 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 				.collect(Collectors.joining(" "));
 	}
 
+	private boolean pushTaskAppsEnabled() {
+		return deploymentProperties.isPushTaskAppsEnabled();
+	}
+
 	private Mono<AbstractApplicationSummary> deployApplication(AppDeploymentRequest request) {
+
 		String name = request.getDefinition().getName();
 
 		return pushApplication(name, request)
@@ -173,10 +185,22 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	private Mono<AbstractApplicationSummary> getOptionalApplication(AppDeploymentRequest request) {
 		String name = request.getDefinition().getName();
 
-		return requestListApplications()
-			.filter(application -> name.equals(application.getName()))
-			.singleOrEmpty()
-			.cast(AbstractApplicationSummary.class);
+		Flux<ApplicationSummary> applications = requestListApplications()
+				.filter(application -> name.equals(application.getName()));
+
+		if (!pushTaskAppsEnabled()) {
+			return applications
+					.single()
+					.doOnError(t-> {
+						String msg = String.format("Application %s does not exist", name);
+						throw new IllegalStateException(msg);
+					})
+					.cast(AbstractApplicationSummary.class);
+		}
+
+		return applications
+				.singleOrEmpty()
+				.cast(AbstractApplicationSummary.class);
 	}
 
 	private Mono<SummaryApplicationResponse> getOrDeployApplication(AppDeploymentRequest request) {
@@ -194,6 +218,10 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 	}
 
 	private Mono<Void> pushApplication(String name, AppDeploymentRequest request) {
+		if (!pushTaskAppsEnabled()) {
+			return Mono.empty();
+		}
+
 		return requestPushApplication(PushApplicationManifestRequest.builder()
 			.manifest(ApplicationManifest.builder()
 				.path(getApplication(request))

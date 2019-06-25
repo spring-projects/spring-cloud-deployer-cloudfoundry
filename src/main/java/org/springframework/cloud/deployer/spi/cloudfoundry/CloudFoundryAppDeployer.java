@@ -54,6 +54,7 @@ import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.util.StringUtils;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ENABLE_PUSH_TASK_APPS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_TIMEOUT_PROPERTY_KEY;
@@ -63,6 +64,7 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
+
 
 /**
  * A deployer that targets Cloud Foundry using the public API.

@@ -77,3 +77,14 @@ combinations as shown in the table below. The name of the deployed application i
 |<emtpy string>
 |false
 |time
+|===
+
+== Disable Push Task Applications
+
+If an application does not exist when the `TaskLauncher` `launch` method is invoked, the TaskLauncher by default pushes a task application using the `AppDeploymentRequest` `resource` property.
+
+The default behavior is disabled by setting `spring.cloud.deployer.cloudfoundry.push-task-apps-enabled` to `false`.
+In this case, the application must have already been pushed to CloudFoundry via an external process and the TaskLauncher simply starts it, providing any command line arguments defined in the deployment request.
+
+This is useful 
+

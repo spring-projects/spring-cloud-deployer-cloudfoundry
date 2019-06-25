@@ -65,6 +65,8 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
 
+	public static final String ENABLE_PUSH_TASK_APPS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".push-task-apps-enabled";
+
 	/**
 	 * The names of services to bind to all applications deployed as a module.
 	 * This should typically contain a service capable of playing the role of a binding transport.
@@ -162,6 +164,11 @@ public class CloudFoundryDeploymentProperties {
 	 * Whether to also delete routes when un-deploying an application.
 	 */
 	private boolean deleteRoutes = true;
+
+	/**
+	 * Whether to push task apps
+	 */
+	private boolean pushTaskAppsEnabled = true;
 
 	/**
 	 * The maximum concurrent tasks allowed.
@@ -337,5 +344,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setMaximumConcurrentTasks(int maximumConcurrentTasks) {
 		this.maximumConcurrentTasks = maximumConcurrentTasks;
+	}
+
+	public boolean isPushTaskAppsEnabled() {
+		return pushTaskAppsEnabled;
+	}
+
+	public void setPushTaskAppsEnabled(boolean pushTaskAppsEnabled) {
+		this.pushTaskAppsEnabled = pushTaskAppsEnabled;
 	}
 }
