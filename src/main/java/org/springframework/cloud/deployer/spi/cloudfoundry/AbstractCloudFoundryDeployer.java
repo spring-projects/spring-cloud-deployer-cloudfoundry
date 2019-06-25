@@ -16,10 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -46,8 +42,12 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
+
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+
 /**
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *

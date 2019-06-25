@@ -16,16 +16,18 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
-
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.validation.constraints.Min;
+
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
+
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
 /**
  * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
@@ -162,6 +164,11 @@ public class CloudFoundryDeploymentProperties {
 	 * Whether to also delete routes when un-deploying an application.
 	 */
 	private boolean deleteRoutes = true;
+
+	/**
+	 * Whether to push task apps
+	 */
+	private boolean pushTaskAppsEnabled = true;
 
 	/**
 	 * The maximum concurrent tasks allowed.
@@ -337,5 +344,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setMaximumConcurrentTasks(int maximumConcurrentTasks) {
 		this.maximumConcurrentTasks = maximumConcurrentTasks;
+	}
+
+	public boolean isPushTaskAppsEnabled() {
+		return pushTaskAppsEnabled;
+	}
+
+	public void setPushTaskAppsEnabled(boolean pushTaskAppsEnabled) {
+		this.pushTaskAppsEnabled = pushTaskAppsEnabled;
 	}
 }

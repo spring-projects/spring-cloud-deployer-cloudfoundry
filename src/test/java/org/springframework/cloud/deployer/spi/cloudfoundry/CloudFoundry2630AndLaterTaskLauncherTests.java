@@ -179,6 +179,22 @@ public class CloudFoundry2630AndLaterTaskLauncherTests {
 	}
 
 	@Test
+	public void launchExistingTaskApplicationWithPushDisabled() {
+		setupExistingAppSuccessful();
+		deploymentProperties.setPushTaskAppsEnabled(false);
+		String taskId = this.launcher.launch(defaultRequest());
+		assertThat(taskId, equalTo("test-task-id"));
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void launchNonExistingTaskApplicationWithPushDisabled() throws IOException {
+		setupTaskWithNonExistentApplication(this.resource);
+		deploymentProperties.setPushTaskAppsEnabled(false);
+		String taskId = this.launcher.launch(defaultRequest());
+		assertThat(taskId, equalTo("test-task-id"));
+	}
+
+	@Test
 	public void stageTaskWithNonExistentApplication() throws IOException {
 		setupTaskWithNonExistentApplication(this.resource);
 
