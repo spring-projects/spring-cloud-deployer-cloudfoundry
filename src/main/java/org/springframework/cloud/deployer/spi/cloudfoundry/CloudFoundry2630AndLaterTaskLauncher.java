@@ -19,6 +19,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -191,10 +192,9 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 		if (!pushTaskAppsEnabled()) {
 			return applications
 					.single()
-					.doOnError(t-> {
-						String msg = String.format("Application %s does not exist", name);
-						throw new IllegalStateException(msg);
-					})
+					.onErrorMap(t->
+						t instanceof NoSuchElementException ?
+								new IllegalStateException(String.format("Application %s does not exist", name)) : t)
 					.cast(AbstractApplicationSummary.class);
 		}
 
