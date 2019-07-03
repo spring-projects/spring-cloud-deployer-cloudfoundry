@@ -16,14 +16,16 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.validation.annotation.Validated;
-
-import javax.validation.constraints.Min;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+
+import javax.validation.constraints.Min;
+
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.validation.annotation.Validated;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
