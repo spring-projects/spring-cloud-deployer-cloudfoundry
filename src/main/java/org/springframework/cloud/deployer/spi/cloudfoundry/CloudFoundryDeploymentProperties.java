@@ -16,16 +16,16 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
+import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.validation.annotation.Validated;
 
+import javax.validation.constraints.Min;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.validation.constraints.Min;
-import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.validation.annotation.Validated;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
 /**
  * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
@@ -64,8 +64,6 @@ public class CloudFoundryDeploymentProperties {
 	public static final String JAVA_OPTS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
-
-	public static final String ENABLE_PUSH_TASK_APPS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".push-task-apps-enabled";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
