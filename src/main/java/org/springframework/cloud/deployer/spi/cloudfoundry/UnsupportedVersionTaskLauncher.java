@@ -83,6 +83,11 @@ public class UnsupportedVersionTaskLauncher implements TaskLauncher {
 		throw failure();
 	}
 
+	@Override
+	public String getLog(String appName) {
+		throw failure();
+	}
+
 	private UnsupportedOperationException failure() {
 		return new UnsupportedOperationException("Cloud Foundry API version " + actualVersion + " is earlier than "
 			+ MINIMUM_SUPPORTED_VERSION + " and is incompatible with cf-java-client " +

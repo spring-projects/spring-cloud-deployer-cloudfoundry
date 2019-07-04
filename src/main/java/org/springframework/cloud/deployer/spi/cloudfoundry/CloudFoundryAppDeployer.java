@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.cloudfoundry.doppler.LogMessage;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
@@ -36,6 +38,7 @@ import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.Docker;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
+import org.cloudfoundry.operations.applications.LogsRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
@@ -172,6 +175,21 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnSuccess(v -> logger.info("Successfully undeployed app {}", id))
 			.doOnError(logError(String.format("Failed to undeploy app %s", id)))
 			.subscribe();
+	}
+
+	@Override
+	public String getLog(String id) {
+		List<LogMessage> logMessageList = getLogMessage(id).collectList().block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+		StringBuilder stringBuilder = new StringBuilder();
+		for (LogMessage logMessage: logMessageList) {
+			stringBuilder.append(logMessage.getMessage() + System.lineSeparator());
+		}
+		return stringBuilder.toString();
+	}
+
+	private Flux<LogMessage> getLogMessage(String deploymentId) {
+		logger.info("Fetching log for "+ deploymentId);
+		return this.operations.applications().logs(LogsRequest.builder().name(deploymentId).recent(true).build());
 	}
 
 	private void assertApplicationDoesNotExist(String deploymentId, AppStatus status) {
