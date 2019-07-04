@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CreateTaskResponse;
+import org.cloudfoundry.doppler.LogMessage;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.AbstractApplicationSummary;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
@@ -38,6 +40,7 @@ import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.operations.applications.Docker;
 import org.cloudfoundry.operations.applications.GetApplicationRequest;
+import org.cloudfoundry.operations.applications.LogsRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.slf4j.Logger;
@@ -127,6 +130,21 @@ public class CloudFoundry2630AndLaterTaskLauncher extends AbstractCloudFoundryTa
 			.doOnSuccess(v -> logger.info("Successfully destroyed app {}", appName))
 			.doOnError(logError(String.format("Failed to destroy app %s", appName)))
 			.subscribe();
+	}
+
+	@Override
+	public String getLog(String taskAppName) {
+		List<LogMessage> logMessageList = getLogMessage(taskAppName).collectList().block(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()));
+		StringBuilder stringBuilder = new StringBuilder();
+		for (LogMessage logMessage: logMessageList) {
+			stringBuilder.append(logMessage.getMessage() + System.lineSeparator());
+		}
+		return stringBuilder.toString();
+	}
+
+	private Flux<LogMessage> getLogMessage(String taskAppName) {
+		logger.info("Fetching log for {}", taskAppName);
+		return this.operations.applications().logs(LogsRequest.builder().name(taskAppName).recent(true).build());
 	}
 
 	/**
