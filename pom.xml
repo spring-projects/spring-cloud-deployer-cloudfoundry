@@ -22,6 +22,7 @@
 		<cloudfoundry-java-lib.version>3.15.0.RELEASE</cloudfoundry-java-lib.version>
 		<reactor-core.version>3.2.0.RELEASE</reactor-core.version>
 		<reactor-netty.version>0.7.12.RELEASE</reactor-netty.version>
+		<pivotal-cf-client-reactor.version>1.1.0.RELEASE</pivotal-cf-client-reactor.version>
 	</properties>
 
 	<dependencies>
@@ -68,6 +69,15 @@
 			<groupId>io.projectreactor.ipc</groupId>
 			<artifactId>reactor-netty</artifactId>
 			<version>${reactor-netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.pivotal</groupId>
+			<artifactId>pivotal-cloudfoundry-client-reactor</artifactId>
+			<version>${pivotal-cf-client-reactor.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.retry</groupId>
+			<artifactId>spring-retry</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
