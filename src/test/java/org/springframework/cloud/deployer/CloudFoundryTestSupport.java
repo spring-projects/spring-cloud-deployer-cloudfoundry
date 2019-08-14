@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.spi.cloudfoundry;
+package org.springframework.cloud.deployer;
 
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -31,6 +31,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
 import org.springframework.cloud.deployer.spi.test.junit.AbstractExternalResourceTestSupport;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -45,17 +46,17 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 
 	private ConfigurableApplicationContext context;
 
-	protected CloudFoundryTestSupport() {
+	public CloudFoundryTestSupport() {
 		super("CLOUDFOUNDRY");
 	}
 
 	@Override
-	protected void cleanupResource() throws Exception {
+	public void cleanupResource() throws Exception {
 		context.close();
 	}
 
 	@Override
-	protected void obtainResource() throws Exception {
+	public void obtainResource() throws Exception {
 		context = new SpringApplicationBuilder(Config.class).web(WebApplicationType.NONE).run();
 		resource = context.getBean(CloudFoundryClient.class);
 	}

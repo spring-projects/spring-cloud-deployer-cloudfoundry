@@ -30,7 +30,6 @@ import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
-import org.cloudfoundry.uaa.UaaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,8 +115,8 @@ public class CloudFoundryDeployerAutoConfiguration {
 		Version version) {
 
 		if (version.greaterThanOrEqualTo(UnsupportedVersionTaskLauncher.MINIMUM_SUPPORTED_VERSION)) {
-			RuntimeEnvironmentInfo runtimeEnvironmentInfo = runtimeEnvironmentInfo(TaskLauncher.class, CloudFoundry2630AndLaterTaskLauncher.class);
-			return new CloudFoundry2630AndLaterTaskLauncher(
+			RuntimeEnvironmentInfo runtimeEnvironmentInfo = runtimeEnvironmentInfo(TaskLauncher.class, CloudFoundryTaskLauncher.class);
+			return new CloudFoundryTaskLauncher(
 				client,
 				connectionConfiguration.taskDeploymentProperties(),
 				operations,
