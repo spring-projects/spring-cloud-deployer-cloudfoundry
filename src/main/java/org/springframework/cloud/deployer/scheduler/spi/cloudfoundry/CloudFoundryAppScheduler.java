@@ -125,8 +125,9 @@ public class CloudFoundryAppScheduler implements Scheduler {
 				new RecoveryCallback<Void>() {
 					@Override
 					public Void recover(RetryContext retryContext) throws Exception {
-						retryContext.getLastThrowable().printStackTrace();
-						logger.error("**************"+retryContext.getLastThrowable().getMessage());
+						if (retryContext.getLastThrowable() != null) {
+							logger.error("Retry Context reported the following exception: " + retryContext.getLastThrowable().getMessage());
+						}
 						logger.error("Unable to schedule application");
 						try {
 							logger.debug("removing job portion of the schedule.");
