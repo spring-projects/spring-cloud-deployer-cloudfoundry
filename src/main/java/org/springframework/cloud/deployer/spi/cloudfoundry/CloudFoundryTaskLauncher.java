@@ -17,15 +17,10 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
 import org.cloudfoundry.client.v3.tasks.CreateTaskRequest;
@@ -45,14 +40,11 @@ import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.util.StringUtils;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * {@link TaskLauncher} implementation for CloudFoundry.  When a task is launched, if it has not previously been
@@ -67,8 +59,6 @@ import org.springframework.util.StringUtils;
  * @author David Turanski
  */
 public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
-
-	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
 	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryTaskLauncher.class);
 
@@ -186,20 +176,6 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 			.cast(AbstractApplicationSummary.class);
 	}
 
-	private Map<String, String> getEnvironmentVariables(AppDeploymentRequest request) {
-		try {
-			Map<String, String> envVariables = new HashMap<>();
-			envVariables.put("SPRING_APPLICATION_JSON",
-					OBJECT_MAPPER.writeValueAsString(request.getDefinition().getProperties()));
-			String javaOpts = javaOpts(request);
-			if (StringUtils.hasText(javaOpts)) {
-				envVariables.put("JAVA_OPTS", javaOpts(request));
-			}
-			return envVariables;
-		} catch (JsonProcessingException e) {
-			throw Exceptions.propagate(e);
-		}
-	}
 
 	private Mono<AbstractApplicationSummary> getOptionalApplication(AppDeploymentRequest request) {
 		String name = request.getDefinition().getName();
@@ -247,7 +223,7 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 				.buildpack(buildpack(request))
 				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 				.disk(diskQuota(request))
-				.environmentVariables(getEnvironmentVariables(request))
+				.environmentVariables(getEnvironmentVariables(name, request))
 				.healthCheckType(ApplicationHealthCheck.NONE)
 				.memory(memory(request))
 				.name(name)
