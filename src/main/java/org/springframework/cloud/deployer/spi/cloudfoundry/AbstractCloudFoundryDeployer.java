@@ -16,10 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -27,34 +32,37 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.UnknownCloudFoundryException;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
 
 /**
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *
  * @author Eric Bottard
  * @author Ilayaperumal Gopinathan
+ * @author David Turanski
  */
 class AbstractCloudFoundryDeployer {
+
+	protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
 	protected final RuntimeEnvironmentInfo runtimeEnvironmentInfo;
 
@@ -231,6 +239,48 @@ class AbstractCloudFoundryDeployer {
 					+ " This could cause increase in disk space usage. Exception message: " + e.getMessage());
 		}
 	}
+
+	protected Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
+		Map<String, String> envVariables = new HashMap<>();
+		envVariables.putAll(getApplicationProperties(deploymentId, request));
+
+		String javaOpts = javaOpts(request);
+		if (StringUtils.hasText(javaOpts)) {
+			envVariables.put("JAVA_OPTS", javaOpts(request));
+		}
+		return envVariables;
+	}
+
+	private Map<String, String> getApplicationProperties(String deploymentId, AppDeploymentRequest request) {
+		Map<String, String> applicationProperties = getSanitizedApplicationProperties(deploymentId, request);
+
+		if (!useSpringApplicationJson(request)) {
+			return applicationProperties;
+		}
+
+		try {
+			return Collections.singletonMap("SPRING_APPLICATION_JSON", OBJECT_MAPPER.writeValueAsString(applicationProperties));
+		} catch (JsonProcessingException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private Map<String, String> getSanitizedApplicationProperties(String deploymentId, AppDeploymentRequest request) {
+		Map<String, String> applicationProperties = new HashMap<>(request.getDefinition().getProperties());
+
+		// Remove server.port as CF assigns a port for us, and we don't want to override that
+		Optional.ofNullable(applicationProperties.remove("server.port"))
+				.ifPresent(port -> logger.warn("Ignoring 'server.port={}' for app {}, as Cloud Foundry will assign a local dynamic port. Route to the app will use port 80.", port, deploymentId));
+
+		return applicationProperties;
+	}
+
+	private boolean useSpringApplicationJson(AppDeploymentRequest request) {
+		return Optional.ofNullable(request.getDeploymentProperties().get(USE_SPRING_APPLICATION_JSON_KEY))
+				.map(Boolean::valueOf)
+				.orElse(this.deploymentProperties.isUseSpringApplicationJson());
+	}
+
 
 
 	public RuntimeEnvironmentInfo environmentInfo() {
