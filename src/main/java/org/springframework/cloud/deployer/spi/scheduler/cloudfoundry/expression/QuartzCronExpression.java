@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.scheduler.spi.cloudfoundry.expression;
+package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry.expression;
 
 import java.text.ParseException;
 import java.util.Calendar;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.scheduler.spi.cloudfoundry;
+package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,14 +67,14 @@ import org.mockito.MockitoAnnotations;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import org.springframework.cloud.deployer.scheduler.spi.core.CreateScheduleException;
-import org.springframework.cloud.deployer.scheduler.spi.core.ScheduleInfo;
-import org.springframework.cloud.deployer.scheduler.spi.core.ScheduleRequest;
-import org.springframework.cloud.deployer.scheduler.spi.core.SchedulerException;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.scheduler.CreateScheduleException;
+import org.springframework.cloud.deployer.spi.scheduler.ScheduleInfo;
+import org.springframework.cloud.deployer.spi.scheduler.ScheduleRequest;
+import org.springframework.cloud.deployer.spi.scheduler.SchedulerException;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
@@ -82,7 +82,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.springframework.cloud.deployer.scheduler.spi.core.SchedulerPropertyKeys.CRON_EXPRESSION;
+import static org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys.CRON_EXPRESSION;
 
 /**
  * Test the core features of the Spring Cloud Scheduler implementation.

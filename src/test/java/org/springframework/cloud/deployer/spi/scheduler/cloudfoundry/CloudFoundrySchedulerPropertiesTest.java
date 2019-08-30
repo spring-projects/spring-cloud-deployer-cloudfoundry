@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.scheduler.spi.cloudfoundry;
+package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry;
 
 import org.junit.Test;
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.scheduler.spi.cloudfoundry;
+package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry;
 
 import java.text.ParseException;
 import java.time.Duration;
@@ -46,17 +46,17 @@ import org.cloudfoundry.operations.spaces.SpaceSummary;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import org.springframework.cloud.deployer.scheduler.spi.cloudfoundry.expression.QuartzCronExpression;
-import org.springframework.cloud.deployer.scheduler.spi.core.CreateScheduleException;
-import org.springframework.cloud.deployer.scheduler.spi.core.ScheduleInfo;
-import org.springframework.cloud.deployer.scheduler.spi.core.ScheduleRequest;
-import org.springframework.cloud.deployer.scheduler.spi.core.Scheduler;
-import org.springframework.cloud.deployer.scheduler.spi.core.SchedulerException;
-import org.springframework.cloud.deployer.scheduler.spi.core.SchedulerPropertyKeys;
-import org.springframework.cloud.deployer.scheduler.spi.core.UnScheduleException;
-import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
+import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.scheduler.CreateScheduleException;
+import org.springframework.cloud.deployer.spi.scheduler.ScheduleInfo;
+import org.springframework.cloud.deployer.spi.scheduler.ScheduleRequest;
+import org.springframework.cloud.deployer.spi.scheduler.Scheduler;
+import org.springframework.cloud.deployer.spi.scheduler.SchedulerException;
+import org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys;
+import org.springframework.cloud.deployer.spi.scheduler.UnScheduleException;
+import org.springframework.cloud.deployer.spi.scheduler.cloudfoundry.expression.QuartzCronExpression;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;

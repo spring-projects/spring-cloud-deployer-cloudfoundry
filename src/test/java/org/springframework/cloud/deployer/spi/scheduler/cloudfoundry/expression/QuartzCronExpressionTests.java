@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.scheduler.spi.cloudfoundry.expression;
+package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry.expression;
 
 import java.text.ParseException;
 
 import junit.framework.TestCase;
+
+import org.springframework.cloud.deployer.spi.scheduler.cloudfoundry.expression.QuartzCronExpression;
 
 public class QuartzCronExpressionTests extends TestCase {
 

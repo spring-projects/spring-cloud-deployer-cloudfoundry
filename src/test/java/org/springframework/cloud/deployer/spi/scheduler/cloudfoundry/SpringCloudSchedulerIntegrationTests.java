@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.deployer.scheduler.spi.cloudfoundry;
+package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry;
 
 import java.util.Collections;
 import java.util.List;
@@ -38,12 +38,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.deployer.CloudFoundryTestSupport;
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
-import org.springframework.cloud.deployer.scheduler.spi.core.Scheduler;
-import org.springframework.cloud.deployer.scheduler.spi.core.SchedulerPropertyKeys;
-import org.springframework.cloud.deployer.scheduler.spi.test.AbstractSchedulerIntegrationTests;
+import org.springframework.cloud.deployer.spi.scheduler.test.AbstractSchedulerIntegrationTests;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
+import org.springframework.cloud.deployer.spi.scheduler.Scheduler;
+import org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
