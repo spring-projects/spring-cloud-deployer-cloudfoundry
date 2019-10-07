@@ -16,11 +16,10 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import java.net.URL;
+import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotNull;
-
-import org.springframework.validation.annotation.Validated;
+import java.net.URL;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
@@ -65,6 +64,12 @@ public class CloudFoundryConnectionProperties {
 	 */
 	@NotNull
 	private String password;
+
+	/**
+	 * Indicates the identity provider to be used when accessing the Cloud Foundry API.
+	 * The passed string has to be a URL-Encoded JSON Object, containing the field origin with value as origin_key of an identity provider.
+	 */
+	private String loginHint;
 
 	/**
 	 * Allow operation using self-signed certificates.
@@ -119,4 +124,11 @@ public class CloudFoundryConnectionProperties {
 		this.skipSslValidation = skipSslValidation;
 	}
 
+	public String getLoginHint() {
+		return loginHint;
+	}
+
+	public void setLoginHint(String loginHint) {
+		this.loginHint = loginHint;
+	}
 }
