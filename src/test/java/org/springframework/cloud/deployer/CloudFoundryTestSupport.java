@@ -84,6 +84,7 @@ public class CloudFoundryTestSupport extends AbstractExternalResourceTestSupport
 			return PasswordGrantTokenProvider.builder()
 					.username(properties.getUsername())
 					.password(properties.getPassword())
+					.loginHint(properties.getLoginHint())
 					.build();
 		}
 
