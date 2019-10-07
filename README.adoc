@@ -35,6 +35,10 @@ SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_SERVICES
 SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_USERNAME
 SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_PASSWORD
 
+# the identity provider to be used when accessing the Cloud Foundry API (optional)
+# the passed string has to be a URL-Encoded JSON Object, containing the field origin with value as origin_key of an identity provider.
+SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_LOGIN_HINT
+
 # whether to allow self-signed certificates during SSL validation
 SPRING_CLOUD_DEPLOYER_CLOUDFOUNDRY_SKIP_SSL_VALIDATION
 ----

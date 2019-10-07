@@ -193,6 +193,7 @@ public class CloudFoundryDeployerAutoConfiguration {
 			return PasswordGrantTokenProvider.builder()
 				.username(properties.getUsername())
 				.password(properties.getPassword())
+				.loginHint(properties.getLoginHint())
 				.build();
 		}
 
