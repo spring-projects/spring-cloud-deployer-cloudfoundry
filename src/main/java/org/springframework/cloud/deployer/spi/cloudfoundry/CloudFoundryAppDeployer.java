@@ -38,6 +38,7 @@ import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.LogsRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
+import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.AppScaleRequest;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
@@ -74,8 +76,6 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
  * @author David Turanski
  */
 public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implements MultiStateAppDeployer {
-
-
 
 	private static final Logger logger = LoggerFactory.getLogger(CloudFoundryAppDeployer.class);
 
@@ -206,6 +206,26 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			stringBuilder.append(logMessage.getMessage() + System.lineSeparator());
 		}
 		return stringBuilder.toString();
+	}
+
+	@Override
+	public void scale(AppScaleRequest appScaleRequest) {
+		logger.info("Scaling the application instance using ", appScaleRequest.toString());
+		ScaleApplicationRequest scaleApplicationRequest = ScaleApplicationRequest.builder()
+				.name(appScaleRequest.getDeploymentId())
+				.instances(appScaleRequest.getCount())
+				.memoryLimit(memory(appScaleRequest))
+				.diskLimit(diskQuota(appScaleRequest))
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build();
+		this.operations.applications().scale(scaleApplicationRequest)
+				.timeout(Duration.ofSeconds(this.deploymentProperties.getApiTimeout()))
+				.doOnSuccess(v -> logger.info("Scaled the application with deploymentId = {}",
+						appScaleRequest.getDeploymentId()))
+				.doOnError(e -> logger.error("Error: {} scaling the app instance {}", e.getMessage(),
+						appScaleRequest.getDeploymentId()))
+				.subscribe();
 	}
 
 	private Flux<LogMessage> getLogMessage(String deploymentId) {

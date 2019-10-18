@@ -39,6 +39,7 @@ import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.AppScaleRequest;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
@@ -80,6 +81,22 @@ class AbstractCloudFoundryDeployer {
 		String withUnit = request.getDeploymentProperties()
 			.getOrDefault(AppDeployer.MEMORY_PROPERTY_KEY, this.deploymentProperties.getMemory());
 		return (int) ByteSizeUtils.parseToMebibytes(withUnit);
+	}
+
+	int memory(AppScaleRequest request) {
+		if (request.getProperties().isPresent() && request.getProperties().get() != null) {
+			return (int) ByteSizeUtils.parseToMebibytes(request.getProperties().get().getOrDefault(AppDeployer.MEMORY_PROPERTY_KEY,
+					this.deploymentProperties.getMemory()));
+		}
+		return (int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getMemory());
+	}
+
+	int diskQuota(AppScaleRequest request) {
+		if (request.getProperties().isPresent() && request.getProperties().get() != null) {
+			return (int) ByteSizeUtils.parseToMebibytes(request.getProperties().get().getOrDefault(AppDeployer.DISK_PROPERTY_KEY,
+					this.deploymentProperties.getDisk()));
+		}
+		return (int) ByteSizeUtils.parseToMebibytes(this.deploymentProperties.getDisk());
 	}
 
 	Set<String> servicesToBind(AppDeploymentRequest request) {
