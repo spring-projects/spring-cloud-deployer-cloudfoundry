@@ -37,6 +37,7 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.InstanceDetail;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
+import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.Services;
@@ -50,6 +51,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
+import org.springframework.cloud.deployer.spi.app.AppScaleRequest;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
@@ -896,6 +898,30 @@ public class CloudFoundryAppDeployerTests {
 
 		this.deployer.undeploy("test-application-id");
 
+	}
+
+	@Test
+	public void scale() {
+		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
+				.diskQuota(0)
+				.id("test-application-id")
+				.instances(2)
+				.memoryLimit(0)
+				.name("test-application")
+				.requestedState("RUNNING")
+				.runningInstances(2)
+				.stack("test-stack")
+				.instanceDetail(InstanceDetail.builder().state("RUNNING").index("1").build())
+				.build()));
+		givenRequestScaleApplication("test-application-id", 2, 1024, 1024, Mono.empty());
+		this.deployer.scale(new AppScaleRequest("test-application-id", 2));
+	}
+
+	private void givenRequestScaleApplication(String id, Integer count, int memoryLimit, int diskLimit, Mono<Void> response) {
+		given(this.operations.applications()
+				.scale(ScaleApplicationRequest.builder().name(id).instances(count).memoryLimit(memoryLimit).diskLimit(diskLimit)
+						.startupTimeout(this.deploymentProperties.getStartupTimeout())
+						.stagingTimeout(this.deploymentProperties.getStagingTimeout()).build())).willReturn(response);
 	}
 
 	private void givenRequestDeleteApplication(String id, Mono<Void> response) {
