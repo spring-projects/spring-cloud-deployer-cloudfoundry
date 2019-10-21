@@ -16,10 +16,11 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.springframework.validation.annotation.Validated;
+import java.net.URL;
 
 import javax.validation.constraints.NotNull;
-import java.net.URL;
+
+import org.springframework.validation.annotation.Validated;
 
 /**
  * Holds configuration properties for connecting to a Cloud Foundry runtime.
