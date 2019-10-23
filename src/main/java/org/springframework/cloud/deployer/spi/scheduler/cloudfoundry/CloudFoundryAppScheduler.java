@@ -22,8 +22,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.net.ssl.SSLException;
 
 import io.jsonwebtoken.lang.Assert;
@@ -41,13 +43,16 @@ import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.AbstractApplicationSummary;
+import org.cloudfoundry.operations.applications.ApplicationEnvironments;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
+import org.cloudfoundry.operations.applications.GetApplicationEnvironmentsRequest;
 import org.cloudfoundry.operations.spaces.SpaceSummary;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
+import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.scheduler.CreateScheduleException;
 import org.springframework.cloud.deployer.spi.scheduler.ScheduleInfo;
@@ -169,6 +174,27 @@ public class CloudFoundryAppScheduler implements Scheduler {
 			}
 			result.addAll(scheduleInfoPage);
 		}
+		for(ScheduleInfo scheduleInfo : result) {
+			Mono<ApplicationEnvironments> appEnvMono = operations.applications().getEnvironments(GetApplicationEnvironmentsRequest.builder().name(scheduleInfo.getScheduleName()).build());
+			String taskDefinitionNameFromEnvironment = appEnvMono.map(applicationEnvironments -> {
+				Map<String, Object> appEnvs = applicationEnvironments.getUserProvided();
+				ObjectMapper mapper = new ObjectMapper();
+				String taskDefinitionName = null;
+				try {
+					Map<String, String> properties = mapper.readValue((String) appEnvs.get("SPRING_APPLICATION_JSON"), Map.class);
+					if(properties.containsKey("spring-task-definition-name")) {
+						taskDefinitionName = properties.get("spring-task-definition-name");
+					}
+				}
+				catch (Exception jsonMappingException) {
+					throw new IllegalArgumentException(jsonMappingException);
+				}
+				return taskDefinitionName;
+			}).block();
+			if(taskDefinitionNameFromEnvironment != null) {
+				scheduleInfo.setTaskDefinitionName(taskDefinitionNameFromEnvironment);
+			}
+		}
 		return result;
 	}
 
@@ -182,7 +208,7 @@ public class CloudFoundryAppScheduler implements Scheduler {
 	private void scheduleTask(String appName, String scheduleName,
 			String expression, String command) {
 		logger.debug(String.format("Scheduling Task: ", appName));
-		ScheduleJobResponse response = getApplicationByAppName(appName)
+		ScheduleJobResponse response = getApplicationByAppName(scheduleName)
 				.flatMap(abstractApplicationSummary -> {
 					return this.client.jobs().create(CreateJobRequest.builder()
 							.applicationId(abstractApplicationSummary.getId()) // App GUID
@@ -220,8 +246,13 @@ public class CloudFoundryAppScheduler implements Scheduler {
 	private String stageTask(ScheduleRequest scheduleRequest) {
 		logger.debug(String.format("Staging Task: ",
 				scheduleRequest.getDefinition().getName()));
+		Map<String, String> properties = new HashMap<>(scheduleRequest.getDefinition().getProperties());
+		properties.put("spring-task-definition-name",
+				scheduleRequest.getDefinition().getName());
+		AppDefinition appDefinition = new AppDefinition(scheduleRequest.getScheduleName(), properties);
+
 		AppDeploymentRequest request = new AppDeploymentRequest(
-				scheduleRequest.getDefinition(),
+				appDefinition,
 				scheduleRequest.getResource(),
 				scheduleRequest.getDeploymentProperties(),
 				scheduleRequest.getCommandlineArguments());

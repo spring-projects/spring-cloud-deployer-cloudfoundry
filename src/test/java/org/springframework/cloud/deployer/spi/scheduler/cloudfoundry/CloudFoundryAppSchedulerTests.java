@@ -52,8 +52,10 @@ import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v3.applications.ApplicationsV3;
 import org.cloudfoundry.client.v3.tasks.Tasks;
 import org.cloudfoundry.operations.CloudFoundryOperations;
+import org.cloudfoundry.operations.applications.ApplicationEnvironments;
 import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.Applications;
+import org.cloudfoundry.operations.applications.GetApplicationEnvironmentsRequest;
 import org.cloudfoundry.operations.spaces.SpaceSummary;
 import org.cloudfoundry.operations.spaces.Spaces;
 import org.junit.Before;
@@ -330,6 +332,21 @@ public class CloudFoundryAppSchedulerTests {
 				.list())
 				.willReturn(response);
 	}
+	private void givenRequestListApplicationsEnvironments(Map<String, String> jobAppMap) {
+		for(String jobAppName : jobAppMap.keySet()) {
+			Map<String, Object> sampleResults = new HashMap<>();
+			sampleResults.put("SPRING_APPLICATION_JSON",
+					String.format("{\"spring.cloud.dataflow.client.serverUri\":" +
+							"\"http://grenfro-scdf-server.apps.violet.springapps.io\"," +
+							"\"spring-task-definition-name\":\"%s\"}", jobAppMap.get(jobAppName)));
+			Mono<ApplicationEnvironments> response = Mono.just(ApplicationEnvironments.builder().userProvided(sampleResults).build());
+
+			given(this.operations.applications()
+					.getEnvironments(GetApplicationEnvironmentsRequest.builder().name(jobAppName).build()))
+					.willReturn(response);
+		}
+
+	}
 
 	private void verifyScheduleInfo(ScheduleInfo scheduleInfo, String taskDefinitionName, String scheduleName, String expression) {
 		assertThat(scheduleInfo.getTaskDefinitionName()).isEqualTo(taskDefinitionName);
@@ -511,7 +528,7 @@ public class CloudFoundryAppSchedulerTests {
 						.id("test-application-id-1")
 						.instances(1)
 						.memoryLimit(0)
-						.name("test-application-1")
+						.name("test-schedule")
 						.requestedState("RUNNING")
 						.runningInstances(1)
 						.build(),
@@ -520,10 +537,14 @@ public class CloudFoundryAppSchedulerTests {
 						.id("test-application-id-2")
 						.instances(1)
 						.memoryLimit(0)
-						.name("test-application-2")
+						.name("test-schedule-2")
 						.requestedState("RUNNING")
 						.runningInstances(1)
 						.build()));
+		Map<String, String> sampleResults = new HashMap<>();
+		sampleResults.put("test-job-name-1", "test-application-1");
+		sampleResults.put("test-job-name-2", "test-application-2");
+		givenRequestListApplicationsEnvironments(sampleResults);
 	}
 
 	private void mockJobsInJobListNoSchedule() {
