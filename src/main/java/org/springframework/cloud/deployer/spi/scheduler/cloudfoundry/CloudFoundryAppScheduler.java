@@ -79,12 +79,15 @@ public class CloudFoundryAppScheduler implements Scheduler {
 
 	private final static String SCHEDULER_SERVICE_ERROR_MESSAGE = "Scheduler Service returned a null response.";
 
+	private final static String SCHEDULER_TASK_DEF_NAME_KEY = "spring-task-definition-name";
+
 	protected final static Log logger = LogFactory.getLog(CloudFoundryAppScheduler.class);
 	private final SchedulerClient client;
 	private final CloudFoundryOperations operations;
 	private final CloudFoundryConnectionProperties properties;
 	private final CloudFoundryTaskLauncher taskLauncher;
 	private final CloudFoundrySchedulerProperties schedulerProperties;
+	private final Map<String, String> scheduleTaskMap;
 
 	public CloudFoundryAppScheduler(SchedulerClient client, CloudFoundryOperations operations,
 			CloudFoundryConnectionProperties properties, CloudFoundryTaskLauncher taskLauncher,
@@ -100,6 +103,7 @@ public class CloudFoundryAppScheduler implements Scheduler {
 		this.properties = properties;
 		this.taskLauncher = taskLauncher;
 		this.schedulerProperties = schedulerProperties;
+		this.scheduleTaskMap = new HashMap<>();
 	}
 
 	@Override
@@ -149,6 +153,7 @@ public class CloudFoundryAppScheduler implements Scheduler {
 	@Override
 	public void unschedule(String scheduleName) {
 		logger.debug(String.format("Unscheduling: %s", scheduleName));
+		this.scheduleTaskMap.remove(scheduleName);
 		this.client.jobs().delete(DeleteJobRequest.builder()
 				.jobId(getJob(scheduleName))
 				.build())
@@ -175,24 +180,30 @@ public class CloudFoundryAppScheduler implements Scheduler {
 			result.addAll(scheduleInfoPage);
 		}
 		for(ScheduleInfo scheduleInfo : result) {
-			Mono<ApplicationEnvironments> appEnvMono = operations.applications().getEnvironments(GetApplicationEnvironmentsRequest.builder().name(scheduleInfo.getScheduleName()).build());
-			String taskDefinitionNameFromEnvironment = appEnvMono.map(applicationEnvironments -> {
-				Map<String, Object> appEnvs = applicationEnvironments.getUserProvided();
-				ObjectMapper mapper = new ObjectMapper();
-				String taskDefinitionName = null;
-				try {
-					Map<String, String> properties = mapper.readValue((String) appEnvs.get("SPRING_APPLICATION_JSON"), Map.class);
-					if(properties.containsKey("spring-task-definition-name")) {
-						taskDefinitionName = properties.get("spring-task-definition-name");
+			if(! scheduleTaskMap.containsKey(scheduleInfo.getScheduleName())) {
+				Mono<ApplicationEnvironments> appEnvMono = operations.applications().getEnvironments(GetApplicationEnvironmentsRequest.builder().name(scheduleInfo.getScheduleName()).build());
+				String taskDefinitionNameFromEnvironment = appEnvMono.map(applicationEnvironments -> {
+					Map<String, Object> appEnvs = applicationEnvironments.getUserProvided();
+					ObjectMapper mapper = new ObjectMapper();
+					String taskDefinitionName = null;
+					try {
+						Map<String, String> properties = mapper.readValue((String) appEnvs.get("SPRING_APPLICATION_JSON"), Map.class);
+						if (properties.containsKey(SCHEDULER_TASK_DEF_NAME_KEY)) {
+							taskDefinitionName = properties.get(SCHEDULER_TASK_DEF_NAME_KEY);
+						}
 					}
+					catch (Exception jsonMappingException) {
+						throw new IllegalArgumentException(jsonMappingException);
+					}
+					return taskDefinitionName;
+				}).block();
+				if (taskDefinitionNameFromEnvironment != null) {
+					scheduleInfo.setTaskDefinitionName(taskDefinitionNameFromEnvironment);
+					scheduleTaskMap.put(scheduleInfo.getScheduleName(), scheduleInfo.getTaskDefinitionName());
 				}
-				catch (Exception jsonMappingException) {
-					throw new IllegalArgumentException(jsonMappingException);
-				}
-				return taskDefinitionName;
-			}).block();
-			if(taskDefinitionNameFromEnvironment != null) {
-				scheduleInfo.setTaskDefinitionName(taskDefinitionNameFromEnvironment);
+			}
+			else {
+				scheduleInfo.setTaskDefinitionName(scheduleTaskMap.get(scheduleInfo.getScheduleName()));
 			}
 		}
 		return result;
@@ -247,8 +258,9 @@ public class CloudFoundryAppScheduler implements Scheduler {
 		logger.debug(String.format("Staging Task: ",
 				scheduleRequest.getDefinition().getName()));
 		Map<String, String> properties = new HashMap<>(scheduleRequest.getDefinition().getProperties());
-		properties.put("spring-task-definition-name",
+		properties.put(SCHEDULER_TASK_DEF_NAME_KEY,
 				scheduleRequest.getDefinition().getName());
+		this.scheduleTaskMap.put(scheduleRequest.getScheduleName(), scheduleRequest.getDefinition().getName());
 		AppDefinition appDefinition = new AppDefinition(scheduleRequest.getScheduleName(), properties);
 
 		AppDeploymentRequest request = new AppDeploymentRequest(
