@@ -16,7 +16,10 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,13 +45,17 @@ import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.cloudfoundry.operations.services.Services;
 import org.cloudfoundry.util.FluentMap;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.core.io.UrlResource;
 import reactor.core.publisher.Mono;
 
 import org.springframework.cloud.deployer.resource.docker.DockerResource;
+import org.springframework.cloud.deployer.resource.maven.MavenResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
@@ -62,9 +69,12 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
@@ -105,6 +115,9 @@ public class CloudFoundryAppDeployerTests {
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private RuntimeEnvironmentInfo runtimeEnvironmentInfo;
+
+	@Rule
+	public TemporaryFolder folder= new TemporaryFolder();
 
 	@Before
 	public void setUp() {
@@ -160,6 +173,88 @@ public class CloudFoundryAppDeployerTests {
 		assertThat(deploymentId, equalTo("test-application-id"));
 	}
 
+	@Test
+	public void deployMavenArtifactShouldDeleteByDefault() throws IOException, URISyntaxException {
+
+		MavenResource resource = mock(MavenResource.class);
+
+		folder.newFolder("maven");
+		File mavenArtifact = folder.newFile("maven/artifact.jar");
+		given(resource.getFile()).willReturn(mavenArtifact);
+		given(resource.getURI()).willReturn(new URI("maven://test:demo:0.0.1"));
+		assertTrue(this.deploymentProperties.isAutoDeleteMavenArtifacts());
+		deployResource(this.deployer, resource);
+		assertFalse(mavenArtifact.getParentFile().exists());
+
+	}
+
+	@Test
+	public void deployMavenArtifactShouldNotDeleteIfConfigured() throws IOException, URISyntaxException {
+
+		MavenResource resource = mock(MavenResource.class);
+
+		folder.newFolder("maven");
+		File mavenArtifact = folder.newFile("maven/artifact.jar");
+		given(resource.getFile()).willReturn(mavenArtifact);
+		given(resource.getURI()).willReturn(new URI("maven://test:demo:0.0.1"));
+
+		CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
+		deploymentProperties.setAutoDeleteMavenArtifacts(false);
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator, deploymentProperties,
+				this.operations, this.runtimeEnvironmentInfo);
+
+		deployResource(deployer, resource);
+		assertTrue(mavenArtifact.getParentFile().exists());
+	}
+
+	@Test
+	public void deployHttpArtifactShouldDelete() throws IOException, URISyntaxException {
+
+		UrlResource resource = mock(UrlResource.class);
+
+		folder.newFolder("download");
+		File downloadedArtifact = folder.newFile("download/artifact.jar");
+		given(resource.getFile()).willReturn(downloadedArtifact);
+		given(resource.getURI()).willReturn(new URI("http://somehost/artifact.jar"));
+		assertTrue(this.deploymentProperties.isAutoDeleteMavenArtifacts());
+		deployResource(this.deployer, resource);
+		assertFalse(downloadedArtifact.exists());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void deployResource(CloudFoundryAppDeployer deployer, Resource resource) throws IOException {
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id", Mono.error(new IllegalArgumentException()), Mono.just(
+				ApplicationDetail.builder()
+						.diskQuota(0)
+						.id("test-application-id")
+						.instances(1)
+						.memoryLimit(0)
+						.name("test-application")
+						.requestedState("RUNNING")
+						.runningInstances(0)
+						.stack("test-stack")
+						.build()));
+
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+						.path(resource.getFile().toPath())
+						.buildpack(deploymentProperties.getBuildpack())
+						.disk(1024)
+						.instances(1)
+						.memory(1024)
+						.name("test-application-id")
+						.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.empty());
+
+		deployer.deploy(
+				new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
+						Collections.EMPTY_MAP));
+
+	}
 
 	@SuppressWarnings("unchecked")
 	@Test
@@ -400,7 +495,7 @@ public class CloudFoundryAppDeployerTests {
 											.startupTimeout(this.deploymentProperties.getStartupTimeout())
 											.build(), Mono.empty());
 		try {
-			String deploymentId = this.deployer.deploy(new AppDeploymentRequest(
+			this.deployer.deploy(new AppDeploymentRequest(
 					new AppDefinition("test-application", Collections.emptyMap()),
 					resource,
 					FluentMap.<String, String>builder()
@@ -535,7 +630,7 @@ public class CloudFoundryAppDeployerTests {
 
 	@SuppressWarnings("unchecked")
 	@Test(expected = IllegalStateException.class)
-	public void deployWithMultipleRoutesAndHostOrDomainMutuallyExclusive() throws IOException {
+	public void deployWithMultipleRoutesAndHostOrDomainMutuallyExclusive() {
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
@@ -609,7 +704,7 @@ public class CloudFoundryAppDeployerTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void deployDockerResource() throws IOException {
+	public void deployDockerResource() {
 		Resource resource = new DockerResource("somecorp/someimage:latest");
 
 		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
@@ -798,7 +893,7 @@ public class CloudFoundryAppDeployerTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void statusWithFailingCAPICallRetries() throws Exception {
+	public void statusWithFailingCAPICallRetries() {
 		AtomicInteger i = new AtomicInteger();
 		Mono<ApplicationDetail> m = Mono.create(s -> {
 			if (i.incrementAndGet() == 2) {
@@ -826,7 +921,7 @@ public class CloudFoundryAppDeployerTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void statusWithFailingCAPICallRetriesEventualError() throws Exception {
+	public void statusWithFailingCAPICallRetriesEventualError() {
 		AtomicInteger i = new AtomicInteger();
 		Mono<ApplicationDetail> m = Mono.create(s -> {
 			if (i.incrementAndGet() == 12) { // 12 is more than the number of retries
@@ -855,7 +950,7 @@ public class CloudFoundryAppDeployerTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void statusWithErrorThrownOnBlocking() throws Exception {
+	public void statusWithErrorThrownOnBlocking() {
 		AtomicInteger i = new AtomicInteger();
 		Mono<ApplicationDetail> m = Mono.delay(Duration.ofSeconds(5)).then(Mono.create(s -> {
 			i.incrementAndGet();
@@ -879,6 +974,7 @@ public class CloudFoundryAppDeployerTests {
 		assertThat(i.get(), is(0));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void undeploy() {
 		givenRequestGetApplication("test-application-id", Mono.just(ApplicationDetail.builder()
