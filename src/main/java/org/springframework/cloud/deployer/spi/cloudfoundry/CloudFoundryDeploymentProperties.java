@@ -171,6 +171,11 @@ public class CloudFoundryDeploymentProperties {
 	private boolean pushTaskAppsEnabled = true;
 
 	/**
+	 * Whether to automatically delete cached Maven artifacts after deployment.
+	 */
+	private boolean autoDeleteMavenArtifacts = true;
+
+	/**
 	 * The maximum concurrent tasks allowed.
 	 */
 	@Min(1)
@@ -352,5 +357,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setPushTaskAppsEnabled(boolean pushTaskAppsEnabled) {
 		this.pushTaskAppsEnabled = pushTaskAppsEnabled;
+	}
+
+	public boolean isAutoDeleteMavenArtifacts() {
+		return autoDeleteMavenArtifacts;
+	}
+
+	public void setAutoDeleteMavenArtifacts(boolean autoDeleteMavenArtifacts) {
+		this.autoDeleteMavenArtifacts = autoDeleteMavenArtifacts;
 	}
 }

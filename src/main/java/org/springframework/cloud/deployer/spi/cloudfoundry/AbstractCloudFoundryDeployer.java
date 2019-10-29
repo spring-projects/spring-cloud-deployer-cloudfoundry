@@ -42,7 +42,10 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+
+import org.springframework.util.FileSystemUtils;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
@@ -213,25 +216,58 @@ class AbstractCloudFoundryDeployer {
 			.doOnError(e -> logger.error(String.format("Retry operation on getStatus failed for %s.  Max retry time %sms", id, statusTimeout)));
 	}
 
+	/**
+	 * Always delete downloaded files for static http resources. Conditionally delete maven resources.
+	 * @param appDeploymentRequest
+	 */
 	protected void deleteLocalApplicationResourceFile(AppDeploymentRequest appDeploymentRequest) {
 
 		try {
-			File applicationFile = appDeploymentRequest.getResource().getFile();
-			logger.info("Free Disk Space = {} bytes, Total Disk Space = {} bytes",
-					applicationFile.getFreeSpace(),
-					applicationFile.getTotalSpace());
-			if (appDeploymentRequest.getResource().getURI().getScheme().toLowerCase().startsWith("http")) {
-				boolean deleted = applicationFile.delete();
-				logger.debug((deleted) ? "Successfully deleted the application resource: "+ applicationFile.getCanonicalPath() :
-						"Could not delete the application resource: "+ applicationFile.getCanonicalPath());
+
+			Optional<File> fileToDelete = fileToDelete(appDeploymentRequest.getResource());
+			if (fileToDelete.isPresent()) {
+				File applicationFile = fileToDelete.get();
+
+				logger.info("Free Disk Space = {} bytes, Total Disk Space = {} bytes",
+						applicationFile.getFreeSpace(),
+						applicationFile.getTotalSpace());
+
+
+				boolean deleted = deleteFileOrDirectory(applicationFile);
+				logger.info((deleted) ? "Successfully deleted the application resource: " + applicationFile.getCanonicalPath() :
+						"Could not delete the application resource: " + applicationFile.getCanonicalPath());
 			}
-		}
-		catch (IOException e) {
+
+		} catch(IOException e){
 			logger.warn("Exception deleting the application resource after successful CF push request."
 					+ " This could cause increase in disk space usage. Exception message: " + e.getMessage());
 		}
 	}
 
+	/*
+	 * Always delete files downloaded from http/s url.
+	 * Delete maven resources if property is set.
+	 */
+	private Optional<File> fileToDelete(Resource resource) throws IOException {
+		String scheme = resource.getURI().getScheme().toLowerCase();
+		if (scheme.startsWith("http")) {
+			return Optional.of(resource.getFile());
+		}
+		if (scheme.equals("maven") && deploymentProperties.isAutoDeleteMavenArtifacts()) {
+			return Optional.of(resource.getFile().getParentFile());
+		}
+		return Optional.empty();
+	}
+
+	private boolean deleteFileOrDirectory(File fileToDelete) {
+		boolean deleted;
+		if (fileToDelete.isDirectory())
+			deleted  = FileSystemUtils.deleteRecursively(fileToDelete);
+		else {
+			deleted = fileToDelete.delete();
+		}
+		return deleted;
+	}
 
 	public RuntimeEnvironmentInfo environmentInfo() {
 		return runtimeEnvironmentInfo;
