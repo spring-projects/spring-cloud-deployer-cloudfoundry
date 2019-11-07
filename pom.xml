@@ -19,10 +19,8 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<spring-cloud-deployer-spi.version>2.1.0.BUILD-SNAPSHOT</spring-cloud-deployer-spi.version>
-		<cloudfoundry-java-lib.version>3.15.0.RELEASE</cloudfoundry-java-lib.version>
-		<reactor-core.version>3.2.0.RELEASE</reactor-core.version>
-		<reactor-netty.version>0.7.12.RELEASE</reactor-netty.version>
-		<pivotal-cf-client-reactor.version>1.1.0.RELEASE</pivotal-cf-client-reactor.version>
+		<cloudfoundry-java-lib.version>4.0.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
+		<pivotal-cf-client-reactor.version>2.0.0.BUILD-SNAPSHOT</pivotal-cf-client-reactor.version>
 	</properties>
 
 	<dependencies>
@@ -59,16 +57,6 @@
 			<artifactId>commons-io</artifactId>
 			<version>2.1</version>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.projectreactor</groupId>
-			<artifactId>reactor-core</artifactId>
-			<version>${reactor-core.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.projectreactor.ipc</groupId>
-			<artifactId>reactor-netty</artifactId>
-			<version>${reactor-netty.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.pivotal</groupId>
