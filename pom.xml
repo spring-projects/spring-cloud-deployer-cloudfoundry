@@ -19,8 +19,8 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<spring-cloud-deployer-spi.version>2.1.0.BUILD-SNAPSHOT</spring-cloud-deployer-spi.version>
-		<cloudfoundry-java-lib.version>4.0.0.BUILD-SNAPSHOT</cloudfoundry-java-lib.version>
-		<pivotal-cf-client-reactor.version>2.0.0.BUILD-SNAPSHOT</pivotal-cf-client-reactor.version>
+		<cloudfoundry-java-lib.version>4.0.1.RELEASE</cloudfoundry-java-lib.version>
+		<pivotal-cf-client-reactor.version>2.0.0.RELEASE</pivotal-cf-client-reactor.version>
 	</properties>
 
 	<dependencies>
