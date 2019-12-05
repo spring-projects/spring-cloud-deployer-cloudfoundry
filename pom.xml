@@ -19,7 +19,7 @@
 	<properties>
 		<java.version>1.8</java.version>
 		<spring-cloud-deployer-spi.version>2.0.5.RELEASE</spring-cloud-deployer-spi.version>
-		<cloudfoundry-java-lib.version>3.17.1.RELEASE</cloudfoundry-java-lib.version>
+		<cloudfoundry-java-lib.version>3.18.0.RELEASE</cloudfoundry-java-lib.version>
 	</properties>
 
 	<dependencies>
