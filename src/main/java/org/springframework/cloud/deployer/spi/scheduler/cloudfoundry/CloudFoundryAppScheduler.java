@@ -62,6 +62,7 @@ import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.util.StringUtils;
 
 /**
  * A Cloud Foundry implementation of the Scheduler interface.
@@ -71,6 +72,8 @@ import org.springframework.retry.support.RetryTemplate;
 public class CloudFoundryAppScheduler implements Scheduler {
 
 	private final static int PCF_PAGE_START_NUM = 1; //First PageNum for PCFScheduler starts at 1.
+
+	private final static int MAX_SCHEDULE_NAME_LENGTH = 255;
 
 	private final static String SCHEDULER_SERVICE_ERROR_MESSAGE = "Scheduler Service returned a null response.";
 
@@ -102,6 +105,13 @@ public class CloudFoundryAppScheduler implements Scheduler {
 		String appName = scheduleRequest.getDefinition().getName();
 		String scheduleName = scheduleRequest.getScheduleName();
 		logger.debug(String.format("Scheduling: %s", scheduleName));
+
+		if(scheduleName.length() > MAX_SCHEDULE_NAME_LENGTH) {
+			throw new CreateScheduleException(String.format("Schedule can not be created because its name " +
+							"'%s' has too many characters.  Schedule name length" +
+							" must be %s characters or less.",
+							scheduleName, MAX_SCHEDULE_NAME_LENGTH), null);
+		}
 
 		String command = stageTask(scheduleRequest);
 
