@@ -160,7 +160,7 @@ public class CloudFoundryAppSchedulerTests {
 	public void testEmptySchedulerProperties() {
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 		AppDefinition definition = new AppDefinition("bar", null);
-		ScheduleRequest request = new ScheduleRequest(definition, null, null, null, resource);
+		ScheduleRequest request = new ScheduleRequest(definition, null, null, "testschedule", resource);
 		this.cloudFoundryAppScheduler.schedule(request);
 	}
 
@@ -191,6 +191,33 @@ public class CloudFoundryAppSchedulerTests {
 		badCronMap.put(CRON_EXPRESSION, BAD_CRON_EXPRESSION);
 
 		ScheduleRequest request = new ScheduleRequest(definition, badCronMap, null, "test-schedule", resource);
+
+		this.cloudFoundryAppScheduler.schedule(request);
+
+		assertThat(((TestJobs) this.client.jobs()).getCreateJobResponse()).isNull();
+	}
+
+	@Test
+	public void testNameTooLong() {
+		thrown.expect(CreateScheduleException.class);
+		thrown.expectMessage("because the schedule name length exceeds 255 characters. " +
+				"The schedule name requested is: j1-scdf-itcouldbesaidthatthisislongtoowaytoo" +
+				"-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoo" +
+				"waytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislong" +
+				"toowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oops12");
+
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		mockAppResultsInAppList();
+		AppDefinition definition = new AppDefinition("test-application-1", null);
+		Map cronMap = new HashMap<String, String>();
+		cronMap.put(CRON_EXPRESSION, DEFAULT_CRON_EXPRESSION);
+
+		ScheduleRequest request = new ScheduleRequest(definition, cronMap, null,
+				"j1-scdf-itcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisis" +
+						"longtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbe" +
+						"saidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-" +
+						"oopsitcouldbesaidthatthisislongtoowaytoo-oops12", resource);
 
 		this.cloudFoundryAppScheduler.schedule(request);
 
