@@ -200,11 +200,12 @@ public class CloudFoundryAppSchedulerTests {
 	@Test
 	public void testNameTooLong() {
 		thrown.expect(CreateScheduleException.class);
-		thrown.expectMessage("because the schedule name length exceeds 255 characters. " +
-				"The schedule name requested is: j1-scdf-itcouldbesaidthatthisislongtoowaytoo" +
-				"-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoo" +
-				"waytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislong" +
-				"toowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oops12");
+		thrown.expectMessage("because Schedule Name: " +
+				"'j1-scdf-itcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisis" +
+				"longtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbe" +
+				"saidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-" +
+				"oopsitcouldbesaidthatthisislongtoowaytoo-oops12' has too many characters.  " +
+				"Schedule name length must be 255 characters or less");
 
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 

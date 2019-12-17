@@ -107,10 +107,10 @@ public class CloudFoundryAppScheduler implements Scheduler {
 		logger.debug(String.format("Scheduling: %s", scheduleName));
 
 		if(scheduleName.length() > MAX_SCHEDULE_NAME_LENGTH) {
-			IllegalArgumentException illegalArgumentException = new IllegalArgumentException
-					(String.format("because the schedule name length exceeds %s characters. " +
-							"The schedule name requested is: %s", MAX_SCHEDULE_NAME_LENGTH, scheduleName));
-			throw new CreateScheduleException(illegalArgumentException.getMessage(), illegalArgumentException);
+			throw new CreateScheduleException(String.format("because Schedule Name: " +
+							"'%s' has too many characters.  Schedule name length" +
+							" must be %s characters or less",
+							scheduleName, MAX_SCHEDULE_NAME_LENGTH), null);
 		}
 
 		String command = stageTask(scheduleRequest);
