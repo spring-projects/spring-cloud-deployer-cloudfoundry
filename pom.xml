@@ -18,7 +18,7 @@
 
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-cloud-deployer-spi.version>2.2.0.RELEASE</spring-cloud-deployer-spi.version>
+		<spring-cloud-deployer.version>2.2.0.RELEASE</spring-cloud-deployer.version>
 		<cloudfoundry-java-lib.version>4.1.0.RELEASE</cloudfoundry-java-lib.version>
 		<pivotal-cf-client-reactor.version>2.0.0.RELEASE</pivotal-cf-client-reactor.version>
 	</properties>
@@ -27,7 +27,7 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-spi</artifactId>
-			<version>${spring-cloud-deployer-spi.version}</version>
+			<version>${spring-cloud-deployer.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -75,25 +75,25 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-spi-test</artifactId>
-			<version>${spring-cloud-deployer-spi.version}</version>
+			<version>${spring-cloud-deployer.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-resource-docker</artifactId>
-			<version>${spring-cloud-deployer-spi.version}</version>
+			<version>${spring-cloud-deployer.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-resource-support</artifactId>
-			<version>${spring-cloud-deployer-spi.version}</version>
+			<version>${spring-cloud-deployer.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-deployer-autoconfigure</artifactId>
-			<version>${spring-cloud-deployer-spi.version}</version>
+			<version>${spring-cloud-deployer.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
