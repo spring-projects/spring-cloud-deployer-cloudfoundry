@@ -51,9 +51,9 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 
 	private final CloudFoundryClient client;
 
-	private final String organizationId;
+	private final Mono<String> organizationId;
 
-	private final String spaceId;
+	private final Mono<String> spaceId;
 
 	AbstractCloudFoundryTaskLauncher(CloudFoundryClient client,
 			CloudFoundryDeploymentProperties deploymentProperties,
@@ -105,8 +105,8 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 
 		ListTasksRequest listTasksRequest = ListTasksRequest.builder()
 				.state(TaskState.RUNNING)
-				.organizationId(this.organizationId)
-				.spaceId(this.spaceId)
+				.organizationId(this.organizationId.block())
+				.spaceId(this.spaceId.block())
 				.build();
 		return this.client.tasks().list(listTasksRequest)
 				.map(listTasksResponse -> listTasksResponse.getPagination().getTotalResults())
@@ -170,7 +170,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 						.build());
 	}
 
-	private String organizationId() {
+	private Mono<String> organizationId() {
 		String org = this.runtimeEnvironmentInfo.getPlatformSpecificInfo().get(CloudFoundryPlatformSpecificInfo.ORG);
 		Assert.hasText(org,"Missing runtimeEnvironmentInfo : 'org' required.");
 		ListOrganizationsRequest listOrganizationsRequest =  ListOrganizationsRequest.builder()
@@ -178,11 +178,11 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 		return this.client.organizations().list(listOrganizationsRequest)
 				.doOnError(logError("Failed to list organizations"))
 				.map(listOrganizationsResponse -> listOrganizationsResponse.getResources().get(0).getMetadata().getId())
-				.block();
+				.cache();
 
 	}
 
-	private String spaceId() {
+	private Mono<String> spaceId() {
 		String space = this.runtimeEnvironmentInfo.getPlatformSpecificInfo().get(CloudFoundryPlatformSpecificInfo.SPACE);
 		Assert.hasText(space,"Missing runtimeEnvironmentInfo : 'space' required.");
 		ListSpacesRequest listSpacesRequest = ListSpacesRequest.builder()
@@ -190,7 +190,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 		return this.client.spaces().list(listSpacesRequest)
 				.doOnError(logError("Failed to list spaces"))
 				.map(listSpacesResponse -> listSpacesResponse.getResources().get(0).getMetadata().getId())
-				.block();
+				.cache();
 	}
 
 	@Override
