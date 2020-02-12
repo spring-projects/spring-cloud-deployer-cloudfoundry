@@ -37,6 +37,7 @@ import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
+import reactor.util.function.Tuple2;
 
 /**
  * Abstract class to provide base functionality for launching Tasks on Cloud Foundry. This
@@ -103,12 +104,16 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 	@Override
 	public int getRunningTaskExecutionCount() {
 
-		ListTasksRequest listTasksRequest = ListTasksRequest.builder()
+		Mono<Tuple2<String,String>> orgAndSpace = Mono.zip(organizationId, spaceId);
+
+		Mono<ListTasksRequest> listTasksRequest = orgAndSpace.map(tuple->
+				ListTasksRequest.builder()
 				.state(TaskState.RUNNING)
-				.organizationId(this.organizationId.block())
-				.spaceId(this.spaceId.block())
-				.build();
-		return this.client.tasks().list(listTasksRequest)
+				.organizationId(tuple.getT1())
+				.spaceId(tuple.getT2())
+				.build());
+
+		return listTasksRequest.flatMap(request-> this.client.tasks().list(request))
 				.map(listTasksResponse -> listTasksResponse.getPagination().getTotalResults())
 				.doOnError(logError("Failed to list running tasks"))
 				.doOnSuccess(count -> logger.info(String.format("There are %d running tasks", count)))
