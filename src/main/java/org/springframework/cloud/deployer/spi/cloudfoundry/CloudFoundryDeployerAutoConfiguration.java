@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,8 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
-
-import java.time.Duration;
-
 import com.github.zafarkhaja.semver.Version;
+import java.time.Duration;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.info.GetInfoRequest;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -32,7 +29,6 @@ import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -47,11 +43,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
+
 /**
  * Creates a {@link CloudFoundryAppDeployer}
  *
  * @author Eric Bottard
  * @author Ben Hale
+ * @author David Turanski
  */
 @Configuration
 @EnableConfigurationProperties
@@ -78,16 +77,20 @@ public class CloudFoundryDeployerAutoConfiguration {
 			connectionConfiguration.connectionContext(connectionConfiguration.cloudFoundryConnectionProperties()),
 			connectionConfiguration.tokenProvider(connectionConfiguration.cloudFoundryConnectionProperties()));
 		Version version = connectionConfiguration.version(client);
-		return new RuntimeEnvironmentInfo.Builder()
-			.implementationName(implementationClass.getSimpleName())
-			.spiClass(spiClass)
-			.implementationVersion(RuntimeVersionUtils.getVersion(CloudFoundryAppDeployer.class))
-			.platformType("Cloud Foundry")
-			.platformClientVersion(RuntimeVersionUtils.getVersion(client.getClass()))
-			.platformApiVersion(version.toString())
-			.platformHostVersion("unknown")
-			.addPlatformSpecificInfo("API Endpoint", connectionConfiguration.cloudFoundryConnectionProperties().getUrl().toString())
-			.build();
+
+		return new CloudFoundryPlatformSpecificInfo(new RuntimeEnvironmentInfo.Builder())
+			.apiEndpoint(connectionConfiguration.cloudFoundryConnectionProperties().getUrl().toString())
+			.org(connectionConfiguration.cloudFoundryConnectionProperties().getOrg())
+			.space(connectionConfiguration.cloudFoundryConnectionProperties().getSpace())
+			.builder()
+				.implementationName(implementationClass.getSimpleName())
+				.spiClass(spiClass)
+				.implementationVersion(RuntimeVersionUtils.getVersion(CloudFoundryAppDeployer.class))
+				.platformType("Cloud Foundry")
+				.platformClientVersion(RuntimeVersionUtils.getVersion(client.getClass()))
+				.platformApiVersion(version.toString())
+				.platformHostVersion("unknown")
+				.build();
 	}
 
 	@Bean
@@ -211,8 +214,5 @@ public class CloudFoundryDeployerAutoConfiguration {
 				.skipSslValidation(properties.isSkipSslValidation())
 				.build();
 		}
-
-
 	}
-
 }
