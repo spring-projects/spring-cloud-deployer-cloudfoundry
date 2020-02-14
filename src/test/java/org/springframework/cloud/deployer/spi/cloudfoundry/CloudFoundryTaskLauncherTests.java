@@ -23,13 +23,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.cloudfoundry.client.CloudFoundryClient;
+import org.cloudfoundry.client.v2.Metadata;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
 import org.cloudfoundry.client.v2.applications.SummaryApplicationResponse;
+import org.cloudfoundry.client.v2.organizations.ListOrganizationsResponse;
+import org.cloudfoundry.client.v2.organizations.OrganizationResource;
+import org.cloudfoundry.client.v2.organizations.Organizations;
+import org.cloudfoundry.client.v2.spaces.ListSpacesResponse;
+import org.cloudfoundry.client.v2.spaces.SpaceResource;
+import org.cloudfoundry.client.v2.spaces.Spaces;
 import org.cloudfoundry.client.v3.Pagination;
 import org.cloudfoundry.client.v3.tasks.CancelTaskRequest;
 import org.cloudfoundry.client.v3.tasks.CancelTaskResponse;
@@ -52,7 +60,6 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.cloudfoundry.operations.services.Services;
-import org.cloudfoundry.operations.spaces.Spaces;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;
@@ -108,12 +115,15 @@ public class CloudFoundryTaskLauncherTests {
 	private Spaces spaces;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
+	private Organizations organizations;
+
+	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private Tasks tasks;
 
 	private Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");;
 
 	@Before
-	public void setUp() throws IOException {
+	public void setUp() {
 		MockitoAnnotations.initMocks(this);
 		given(this.tasks.list(any())).willReturn(this.runningTasksResponse());
 		given(this.client.applicationsV2()).willReturn(this.applicationsV2);
@@ -121,14 +131,24 @@ public class CloudFoundryTaskLauncherTests {
 
 		given(this.operations.applications()).willReturn(this.applications);
 		given(this.operations.services()).willReturn(this.services);
-		given(this.operations.spaces()).willReturn(this.spaces);
+		given(this.client.spaces()).willReturn(this.spaces);
+		given(this.client.organizations()).willReturn(this.organizations);
+
+		RuntimeEnvironmentInfo runtimeEnvironmentInfo = mock(RuntimeEnvironmentInfo.class);
+		Map<String, String> orgAndSpace = new HashMap<>();
+		orgAndSpace.put(CloudFoundryPlatformSpecificInfo.ORG, "this-org");
+		orgAndSpace.put(CloudFoundryPlatformSpecificInfo.SPACE, "this-space");
+		given(runtimeEnvironmentInfo.getPlatformSpecificInfo()).willReturn(orgAndSpace);
+		given(this.organizations.list(any())).willReturn(listOrganizationsResponse());
+		given(this.spaces.list(any())).willReturn(listSpacesResponse());
 
 		this.deploymentProperties.setApiTimeout(1);
 		this.deploymentProperties.setStatusTimeout(1_250L);
 		this.launcher = new CloudFoundryTaskLauncher(this.client,
 				this.deploymentProperties,
 				this.operations,
-				mock(RuntimeEnvironmentInfo.class));
+				runtimeEnvironmentInfo);
+
 	}
 
 	@Test
@@ -856,5 +876,23 @@ public class CloudFoundryTaskLauncherTests {
 			.pagination(Pagination.builder().totalResults(taskResources.size()).build())
 			.build();
 		return Mono.just(listTasksResponse);
+	}
+
+	private Mono<ListOrganizationsResponse> listOrganizationsResponse() {
+		ListOrganizationsResponse response = ListOrganizationsResponse.builder()
+		.addAllResources(Collections.<OrganizationResource>singletonList(
+				OrganizationResource.builder()
+						.metadata(Metadata.builder().id("123").build()).build())
+		).build();
+		return Mono.just(response);
+	}
+
+	private Mono<ListSpacesResponse> listSpacesResponse() {
+		ListSpacesResponse response = ListSpacesResponse.builder()
+				.addAllResources(Collections.<SpaceResource>singletonList(
+						SpaceResource.builder()
+								.metadata(Metadata.builder().id("123").build()).build())
+				).build();
+		return Mono.just(response);
 	}
 }
