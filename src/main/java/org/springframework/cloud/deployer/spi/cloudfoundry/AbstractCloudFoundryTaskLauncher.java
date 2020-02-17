@@ -183,8 +183,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 		return this.client.organizations().list(listOrganizationsRequest)
 				.doOnError(logError("Failed to list organizations"))
 				.map(listOrganizationsResponse -> listOrganizationsResponse.getResources().get(0).getMetadata().getId())
-				.cache();
-
+				.cache(aValue -> Duration.ofMillis(Long.MAX_VALUE), aValue -> Duration.ZERO, () -> Duration.ZERO);
 	}
 
 	private Mono<String> spaceId() {
@@ -195,7 +194,7 @@ abstract class AbstractCloudFoundryTaskLauncher extends AbstractCloudFoundryDepl
 		return this.client.spaces().list(listSpacesRequest)
 				.doOnError(logError("Failed to list spaces"))
 				.map(listSpacesResponse -> listSpacesResponse.getResources().get(0).getMetadata().getId())
-				.cache();
+				.cache(aValue -> Duration.ofMillis(Long.MAX_VALUE), aValue -> Duration.ZERO, () -> Duration.ZERO);
 	}
 
 	@Override
