@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import org.cloudfoundry.doppler.LogMessage;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -43,8 +47,11 @@ import org.cloudfoundry.operations.applications.StartApplicationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+
+import reactor.cache.CacheMono;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppScaleRequest;
@@ -82,6 +89,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	private final AppNameGenerator applicationNameGenerator;
 
 	private final CloudFoundryOperations operations;
+
+	private final Cache<String, ApplicationDetail> cache = Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.SECONDS)
+			.build();
 
 	public CloudFoundryAppDeployer(AppNameGenerator applicationNameGenerator,
 		CloudFoundryDeploymentProperties deploymentProperties,
@@ -135,6 +145,12 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.block();
 	}
 
+	@Override
+	public Mono<Map<String, DeploymentState>> statesReactive(String... ids) {
+		return requestSummary()
+			.collect(Collectors.toMap(ApplicationSummary::getName, this::mapShallowAppState));
+	}
+
 	private DeploymentState mapShallowAppState(ApplicationSummary applicationSummary) {
 		if (applicationSummary.getRunningInstances().equals(applicationSummary.getInstances())) {
 			return DeploymentState.deployed;
@@ -183,6 +199,11 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			logger.error("Caught exception while querying for status of {}", id, timeoutDueToBlock);
 			return createErrorAppStatus(id);
 		}
+	}
+
+	@Override
+	public Mono<AppStatus> statusReactive(String id) {
+		return getStatus(id);
 	}
 
 	@Override
@@ -363,7 +384,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		} else {
 			manifest.buildpack(buildpack(request));
 		}
-		
+
 		if (!includesServiceParameters(request)) {
 			return pushApplicationWithNoServiceParameters(manifest.build(), deploymentId);
 		} else {
@@ -421,6 +442,26 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Mono<ApplicationDetail> requestGetApplication(String id) {
+		return CacheMono
+			.lookup(k -> Mono.defer(() -> {
+				ApplicationDetail ifPresent = cache.getIfPresent(id);
+				logger.debug("Cache get {}", ifPresent);
+				return Mono.justOrEmpty(ifPresent).map(Signal::next);
+			}), id)
+			.onCacheMissResume(Mono.defer(() -> {
+				logger.debug("Cache miss {}", id);
+				return getApplicationDetail(id);
+			}))
+			.andWriteWith((k, sig) -> Mono.fromRunnable(() -> {
+				ApplicationDetail ap = sig.get();
+				if (ap != null) {
+					logger.debug("Cache put {} {}", k, ap);
+					cache.put(k, ap);
+				}
+			}));
+	}
+
+	private Mono<ApplicationDetail> getApplicationDetail(String id) {
 		return this.operations.applications()
 			.get(GetApplicationRequest.builder()
 				.name(id)

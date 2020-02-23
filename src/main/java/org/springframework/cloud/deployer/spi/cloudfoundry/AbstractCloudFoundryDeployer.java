@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -212,7 +213,6 @@ class AbstractCloudFoundryDeployer {
 		};
 	}
 
-
 	/**
 	 * To be used in order to retry the status operation for an application or task.
 	 * @param id The application id or the task id
@@ -230,7 +230,15 @@ class AbstractCloudFoundryDeployer {
 		}
 		final long requestTimeoutToUse = requestTimeout;
 		return m -> m.timeout(Duration.ofMillis(requestTimeoutToUse))
-			.doOnError(e -> logger.warn(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeoutToUse)))
+			.doOnError(e -> {
+				// show real exception if it wasn't timeout
+				if (e instanceof TimeoutException) {
+					logger.warn(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeoutToUse));
+				}
+				else {
+					logger.warn("Received error from cf", e);
+				}
+			})
 			.retryWhen(DelayUtils.exponentialBackOffError(
 				Duration.ofMillis(initialRetryDelay), //initial retry delay
 				Duration.ofMillis(statusTimeout / 2), // max retry delay
