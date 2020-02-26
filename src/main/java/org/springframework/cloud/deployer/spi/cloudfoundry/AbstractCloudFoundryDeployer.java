@@ -36,7 +36,6 @@ import java.util.stream.Stream;
 import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.UnknownCloudFoundryException;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
-import org.cloudfoundry.util.DelayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
@@ -49,8 +48,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.Exceptions;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.retry.Retry;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
@@ -233,19 +232,27 @@ class AbstractCloudFoundryDeployer {
 			.doOnError(e -> {
 				// show real exception if it wasn't timeout
 				if (e instanceof TimeoutException) {
-					logger.warn(String.format("Error getting status for %s within %sms, Retrying operation.", id, requestTimeoutToUse));
+					logger.warn("Error getting status for {} within {}ms, Retrying operation.", id, requestTimeoutToUse);
 				}
 				else {
 					logger.warn("Received error from cf", e);
 				}
 			})
-			.retryWhen(DelayUtils.exponentialBackOffError(
-				Duration.ofMillis(initialRetryDelay), //initial retry delay
-				Duration.ofMillis(statusTimeout / 2), // max retry delay
-				Duration.ofMillis(statusTimeout)) // max total retry time
-				.andThen(retries -> Flux.from(retries).doOnComplete(() ->
-					logger.info("Successfully retried getStatus operation status [{}] for {}", id))))
-			.doOnError(e -> logger.error(String.format("Retry operation on getStatus failed for %s.  Max retry time %sms", id, statusTimeout)));
+			// let all other than timeout exception to propagate back to caller
+			.retryWhen(Retry.onlyIf(c -> {
+					if (c.exception().getClass().getName().contains("org.cloudfoundry.client")) {
+						// most likely real error which is not worth to retry
+						return false;
+					}
+					// might be some netty error for not connected client, etc, retry
+					return true;
+				})
+				.exponentialBackoff(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(statusTimeout))
+				.doOnRetry(c -> logger.debug("Retrying cf call for {}", id))
+				)
+			.doOnError(TimeoutException.class, e -> {
+				logger.error("Retry operation on getStatus failed for {}. Max retry time {}ms", id, statusTimeout);
+			});
 	}
 
 	/**
