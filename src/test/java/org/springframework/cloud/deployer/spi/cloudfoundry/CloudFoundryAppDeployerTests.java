@@ -954,7 +954,7 @@ public class CloudFoundryAppDeployerTests {
 	@Test
 	public void statusWithErrorThrownOnBlocking() {
 		AtomicInteger i = new AtomicInteger();
-		Mono<ApplicationDetail> m = Mono.delay(Duration.ofSeconds(5)).then(Mono.create(s -> {
+		Mono<ApplicationDetail> m = Mono.delay(Duration.ofSeconds(30)).then(Mono.create(s -> {
 			i.incrementAndGet();
 			s.success(ApplicationDetail.builder()
 				.diskQuota(0)
