@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.compress.utils.Sets;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
@@ -52,9 +51,9 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.core.io.UrlResource;
-import reactor.core.publisher.Mono;
-
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.cloud.deployer.resource.docker.DockerResource;
 import org.springframework.cloud.deployer.resource.maven.MavenResource;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
@@ -66,11 +65,16 @@ import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import reactor.core.publisher.Mono;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.collection.IsMapContaining.hasEntry;
+import static org.hamcrest.collection.IsMapContaining.hasKey;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -99,7 +103,7 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
  */
 public class CloudFoundryAppDeployerTests {
 
-	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
+	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();;
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private AppNameGenerator applicationNameGenerator;
@@ -400,6 +404,71 @@ public class CloudFoundryAppDeployerTests {
 		assertThat(deploymentId, equalTo("test-application-id"));
 	}
 
+	@Test
+	public void deployWithDeployerEnvironmentVariables() throws IOException {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+
+		givenRequestGetApplication("test-application-id", Mono.error(new IllegalArgumentException()), Mono.just(
+				ApplicationDetail.builder()
+						.diskQuota(0)
+						.id("test-application-id")
+						.instances(1)
+						.memoryLimit(0)
+						.name("test-application")
+						.requestedState("RUNNING")
+						.runningInstances(0)
+						.stack("test-stack")
+						.build()));
+
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+						.path(resource.getFile().toPath())
+						.buildpack("test-buildpack")
+						.disk(0)
+						.environmentVariables(defaultEnvironmentVariables())
+						.healthCheckType(ApplicationHealthCheck.NONE)
+						.instances(0)
+						.memory(0)
+						.name("test-application-id")
+						.noRoute(false)
+						.host("test-host")
+						.domain("test-domain")
+						.service("test-service-2")
+						.service("test-service-1")
+						.build())
+				.build(), Mono.empty());
+
+
+		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator,
+				bindDeployerProperties(FluentMap.<String,String>builder()
+				.entry("env.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION","'{enabled:false}'")
+				.entry("env.SPRING_PROFILES_ACTIVE","cloud,foo")
+				.build()), this.operations, this.runtimeEnvironmentInfo);
+
+		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
+				FluentMap.<String, String>builder().entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
+						.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
+						.entry(DOMAIN_PROPERTY, "test-domain")
+						.entry(HEALTHCHECK_PROPERTY_KEY, "none")
+						.entry(HOST_PROPERTY, "test-host")
+						.entry(COUNT_PROPERTY_KEY, "0")
+						.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
+						.entry(NO_ROUTE_PROPERTY, "false")
+						.entry(ROUTE_PATH_PROPERTY, "/test-route-path")
+						.build());
+
+		assertThat(deployer.getEnvironmentVariables("test-application-id", appDeploymentRequest),allOf(
+				hasEntry("JBP_CONFIG_SPRING_AUTO_RECONFIGURATION","'{enabled:false}'"),
+				hasEntry("SPRING_PROFILES_ACTIVE","cloud,foo"),
+				hasKey("SPRING_APPLICATION_JSON"))
+		);
+
+		String deploymentId = deployer.deploy(appDeploymentRequest);
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+	}
 	@SuppressWarnings("unchecked")
 	@Test
 	public void deployWithApplicationDeploymentProperties() throws IOException {
@@ -969,7 +1038,7 @@ public class CloudFoundryAppDeployerTests {
 				.build());
 		}));
 		givenRequestGetApplication("test-application-id", m);
-		this.deployer.deploymentProperties.setApiTimeout(1);// Is less than the delay() above
+		this.deployer.deploymentProperties.setStatusTimeout(1);// Is less than the delay() above
 
 		DeploymentState state = this.deployer.status("test-application-id").getState();
 		assertThat(state, is(DeploymentState.error));
@@ -1050,5 +1119,10 @@ public class CloudFoundryAppDeployerTests {
 		environmentVariables.put("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}");
 		environmentVariables.put("SPRING_CLOUD_APPLICATION_GUID",
 			"${vcap.application.name}:${vcap.application.instance_index}");
+	}
+
+	private CloudFoundryDeploymentProperties bindDeployerProperties(Map<String,String> env) {
+		MapConfigurationPropertySource source = new MapConfigurationPropertySource(env);
+		return new Binder(source).bind("", Bindable.of(CloudFoundryDeploymentProperties.class)).get();
 	}
 }

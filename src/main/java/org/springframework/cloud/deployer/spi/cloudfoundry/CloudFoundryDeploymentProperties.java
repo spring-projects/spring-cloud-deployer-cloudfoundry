@@ -17,13 +17,12 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-
 import javax.validation.constraints.Min;
-
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 
@@ -66,6 +65,8 @@ public class CloudFoundryDeploymentProperties {
 	public static final String JAVA_OPTS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
+
+	public static final String ENV_KEY = CLOUDFOUNDRY_PROPERTIES + ".env";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
@@ -174,6 +175,11 @@ public class CloudFoundryDeploymentProperties {
 	 * Whether to automatically delete cached Maven artifacts after deployment.
 	 */
 	private boolean autoDeleteMavenArtifacts = true;
+
+	/**
+	 * A map containing environment variables.
+	 */
+	private Map<String, String> env = Collections.emptyMap();
 
 	/**
 	 * The maximum concurrent tasks allowed.
@@ -365,5 +371,13 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setAutoDeleteMavenArtifacts(boolean autoDeleteMavenArtifacts) {
 		this.autoDeleteMavenArtifacts = autoDeleteMavenArtifacts;
+	}
+
+	public Map<String, String> getEnv() {
+		return Collections.unmodifiableMap(env);
+	}
+
+	public void setEnv(Map<String, String> env) {
+		this.env = env;
 	}
 }

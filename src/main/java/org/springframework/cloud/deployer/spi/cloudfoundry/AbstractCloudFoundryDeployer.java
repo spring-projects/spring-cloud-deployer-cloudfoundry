@@ -320,6 +320,7 @@ class AbstractCloudFoundryDeployer {
 		if (StringUtils.hasText(javaOpts)) {
 			envVariables.put("JAVA_OPTS", javaOpts(request));
 		}
+		envVariables.putAll(deploymentProperties.getEnv());
 		return envVariables;
 	}
 
