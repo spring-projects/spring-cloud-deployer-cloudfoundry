@@ -16,8 +16,6 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -33,11 +31,18 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.AbstractCloudFoundryException;
 import org.cloudfoundry.UnknownCloudFoundryException;
 import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Exceptions;
+import reactor.core.publisher.Mono;
+import reactor.retry.Retry;
+
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppScaleRequest;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
@@ -47,9 +52,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.util.StringUtils;
-import reactor.core.Exceptions;
-import reactor.core.publisher.Mono;
-import reactor.retry.Retry;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
@@ -315,13 +317,27 @@ class AbstractCloudFoundryDeployer {
 	protected Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
 		Map<String, String> envVariables = new HashMap<>();
 		envVariables.putAll(getApplicationProperties(deploymentId, request));
-
 		String javaOpts = javaOpts(request);
 		if (StringUtils.hasText(javaOpts)) {
 			envVariables.put("JAVA_OPTS", javaOpts(request));
 		}
+
+		if (hasCfEnv(request.getResource())) {
+			Map<String, String> env =
+					CfEnvConfigurer.disableJavaBuildPackAutoReconfiguration(deploymentProperties.getEnv());
+			//Only append to existing spring profiles active
+			env.putAll(CfEnvConfigurer.activateCloudProfile(env, null));
+			deploymentProperties.setEnv(env);
+		}
 		envVariables.putAll(deploymentProperties.getEnv());
 		return envVariables;
+	}
+
+	protected boolean hasCfEnv(Resource resource) {
+		if (resource instanceof CfEnvAwareResource) {
+			return ((CfEnvAwareResource)resource).hasCfEnv();
+		}
+		return CfEnvAwareResource.of(resource).hasCfEnv();
 	}
 
 	private Map<String, String> getApplicationProperties(String deploymentId, AppDeploymentRequest request) {
@@ -345,6 +361,11 @@ class AbstractCloudFoundryDeployer {
 		Optional.ofNullable(applicationProperties.remove("server.port"))
 				.ifPresent(port -> logger.warn("Ignoring 'server.port={}' for app {}, as Cloud Foundry will assign a local dynamic port. Route to the app will use port 80.", port, deploymentId));
 
+		// Update active Spring Profiles given in application properties. Create a new entry with the given key if necessary
+		if (hasCfEnv(request.getResource())) {
+			applicationProperties = CfEnvConfigurer
+					.activateCloudProfile(applicationProperties, CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN);
+		}
 		return applicationProperties;
 	}
 

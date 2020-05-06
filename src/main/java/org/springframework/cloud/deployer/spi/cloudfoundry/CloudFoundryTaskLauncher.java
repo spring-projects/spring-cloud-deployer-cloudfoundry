@@ -84,11 +84,12 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 	 * Set up a reactor flow to launch a task. Before launch, check if the base application exists. If not, deploy
 	 * then launch task.
 	 *
-	 * @param request description of the application to be launched
+	 * @param appDeploymentRequest description of the application to be launched
 	 * @return name of the launched task, returned without waiting for reactor pipeline to complete
 	 */
 	@Override
-	public String launch(AppDeploymentRequest request) {
+	public String launch(AppDeploymentRequest appDeploymentRequest) {
+		final AppDeploymentRequest request = CfEnvAwareAppDeploymentRequest.of(appDeploymentRequest);
 		if (this.maxConcurrentExecutionsReached()) {
 			throw new IllegalStateException(
 				String.format("Cannot launch task %s. The maximum concurrent task executions is at its limit [%d].",
@@ -160,7 +161,9 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 	 * @return the command string
 	 */
 	public String getCommand(SummaryApplicationResponse application, AppDeploymentRequest request) {
+		final boolean appHasCfEnv = hasCfEnv(request.getResource());
 		return Stream.concat(Stream.of(application.getDetectedStartCommand()), request.getCommandlineArguments().stream())
+				.map( arg-> appHasCfEnv ? CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg(arg) : arg)
 				.collect(Collectors.joining(" "));
 	}
 

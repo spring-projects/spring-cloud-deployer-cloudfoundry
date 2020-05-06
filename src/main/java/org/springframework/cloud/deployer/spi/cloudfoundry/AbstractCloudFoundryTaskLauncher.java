@@ -31,13 +31,13 @@ import org.cloudfoundry.client.v3.tasks.TaskState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.cloud.deployer.spi.task.LaunchState;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.cloud.deployer.spi.task.TaskStatus;
-import reactor.util.function.Tuple2;
 
 /**
  * Abstract class to provide base functionality for launching Tasks on Cloud Foundry. This

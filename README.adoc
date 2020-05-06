@@ -95,16 +95,9 @@ This is useful in cases in which the Cloud Foundry foundation is isolated from e
 == Set Additional Environment Variables
 
 By default, the deployer adds global and application configuration properties to a single `SPRING_APPLICATION_JSON` environment variable entry in the application manifest.
-You can configure additional environment variables in the manifest by setting `spring.cloud.deployer.cloudfoundry.env.<key>=<value>`.
-This is useful for setting https://github.com/cloudfoundry/java-buildpack[Java build pack configuration properties] in the application manifest.
+You can configure additional top-level environment variables in the manifest by setting `spring.cloud.deployer.cloudfoundry.env.<key>=<value>`.
+This is useful for adding https://github.com/cloudfoundry/java-buildpack[Java build pack configuration properties] to the application manifest since the Java build pack does not recognize `SPRING_APPLICATION_JSON`.
 
-=== Disable Spring Auto-reconfiguration
-A common use case is to disable auto-reconfiguration if your application handles configuration internally, as is the case if your application uses https://github.com/pivotal-cf/java-cfenv[java-cfenv] to
-bind to CF services. In this case, you would set:
-
-----
-spring.cloud.deployer.cloudfoundry.env.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION='{enabled:false}',spring.cloud.deployer.cloudfoundry.env.SPRING_PROFILES_ACTIVE=cloud
-----
 
 
 

@@ -27,6 +27,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.compress.utils.Sets;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
@@ -51,6 +54,8 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import reactor.core.publisher.Mono;
+
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
@@ -66,7 +71,6 @@ import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
-import reactor.core.publisher.Mono;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -443,11 +447,12 @@ public class CloudFoundryAppDeployerTests {
 
 		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator,
 				bindDeployerProperties(FluentMap.<String,String>builder()
-				.entry("env.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION","'{enabled:false}'")
+				.entry("env.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION",CfEnvConfigurer.ENABLED_FALSE)
 				.entry("env.SPRING_PROFILES_ACTIVE","cloud,foo")
 				.build()), this.operations, this.runtimeEnvironmentInfo);
 
-		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
+		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
+				Collections.EMPTY_MAP), resource,
 				FluentMap.<String, String>builder().entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
 						.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
 						.entry(DOMAIN_PROPERTY, "test-domain")
@@ -460,7 +465,7 @@ public class CloudFoundryAppDeployerTests {
 						.build());
 
 		assertThat(deployer.getEnvironmentVariables("test-application-id", appDeploymentRequest),allOf(
-				hasEntry("JBP_CONFIG_SPRING_AUTO_RECONFIGURATION","'{enabled:false}'"),
+				hasEntry("JBP_CONFIG_SPRING_AUTO_RECONFIGURATION", CfEnvConfigurer.ENABLED_FALSE),
 				hasEntry("SPRING_PROFILES_ACTIVE","cloud,foo"),
 				hasKey("SPRING_APPLICATION_JSON"))
 		);
@@ -468,6 +473,20 @@ public class CloudFoundryAppDeployerTests {
 		String deploymentId = deployer.deploy(appDeploymentRequest);
 
 		assertThat(deploymentId, equalTo("test-application-id"));
+	}
+
+	@Test
+	public void automaticallyConfigureForCfEnv() throws JsonProcessingException {
+		Resource resource = new FileSystemResource("src/test/resources/log-sink-rabbit-3.0.0.BUILD-SNAPSHOT.jar");
+		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
+				Collections.EMPTY_MAP), resource, Collections.EMPTY_MAP);
+
+		Map<String, String> env =  deployer.getEnvironmentVariables("test-application-id", appDeploymentRequest);
+		assertThat(env, hasEntry(CfEnvConfigurer.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, CfEnvConfigurer.ENABLED_FALSE));
+		assertThat(env, hasKey(equalTo("SPRING_APPLICATION_JSON")));
+		ObjectMapper objectMapper = new ObjectMapper();
+		Map<String, String> saj = objectMapper.readValue(env.get("SPRING_APPLICATION_JSON"),HashMap.class);
+		assertThat(saj, hasEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, CfEnvConfigurer.CLOUD_PROFILE_NAME));
 	}
 	@SuppressWarnings("unchecked")
 	@Test
