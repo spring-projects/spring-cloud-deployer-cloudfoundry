@@ -111,6 +111,7 @@ import org.springframework.util.StringUtils;
 			if (!Stream.of(current.split(",")).filter(s -> s.trim().equals(value)).findFirst().isPresent()) {
 				return current.join(",", current, value);
 			}
+			return current;
 		}
 		return value;
 	}

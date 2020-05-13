@@ -27,47 +27,61 @@ public class CfEnvConfigurerTests {
 
 	@Test
 	public void testCfEnvConfigurerActivateCloudProfile() {
-		Map<String, String> updatedEnv = CfEnvConfigurer.activateCloudProfile(
+		Map<String, String> env = CfEnvConfigurer.activateCloudProfile(
 				Collections.EMPTY_MAP, CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN);
-		assertThat(updatedEnv).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN,
+		assertThat(env).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN,
 				CfEnvConfigurer.CLOUD_PROFILE_NAME);
-		assertThat(updatedEnv).doesNotContainKeys(
+		assertThat(env).doesNotContainKeys(
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE,
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE_HYPHENATED);
 	}
 
 	@Test
 	public void testCfEnvConfigurerDoNotActivateCloudProfileIfNoneExists() {
-		Map<String, String> updatedEnv = CfEnvConfigurer.activateCloudProfile(
+		Map<String, String> env = CfEnvConfigurer.activateCloudProfile(
 				Collections.EMPTY_MAP, null);
-		assertThat(updatedEnv).doesNotContainKeys(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN,
+		assertThat(env).doesNotContainKeys(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN,
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE,
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE_HYPHENATED);
 	}
 
 	@Test
 	public void testCfEnvConfigurerActivateCloudProfileWithEmptyValue() {
-		Map<String, String> updatedEnv = CfEnvConfigurer.activateCloudProfile(
+		Map<String, String> env = CfEnvConfigurer.activateCloudProfile(
 				FluentMap.<String, String>builder()
 						.entry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE, " ")
 						.build(),
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE);
-		assertThat(updatedEnv).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE,
+		assertThat(env).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE,
 				CfEnvConfigurer.CLOUD_PROFILE_NAME);
-		assertThat(updatedEnv).doesNotContainKeys(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN,
+		assertThat(env).doesNotContainKeys(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN,
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE_HYPHENATED);
 	}
 
 	@Test
 	public void testCfEnvConfigurerAppendToActiveProfiles() {
-		Map<String, String> updatedEnv = CfEnvConfigurer.activateCloudProfile(
+		Map<String, String> env = CfEnvConfigurer.activateCloudProfile(
 				FluentMap.<String, String>builder()
 						.entry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "foo,bar")
-						.build(),
-				CfEnvConfigurer.SPRING_PROFILES_ACTIVE);
-		assertThat(updatedEnv).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "foo,bar,cloud");
-		assertThat(updatedEnv).doesNotContainKeys(CfEnvConfigurer.SPRING_PROFILES_ACTIVE,
+						.build(), null);
+		assertThat(env).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "foo,bar,cloud");
+		assertThat(env).doesNotContainKeys(CfEnvConfigurer.SPRING_PROFILES_ACTIVE,
 				CfEnvConfigurer.SPRING_PROFILES_ACTIVE_HYPHENATED);
+	}
+
+	@Test
+	public void testCfEnvConfigurerDoesNotAppendCloudProfileIfAlreadyThere() {
+		Map<String, String> env = CfEnvConfigurer.activateCloudProfile(
+				FluentMap.<String, String>builder()
+						.entry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "foo,cloud")
+						.build(), null);
+		assertThat(env).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "foo,cloud");
+
+		env = CfEnvConfigurer.activateCloudProfile(
+				FluentMap.<String, String>builder()
+						.entry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "cloud,foo,bar")
+						.build(), null);
+		assertThat(env).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, "cloud,foo,bar");
 	}
 
 	@Test
@@ -76,8 +90,11 @@ public class CfEnvConfigurerTests {
 				.isEqualTo("--spring-profiles-active=foo,bar,cloud");
 		assertThat(CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg("--spring.profiles.active=foo"))
 				.isEqualTo("--spring.profiles.active=foo,cloud");
+		assertThat(CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg("--spring.profiles.active=foo,cloud"))
+				.isEqualTo("--spring.profiles.active=foo,cloud");
+		assertThat(CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg("--spring.profiles.active=cloud"))
+				.isEqualTo("--spring.profiles.active=cloud");
 		assertThat(CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg("--baz=foo"))
 				.isEqualTo("--baz=foo");
 	}
-
 }
