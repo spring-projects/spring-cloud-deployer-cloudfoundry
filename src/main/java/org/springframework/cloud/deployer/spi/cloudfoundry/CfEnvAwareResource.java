@@ -137,7 +137,7 @@ class CfEnvAwareResource implements Resource {
 						urls.add(a.getUrl());
 					}
 					catch (MalformedURLException e) {
-						e.printStackTrace();
+						logger.error("Unable to process nested archive " +  e.getMessage());
 					}
 				});
 				URLClassLoader classLoader = new URLClassLoader(urls.toArray(new URL[urls.size()]), null);
