@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.cloudfoundry.client.CloudFoundryClient;
 import org.cloudfoundry.client.v2.Metadata;
 import org.cloudfoundry.client.v2.applications.ApplicationsV2;
@@ -60,6 +62,8 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.cloudfoundry.operations.services.Services;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Answers;
@@ -78,6 +82,8 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.collection.IsMapContaining.hasEntry;
+import static org.hamcrest.collection.IsMapContaining.hasKey;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -221,6 +227,20 @@ public class CloudFoundryTaskLauncherTests {
 		SummaryApplicationResponse response = this.launcher.stage(defaultRequest());
 		assertThat(response.getId(), equalTo("test-application-id"));
 		assertThat(response.getDetectedStartCommand(), equalTo("test-command"));
+	}
+
+	@Test
+	public void automaticallyConfigureForCfEnv() throws JsonProcessingException {
+		Resource resource = new FileSystemResource("src/test/resources/log-sink-rabbit-3.0.0.BUILD-SNAPSHOT.jar");
+		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
+					Collections.EMPTY_MAP), resource, Collections.EMPTY_MAP);
+
+		Map<String, String> env =  launcher.getEnvironmentVariables("test-application-id", appDeploymentRequest);
+		MatcherAssert.assertThat(env, hasEntry(CfEnvConfigurer.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, CfEnvConfigurer.ENABLED_FALSE));
+		MatcherAssert.assertThat(env, hasKey(CoreMatchers.equalTo("SPRING_APPLICATION_JSON")));
+		ObjectMapper objectMapper = new ObjectMapper();
+		Map<String, String> saj = objectMapper.readValue(env.get("SPRING_APPLICATION_JSON"),HashMap.class);
+		MatcherAssert.assertThat(saj, hasEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, CfEnvConfigurer.CLOUD_PROFILE_NAME));
 	}
 
 

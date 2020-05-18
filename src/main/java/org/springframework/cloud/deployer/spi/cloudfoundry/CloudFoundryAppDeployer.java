@@ -104,7 +104,8 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	@Override
-	public String deploy(AppDeploymentRequest request) {
+	public String deploy(AppDeploymentRequest appDeploymentRequest) {
+		final AppDeploymentRequest request = CfEnvAwareAppDeploymentRequest.of(appDeploymentRequest);
 		logger.trace("Entered deploy: Deploying AppDeploymentRequest: AppDefinition = {}, Resource = {}, Deployment Properties = {}",
 			request.getDefinition(), request.getResource(), request.getDeploymentProperties());
 		String deploymentId = deploymentId(request);
@@ -511,6 +512,4 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.map(Boolean::valueOf)
 			.orElse(null);
 	}
-
-
 }
