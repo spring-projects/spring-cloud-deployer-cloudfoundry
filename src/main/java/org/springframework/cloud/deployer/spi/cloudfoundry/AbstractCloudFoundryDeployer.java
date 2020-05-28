@@ -236,6 +236,10 @@ class AbstractCloudFoundryDeployer {
 				if (e instanceof TimeoutException) {
 					logger.warn("Error getting status for {} within {}ms, Retrying operation.", id, requestTimeoutToUse);
 				}
+				else if (e instanceof UnknownCloudFoundryException) {
+					logger.warn("Received UnknownCloudFoundryException from cf with payload={}",
+							((UnknownCloudFoundryException) e).getPayload());
+				}
 				else {
 					logger.warn("Received error from cf", e);
 				}
