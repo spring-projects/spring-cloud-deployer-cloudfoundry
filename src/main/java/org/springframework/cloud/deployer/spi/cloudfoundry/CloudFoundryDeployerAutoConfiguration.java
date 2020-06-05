@@ -27,6 +27,7 @@ import org.cloudfoundry.reactor.DefaultConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.cloudfoundry.reactor.client.ReactorCloudFoundryClient;
 import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider;
+import org.cloudfoundry.reactor.tokenprovider.PasswordGrantTokenProvider.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,7 @@ import org.springframework.cloud.deployer.spi.util.RuntimeVersionUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
+import org.springframework.util.StringUtils;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
@@ -192,11 +194,17 @@ public class CloudFoundryDeployerAutoConfiguration {
 		@Bean
 		@ConditionalOnMissingBean
 		public TokenProvider tokenProvider(CloudFoundryConnectionProperties properties) {
-			return PasswordGrantTokenProvider.builder()
-				.username(properties.getUsername())
-				.password(properties.getPassword())
-				.loginHint(properties.getLoginHint())
-				.build();
+			Builder tokenProviderBuilder = PasswordGrantTokenProvider.builder()
+					.username(properties.getUsername())
+					.password(properties.getPassword())
+					.loginHint(properties.getLoginHint());
+			if (StringUtils.hasText(properties.getClientId())) {
+				tokenProviderBuilder.clientId(properties.getClientId());
+			}
+			if (StringUtils.hasText(properties.getClientSecret())) {
+				tokenProviderBuilder.clientSecret(properties.getClientSecret());
+			}
+			return tokenProviderBuilder.build();
 		}
 
 		@Bean
