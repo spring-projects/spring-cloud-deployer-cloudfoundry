@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,18 @@ public class CloudFoundryConnectionProperties {
 	private String password;
 
 	/**
+	 * ClientId to use with token providers, effectively defaults to "cf" in
+	 * cloudfroundry client.
+	 */
+	private String clientId;
+
+	/**
+	 * ClientSecret to use with token providers, effectively defaults to empty in
+	 * cloudfroundry client.
+	 */
+	private String clientSecret;
+
+	/**
 	 * Indicates the identity provider to be used when accessing the Cloud Foundry API.
 	 * The passed string has to be a URL-Encoded JSON Object, containing the field origin with value as origin_key of an identity provider.
 	 */
@@ -99,6 +111,22 @@ public class CloudFoundryConnectionProperties {
 
 	public void setUrl(URL url) {
 		this.url = url;
+	}
+
+	public String getClientId() {
+		return clientId;
+	}
+
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
+	}
+
+	public String getClientSecret() {
+		return clientSecret;
+	}
+
+	public void setClientSecret(String clientSecret) {
+		this.clientSecret = clientSecret;
 	}
 
 	public String getUsername() {
