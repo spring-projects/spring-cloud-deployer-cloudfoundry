@@ -89,6 +89,11 @@ public class CloudFoundryConnectionProperties {
 	 */
 	private boolean skipSslValidation = false;
 
+	/**
+	 * Optionally in seconds allows to set expire time when underlying token provider will get recreated.
+	 */
+	private Integer tokenProviderValidity;
+
 	public String getOrg() {
 		return org;
 	}
@@ -159,5 +164,13 @@ public class CloudFoundryConnectionProperties {
 
 	public void setLoginHint(String loginHint) {
 		this.loginHint = loginHint;
+	}
+
+	public Integer getTokenProviderValidity() {
+		return tokenProviderValidity;
+	}
+
+	public void setTokenProviderValidity(Integer tokenProviderValidity) {
+		this.tokenProviderValidity = tokenProviderValidity;
 	}
 }

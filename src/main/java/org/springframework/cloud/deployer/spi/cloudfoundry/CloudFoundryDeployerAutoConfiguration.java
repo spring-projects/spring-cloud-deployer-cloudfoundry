@@ -194,6 +194,10 @@ public class CloudFoundryDeployerAutoConfiguration {
 		@Bean
 		@ConditionalOnMissingBean
 		public TokenProvider tokenProvider(CloudFoundryConnectionProperties properties) {
+			return new RecreatingTokenProvider(properties.getTokenProviderValidity(), () -> createTokenProvider(properties));
+		}
+
+		private TokenProvider createTokenProvider(CloudFoundryConnectionProperties properties) {
 			Builder tokenProviderBuilder = PasswordGrantTokenProvider.builder()
 					.username(properties.getUsername())
 					.password(properties.getPassword())

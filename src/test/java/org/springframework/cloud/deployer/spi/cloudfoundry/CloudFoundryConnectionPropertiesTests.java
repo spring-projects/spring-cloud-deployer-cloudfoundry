@@ -47,6 +47,7 @@ public class CloudFoundryConnectionPropertiesTests {
 			map.put("spring.cloud.deployer.cloudfoundry.client-secret", "secret");
 			map.put("spring.cloud.deployer.cloudfoundry.login-hint", "hint");
 			map.put("spring.cloud.deployer.cloudfoundry.skip-ssl-validation", "true");
+			map.put("spring.cloud.deployer.cloudfoundry.token-provider-validity", "123");
 			context.getEnvironment().getPropertySources().addLast(new SystemEnvironmentPropertySource(
 				StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, map));
 			})
@@ -62,6 +63,7 @@ public class CloudFoundryConnectionPropertiesTests {
 				assertThat(properties.getClientSecret()).isEqualTo("secret");
 				assertThat(properties.getLoginHint()).isEqualTo("hint");
 				assertThat(properties.isSkipSslValidation()).isTrue();
+				assertThat(properties.getTokenProviderValidity()).isEqualTo(123);
 			});
 	}
 
