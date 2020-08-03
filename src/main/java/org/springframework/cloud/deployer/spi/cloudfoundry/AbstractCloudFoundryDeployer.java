@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -51,9 +53,11 @@ import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.FileSystemUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACKS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
@@ -147,9 +151,21 @@ class AbstractCloudFoundryDeployer {
 		return (int) ByteSizeUtils.parseToMebibytes(withUnit);
 	}
 
-	String buildpack(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY))
-			.orElse(this.deploymentProperties.getBuildpack());
+	Set<String> buildpacks(AppDeploymentRequest request) {
+		// TODO: When 'buildpack' setting gets removed due to deprecation,
+		//       change this logic not ot fallback to it if 'buildpacks'
+		//       is used.
+		String buidpacksValue = request.getDeploymentProperties().get(BUILDPACKS_PROPERTY_KEY);
+		String buidpackValue = request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY);
+		if (buidpacksValue != null) {
+			return StringUtils.commaDelimitedListToSet(buidpacksValue);
+		} else if (buidpackValue != null) {
+			return new HashSet<>(Arrays.asList(buidpackValue));
+		} else if (!ObjectUtils.isEmpty((this.deploymentProperties.getBuildpacks()))) {
+			return this.deploymentProperties.getBuildpacks();
+		} else {
+			return new HashSet<>(Arrays.asList(this.deploymentProperties.getBuildpack()));
+		}
 	}
 
 	String javaOpts(AppDeploymentRequest request) {

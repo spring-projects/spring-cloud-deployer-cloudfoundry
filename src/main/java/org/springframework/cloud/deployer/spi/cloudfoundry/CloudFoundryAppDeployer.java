@@ -383,7 +383,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 					+ ". This may take some time if the image must be downloaded from a remote container registry.");
 			manifest.docker(Docker.builder().image(getDockerImage(request)).build());
 		} else {
-			manifest.buildpack(buildpack(request));
+			manifest.buildpacks(buildpacks(request));
 		}
 
 		if (!includesServiceParameters(request)) {

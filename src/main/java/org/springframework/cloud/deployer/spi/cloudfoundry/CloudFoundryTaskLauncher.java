@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -225,7 +225,7 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 			.manifest(ApplicationManifest.builder()
 				.path(getApplication(request))
 				.docker(Docker.builder().image(getDockerImage(request)).build())
-				.buildpack(buildpack(request))
+				.buildpacks(buildpacks(request))
 				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 				.disk(diskQuota(request))
 				.environmentVariables(getEnvironmentVariables(name, request))
