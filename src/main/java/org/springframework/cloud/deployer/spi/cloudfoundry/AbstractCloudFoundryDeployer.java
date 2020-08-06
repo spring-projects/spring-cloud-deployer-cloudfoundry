@@ -159,11 +159,14 @@ class AbstractCloudFoundryDeployer {
 		String buidpackValue = request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY);
 		if (buidpacksValue != null) {
 			return StringUtils.commaDelimitedListToSet(buidpacksValue);
-		} else if (buidpackValue != null) {
+		}
+		else if (buidpackValue != null) {
 			return new HashSet<>(Arrays.asList(buidpackValue));
-		} else if (!ObjectUtils.isEmpty((this.deploymentProperties.getBuildpacks()))) {
+		}
+		else if (!ObjectUtils.isEmpty((this.deploymentProperties.getBuildpacks()))) {
 			return this.deploymentProperties.getBuildpacks();
-		} else {
+		}
+		else {
 			return new HashSet<>(Arrays.asList(this.deploymentProperties.getBuildpack()));
 		}
 	}
