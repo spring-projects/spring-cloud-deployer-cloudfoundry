@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,11 +62,15 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
 
+	public static final String BUILDPACKS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpacks";
+
 	public static final String JAVA_OPTS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
 
 	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
 
 	public static final String ENV_KEY = CLOUDFOUNDRY_PROPERTIES + ".env";
+
+	private static final String DEFAULT_BUILDPACK = "https://github.com/cloudfoundry/java-buildpack.git#v4.29.1";
 
 	/**
 	 * The names of services to bind to all applications deployed as a module.
@@ -93,7 +97,13 @@ public class CloudFoundryDeploymentProperties {
 	/**
 	 * The buildpack to use for deploying the application.
 	 */
-	private String buildpack = "https://github.com/cloudfoundry/java-buildpack.git#v4.29.1";
+	@Deprecated
+	private String buildpack = DEFAULT_BUILDPACK;
+
+	/**
+	 * The buildpacks to use for deploying the application.
+	 */
+	private Set<String> buildpacks = new HashSet<>();
 
 	/**
 	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
@@ -197,12 +207,22 @@ public class CloudFoundryDeploymentProperties {
 		this.services = services;
 	}
 
+	@Deprecated
 	public String getBuildpack() {
 		return buildpack;
 	}
 
+	@Deprecated
 	public void setBuildpack(String buildpack) {
 		this.buildpack = buildpack;
+	}
+
+	public Set<String> getBuildpacks() {
+		return buildpacks;
+	}
+
+	public void setBuildpacks(Set<String> buildpacks) {
+		this.buildpacks = buildpacks;
 	}
 
 	public String getMemory() {
