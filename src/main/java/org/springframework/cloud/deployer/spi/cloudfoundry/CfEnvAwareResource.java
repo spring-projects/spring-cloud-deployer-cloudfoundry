@@ -132,7 +132,7 @@ class CfEnvAwareResource implements Resource {
 			try {
 				JarFileArchive archive = new JarFileArchive(app.getFile());
 				List<URL> urls = new ArrayList<>();
-				archive.getNestedArchives(entry -> entry.getName().endsWith(".jar")).forEach(a -> {
+				archive.getNestedArchives(entry -> entry.getName().endsWith(".jar"), null).forEachRemaining(a -> {
 					try {
 						urls.add(a.getUrl());
 					}
