@@ -89,6 +89,7 @@ import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPE
 import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ENV_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
@@ -445,12 +446,6 @@ public class CloudFoundryAppDeployerTests {
 				.build(), Mono.empty());
 
 
-		CloudFoundryAppDeployer deployer = new CloudFoundryAppDeployer(this.applicationNameGenerator,
-				bindDeployerProperties(FluentMap.<String,String>builder()
-				.entry("env.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION",CfEnvConfigurer.ENABLED_FALSE)
-				.entry("env.SPRING_PROFILES_ACTIVE","cloud,foo")
-				.build()), this.operations, this.runtimeEnvironmentInfo);
-
 		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
 				Collections.EMPTY_MAP), resource,
 				FluentMap.<String, String>builder().entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
@@ -462,15 +457,17 @@ public class CloudFoundryAppDeployerTests {
 						.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
 						.entry(NO_ROUTE_PROPERTY, "false")
 						.entry(ROUTE_PATH_PROPERTY, "/test-route-path")
+						.entry(ENV_KEY + ".JBP_CONFIG_SPRING_AUTO_RECONFIGURATION",CfEnvConfigurer.ENABLED_FALSE)
+						.entry(ENV_KEY + ".SPRING_PROFILES_ACTIVE","cloud,foo")
 						.build());
 
-		assertThat(deployer.getEnvironmentVariables("test-application-id", appDeploymentRequest),allOf(
+		String deploymentId = deployer.deploy(appDeploymentRequest);
+
+		assertThat(this.deployer.getEnvironmentVariables("test-application-id", appDeploymentRequest),allOf(
 				hasEntry("JBP_CONFIG_SPRING_AUTO_RECONFIGURATION", CfEnvConfigurer.ENABLED_FALSE),
 				hasEntry("SPRING_PROFILES_ACTIVE","cloud,foo"),
 				hasKey("SPRING_APPLICATION_JSON"))
 		);
-
-		String deploymentId = deployer.deploy(appDeploymentRequest);
 
 		assertThat(deploymentId, equalTo("test-application-id"));
 	}
@@ -1138,10 +1135,5 @@ public class CloudFoundryAppDeployerTests {
 		environmentVariables.put("SPRING_APPLICATION_INDEX", "${vcap.application.instance_index}");
 		environmentVariables.put("SPRING_CLOUD_APPLICATION_GUID",
 			"${vcap.application.name}:${vcap.application.instance_index}");
-	}
-
-	private CloudFoundryDeploymentProperties bindDeployerProperties(Map<String,String> env) {
-		MapConfigurationPropertySource source = new MapConfigurationPropertySource(env);
-		return new Binder(source).bind("", Bindable.of(CloudFoundryDeploymentProperties.class)).get();
 	}
 }
