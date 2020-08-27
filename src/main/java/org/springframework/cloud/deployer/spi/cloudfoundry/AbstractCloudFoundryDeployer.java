@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -58,6 +59,7 @@ import org.springframework.util.StringUtils;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACKS_PROPERTY_KEY;
+import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ENV_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
@@ -340,6 +342,7 @@ class AbstractCloudFoundryDeployer {
 	protected Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
 		Map<String, String> envVariables = new HashMap<>();
 		envVariables.putAll(getApplicationProperties(deploymentId, request));
+		envVariables.putAll(getDeclaredEnvironmentVariables(request));
 		String javaOpts = javaOpts(request);
 		if (StringUtils.hasText(javaOpts)) {
 			envVariables.put("JAVA_OPTS", javaOpts(request));
@@ -354,6 +357,13 @@ class AbstractCloudFoundryDeployer {
 		}
 		envVariables.putAll(deploymentProperties.getEnv());
 		return envVariables;
+	}
+
+	private Map<? extends String,? extends String> getDeclaredEnvironmentVariables(AppDeploymentRequest request) {
+		Map<String, String> env = new LinkedHashMap<>();
+		request.getDeploymentProperties().entrySet().stream().filter(e-> e.getKey().startsWith(ENV_KEY + "."))
+				.forEach(e-> env.put(e.getKey().substring(ENV_KEY.length() + 1), e.getValue()));
+		return env;
 	}
 
 	protected boolean hasCfEnv(Resource resource) {
