@@ -90,7 +90,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 
 	private final CloudFoundryOperations operations;
 
-	private final Cache<String, ApplicationDetail> cache = Caffeine.newBuilder().expireAfterWrite(60, TimeUnit.SECONDS)
+	private final Cache<String, ApplicationDetail> cache = Caffeine.newBuilder().expireAfterWrite(5, TimeUnit.SECONDS)
 			.build();
 
 	public CloudFoundryAppDeployer(AppNameGenerator applicationNameGenerator,
