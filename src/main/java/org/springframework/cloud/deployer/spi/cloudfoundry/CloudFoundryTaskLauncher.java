@@ -163,8 +163,25 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 	public String getCommand(SummaryApplicationResponse application, AppDeploymentRequest request) {
 		final boolean appHasCfEnv = hasCfEnv(request.getResource());
 		return Stream.concat(Stream.of(application.getDetectedStartCommand()), request.getCommandlineArguments().stream())
-				.map( arg-> appHasCfEnv ? CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg(arg) : arg)
+				.map( arg-> {
+					int indexOfEquals = arg.indexOf("=");
+					if(indexOfEquals > -1) {
+						String key = arg.substring(0, indexOfEquals);
+						String value = arg.substring(indexOfEquals);
+						key = escapeChar(key, "(");
+						key = escapeChar(key, ")");
+						arg = key + value;
+					}
+					return appHasCfEnv ? CfEnvConfigurer.appendCloudProfileToSpringProfilesActiveArg(arg) : arg;
+				})
 				.collect(Collectors.joining(" "));
+	}
+
+	private String escapeChar(String value, String character) {
+		if(value.contains(character)) {
+			value = value.replace(character, "\\\\\\" + character);
+		}
+		return value;
 	}
 
 	private boolean pushTaskAppsEnabled() {
