@@ -468,6 +468,25 @@ public class CloudFoundryTaskLauncherTests {
 				.build(),
 				request);
 		assertThat(command, equalTo("command-val test-command-arg-1"));
+
+		List<String> args = new ArrayList<>();
+		args.add("test-command-arg-1");
+		args.add("a=b");
+		args.add("run.id=1");
+		args.add("run.id(long)=1");
+		args.add("run.id(long=1");
+		args.add("run.id)=1");
+		request = new AppDeploymentRequest(new AppDefinition(
+				"test-app-1", null),
+				this.resource,
+				Collections.singletonMap("test-key-1", "test-val-1"),
+				args);
+		command = this.launcher.getCommand(SummaryApplicationResponse
+						.builder()
+						.detectedStartCommand("command-val")
+						.build(),
+				request);
+		assertThat(command, equalTo("command-val test-command-arg-1 a=b run.id=1 run.id\\\\\\(long\\\\\\)=1 run.id\\\\\\(long=1 run.id\\\\\\)=1"));
 	}
 
 	private void givenRequestCancelTask(String taskId, Mono<CancelTaskResponse> response) {
