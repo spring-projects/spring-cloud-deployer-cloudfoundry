@@ -63,6 +63,7 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
+import static reactor.util.retry.Retry.withThrowable;
 
 /**
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
@@ -266,7 +267,7 @@ class AbstractCloudFoundryDeployer {
 				}
 			})
 			// let all other than timeout exception to propagate back to caller
-			.retryWhen(Retry.onlyIf(c -> {
+			.retryWhen(withThrowable(Retry.onlyIf(c -> {
 					logger.debug("RetryContext for id {} iteration {} backoff {}", id,  c.iteration(), c.backoff());
 					if (c.iteration() > 5) {
 						logger.info("Stopping retry for id {} after {} iterations", id, c.iteration());
@@ -280,7 +281,7 @@ class AbstractCloudFoundryDeployer {
 					return true;
 				})
 				.exponentialBackoff(Duration.ofMillis(initialRetryDelay), Duration.ofMillis(statusTimeout))
-				.doOnRetry(c -> logger.debug("Retrying cf call for {}", id)))
+				.doOnRetry(c -> logger.debug("Retrying cf call for {}", id))))
 			.doOnError(TimeoutException.class, e -> {
 				logger.error("Retry operation on getStatus failed for {}. Max retry time {}ms", id, statusTimeout);
 			});
