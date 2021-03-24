@@ -20,18 +20,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.util.StringUtils;
 
 /**
- * Provides methods to configure environment, application properties, and command line args if the deployed artifact uses java-cfenv.
+ * Provides methods to configure environment, application properties, and command line
+ * args if the deployed artifact uses java-cfenv.
  *
  * @author David Turanski
  * @since 2.4
  */
- class CfEnvConfigurer {
- 	static final String SPRING_PROFILES_ACTIVE = "SPRING_PROFILES_ACTIVE";
+class CfEnvConfigurer {
 
- 	static final String SPRING_PROFILES_ACTIVE_FQN = "spring.profiles.active";
+	private static final Log log = LogFactory.getLog(CfEnvConfigurer.class);
+
+	static final String SPRING_PROFILES_ACTIVE = "SPRING_PROFILES_ACTIVE";
+
+	static final String SPRING_PROFILES_ACTIVE_FQN = "spring.profiles.active";
 
 	static final String SPRING_PROFILES_ACTIVE_HYPHENATED = "spring-profiles-active";
 
@@ -45,29 +52,32 @@ import org.springframework.util.StringUtils;
 	 * Disable Java Buildpack Spring Auto-reconfiguration.
 	 *
 	 * @param environment a map containing environment variables
-	 * @return an copy of the map setting the environment variable needed to disable auto-reconfiguration
+	 * @return an copy of the map setting the environment variable needed to disable
+	 * auto-reconfiguration
 	 */
-	 static Map<String, String> disableJavaBuildPackAutoReconfiguration(Map<String, String> environment) {
+	static Map<String, String> disableJavaBuildPackAutoReconfiguration(Map<String, String> environment) {
+		log.debug("Disabling 'JBP_CONFIG_SPRING_AUTO_RECONFIGURATION'");
 		Map<String, String> updatedEnvironment = new HashMap<>(environment);
 		updatedEnvironment.putIfAbsent(JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, ENABLED_FALSE);
 		return updatedEnvironment;
 	}
 
 	/**
-	 * Activate the <i>cloud</i> profile. Add to a key that binds to <i>spring.profiles.active</i> if one exists.
+	 * Activate the <i>cloud</i> profile. Add to a key that binds to
+	 * <i>spring.profiles.active</i> if one exists.
 	 * @param environment a map containing environment variables or application properties
 	 * @param keyToCreate create a new entry using a preferred key if none exists.
 	 * @return the updated map
 	 */
-	 static Map<String,String> activateCloudProfile(Map<String, String> environment, String keyToCreate) {
-
+	static Map<String, String> activateCloudProfile(Map<String, String> environment, String keyToCreate) {
+		log.debug("Activating cloud profile");
 		Map<String, String> updatedEnvironment = new HashMap<>(environment);
 
 		if (appendToExistingEntry(updatedEnvironment, SPRING_PROFILES_ACTIVE, CLOUD_PROFILE_NAME)) {
-				return updatedEnvironment;
+			return updatedEnvironment;
 		}
 		else if (appendToExistingEntry(updatedEnvironment, SPRING_PROFILES_ACTIVE_FQN, CLOUD_PROFILE_NAME)) {
-				return updatedEnvironment;
+			return updatedEnvironment;
 		}
 		else if (appendToExistingEntry(updatedEnvironment, SPRING_PROFILES_ACTIVE_HYPHENATED, CLOUD_PROFILE_NAME)) {
 			return updatedEnvironment;
@@ -87,20 +97,20 @@ import org.springframework.util.StringUtils;
 	 * @param arg the current value
 	 * @return the updated value
 	 */
-	 static String appendCloudProfileToSpringProfilesActiveArg(String arg)  {
-		  if ( (arg.contains(SPRING_PROFILES_ACTIVE_FQN) ||
-			arg.contains(SPRING_PROFILES_ACTIVE_HYPHENATED) ||
-			arg.contains(SPRING_PROFILES_ACTIVE) ) && arg.contains("=")) {
-		  	String[]tokens = arg.split("=");
+	static String appendCloudProfileToSpringProfilesActiveArg(String arg) {
+		if ((arg.contains(SPRING_PROFILES_ACTIVE_FQN) ||
+				arg.contains(SPRING_PROFILES_ACTIVE_HYPHENATED) ||
+				arg.contains(SPRING_PROFILES_ACTIVE)) && arg.contains("=")) {
+			String[] tokens = arg.split("=");
 			arg = String.join("=", tokens[0], appendToValueIfPresent(tokens[1], CLOUD_PROFILE_NAME));
-		  }
+		}
 		return arg;
-	 }
+	}
 
 	private static boolean appendToExistingEntry(Map<String, String> environment, String key, String value) {
 		if (environment.containsKey(key)) {
 			String current = environment.get(key);
-			environment.put(key,appendToValueIfPresent(current, value));
+			environment.put(key, appendToValueIfPresent(current, value));
 			return true;
 		}
 		return false;

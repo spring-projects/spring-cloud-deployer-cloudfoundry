@@ -20,17 +20,24 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 
 import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
 /**
- * Holds configuration properties for specifying what resources and services an app deployed to a Cloud Foundry runtime
- * will get.
+ * Holds configuration properties for specifying what resources and services an app
+ * deployed to a Cloud Foundry runtime will get.
  *
  * @author Eric Bottard
  * @author Greg Turnquist
@@ -40,11 +47,14 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryCo
 @Validated
 public class CloudFoundryDeploymentProperties {
 
+	private static final Log log = LogFactory.getLog(CloudFoundryDeploymentProperties.class);
+
 	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
 
 	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
-	public static final String HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-http-endpoint";
+	public static final String HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES
+			+ ".health-check-http-endpoint";
 
 	public static final String HEALTHCHECK_TIMEOUT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-timeout";
 
@@ -66,20 +76,22 @@ public class CloudFoundryDeploymentProperties {
 
 	public static final String JAVA_OPTS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
 
-	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES + ".use-spring-application-json";
+	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES
+			+ ".use-spring-application-json";
 
 	public static final String ENV_KEY = CLOUDFOUNDRY_PROPERTIES + ".env";
 
 	private static final String DEFAULT_BUILDPACK = "https://github.com/cloudfoundry/java-buildpack.git#v4.29.1";
 
 	/**
-	 * The names of services to bind to all applications deployed as a module.
-	 * This should typically contain a service capable of playing the role of a binding transport.
+	 * The names of services to bind to all applications deployed as a module. This should
+	 * typically contain a service capable of playing the role of a binding transport.
 	 */
 	private Set<String> services = new HashSet<>();
 
 	/**
-	 * The host name to use as part of the route. Defaults to hostname derived by Cloud Foundry.
+	 * The host name to use as part of the route. Defaults to hostname derived by Cloud
+	 * Foundry.
 	 */
 	private String host = null;
 
@@ -89,8 +101,8 @@ public class CloudFoundryDeploymentProperties {
 	private String domain;
 
 	/**
-	 * The routes that the application should be bound to.
-	 * Mutually exclusive with host and domain.
+	 * The routes that the application should be bound to. Mutually exclusive with host and
+	 * domain.
 	 */
 	private Set<String> routes = new HashSet<>();
 
@@ -106,17 +118,20 @@ public class CloudFoundryDeploymentProperties {
 	private Set<String> buildpacks = new HashSet<>();
 
 	/**
-	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
+	 * The amount of memory to allocate, if not overridden per-app. Default unit is mebibytes,
+	 * 'M' and 'G" suffixes supported.
 	 */
 	private String memory = "1024m";
 
 	/**
-	 * The amount of disk space to allocate, if not overridden per-app. Default unit is mebibytes, 'M' and 'G" suffixes supported.
+	 * The amount of disk space to allocate, if not overridden per-app. Default unit is
+	 * mebibytes, 'M' and 'G" suffixes supported.
 	 */
 	private String disk = "1024m";
 
 	/**
-	 * The type of health check to perform on deployed application, if not overridden per-app.  Defaults to PORT
+	 * The type of health check to perform on deployed application, if not overridden per-app.
+	 * Defaults to PORT
 	 */
 	private ApplicationHealthCheck healthCheck = ApplicationHealthCheck.PORT;
 
@@ -126,7 +141,7 @@ public class CloudFoundryDeploymentProperties {
 	private String healthCheckHttpEndpoint = "/health";
 
 	/**
-	 * The timeout value for health checks in seconds.  Defaults to 120 seconds.
+	 * The timeout value for health checks in seconds. Defaults to 120 seconds.
 	 */
 	private String healthCheckTimeout = "120";
 
@@ -151,7 +166,8 @@ public class CloudFoundryDeploymentProperties {
 	private long statusTimeout = 30_000L;
 
 	/**
-	 * Flag to indicate whether application properties are fed into SPRING_APPLICATION_JSON or ENVIRONMENT VARIABLES.
+	 * Flag to indicate whether application properties are fed into SPRING_APPLICATION_JSON or
+	 * ENVIRONMENT VARIABLES.
 	 */
 	private boolean useSpringApplicationJson = true;
 
@@ -166,7 +182,7 @@ public class CloudFoundryDeploymentProperties {
 	private Duration startupTimeout = Duration.ofMinutes(5L);
 
 	/**
-	 * String to use as prefix for name of deployed app.  Defaults to spring.application.name.
+	 * String to use as prefix for name of deployed app. Defaults to spring.application.name.
 	 */
 	@Value("${spring.application.name:}")
 	private String appNamePrefix;
@@ -187,17 +203,14 @@ public class CloudFoundryDeploymentProperties {
 	private boolean autoDeleteMavenArtifacts = true;
 
 	/**
-	 * A map containing environment variables.
-	 */
-	private Map<String, String> env = Collections.emptyMap();
-
-	/**
 	 * The maximum concurrent tasks allowed.
 	 */
 	@Min(1)
 	private int maximumConcurrentTasks = 20;
 
 	private String javaOpts;
+
+	private Optional<Map<String, String>> env = Optional.empty();
 
 	public Set<String> getServices() {
 		return services;
@@ -394,10 +407,14 @@ public class CloudFoundryDeploymentProperties {
 	}
 
 	public Map<String, String> getEnv() {
-		return Collections.unmodifiableMap(env);
+		return env.orElseGet(Collections::emptyMap);
 	}
 
-	public void setEnv(Map<String, String> env) {
-		this.env = env;
+	public void setEnv(@NotNull Map<String, String> env) {
+		this.env.map(e -> {
+					log.error("Environment is immutable. New entries have not been applied");
+					return this.env;
+				}
+		).orElse(this.env = Optional.of(Collections.unmodifiableMap(env)));
 	}
 }

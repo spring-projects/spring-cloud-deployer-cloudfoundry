@@ -164,8 +164,8 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	@Override
-	protected Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
-		Map<String, String> envVariables = super.getEnvironmentVariables(deploymentId, request);
+	protected Map<String, String> mergeEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
+		Map<String, String> envVariables = super.mergeEnvironmentVariables(deploymentId, request);
 		envVariables.putAll(getCommandLineArguments(request));
 		String group = request.getDeploymentProperties().get(AppDeployer.GROUP_PROPERTY_KEY);
 		if (StringUtils.hasText(group)) {
@@ -356,7 +356,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 		ApplicationManifest.Builder manifest = ApplicationManifest.builder()
 			.path(getApplication(request)) // Only one of the two is non-null
 			.disk(diskQuota(request))
-			.environmentVariables(getEnvironmentVariables(deploymentId, request))
+			.environmentVariables(mergeEnvironmentVariables(deploymentId, request))
 			.healthCheckType(healthCheck(request))
 			.healthCheckHttpEndpoint(healthCheckEndpoint(request))
 			.timeout(healthCheckTimeout(request))
