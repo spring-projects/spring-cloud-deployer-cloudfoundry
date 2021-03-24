@@ -235,7 +235,7 @@ public class CloudFoundryTaskLauncherTests {
 		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
 					Collections.EMPTY_MAP), resource, Collections.EMPTY_MAP);
 
-		Map<String, String> env =  launcher.getEnvironmentVariables("test-application-id", appDeploymentRequest);
+		Map<String, String> env =  launcher.mergeEnvironmentVariables("test-application-id", appDeploymentRequest);
 		MatcherAssert.assertThat(env, hasEntry(CfEnvConfigurer.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, CfEnvConfigurer.ENABLED_FALSE));
 		MatcherAssert.assertThat(env, hasKey(CoreMatchers.equalTo("SPRING_APPLICATION_JSON")));
 		ObjectMapper objectMapper = new ObjectMapper();
