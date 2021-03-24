@@ -103,7 +103,7 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 				logger.info("Task {} launch successful", request.getDefinition().getName());
 			})
 			.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
-			.doOnSuccessOrError((r, e) -> {
+			.doOnTerminate(() -> {
 				if (pushTaskAppsEnabled()) {
 					deleteLocalApplicationResourceFile(request);
 				}
@@ -245,7 +245,7 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 				.buildpacks(buildpacks(request))
 				.command("echo '*** First run of container to allow droplet creation.***' && sleep 300")
 				.disk(diskQuota(request))
-				.environmentVariables(getEnvironmentVariables(name, request))
+				.environmentVariables(mergeEnvironmentVariables(name, request))
 				.healthCheckType(ApplicationHealthCheck.NONE)
 				.memory(memory(request))
 				.name(name)

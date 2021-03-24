@@ -340,8 +340,12 @@ class AbstractCloudFoundryDeployer {
 		return deleted;
 	}
 
-	protected Map<String, String> getEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
-		Map<String, String> envVariables = new HashMap<>();
+	/*
+	 * Merge environment variables from global DeploymentProperties, application properties, and
+	 * environment variables declared in ApplicationDeploymentRequest
+	 */
+	protected Map<String, String> mergeEnvironmentVariables(String deploymentId, AppDeploymentRequest request) {
+		Map<String, String> envVariables = new HashMap<>(deploymentProperties.getEnv());
 		envVariables.putAll(getApplicationProperties(deploymentId, request));
 		envVariables.putAll(getDeclaredEnvironmentVariables(request));
 		String javaOpts = javaOpts(request);
@@ -351,12 +355,11 @@ class AbstractCloudFoundryDeployer {
 
 		if (hasCfEnv(request.getResource())) {
 			Map<String, String> env =
-					CfEnvConfigurer.disableJavaBuildPackAutoReconfiguration(deploymentProperties.getEnv());
+					CfEnvConfigurer.disableJavaBuildPackAutoReconfiguration(envVariables);
 			//Only append to existing spring profiles active
 			env.putAll(CfEnvConfigurer.activateCloudProfile(env, null));
-			deploymentProperties.setEnv(env);
+			envVariables.putAll(env);
 		}
-		envVariables.putAll(deploymentProperties.getEnv());
 		return envVariables;
 	}
 
