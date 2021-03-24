@@ -103,7 +103,7 @@ public class CloudFoundryTaskLauncher extends AbstractCloudFoundryTaskLauncher {
 				logger.info("Task {} launch successful", request.getDefinition().getName());
 			})
 			.doOnError(logError(String.format("Task %s launch failed", request.getDefinition().getName())))
-			.doOnSuccessOrError((r, e) -> {
+			.doOnTerminate(() -> {
 				if (pushTaskAppsEnabled()) {
 					deleteLocalApplicationResourceFile(request);
 				}

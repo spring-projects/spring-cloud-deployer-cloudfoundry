@@ -187,11 +187,6 @@ public class CloudFoundryDeploymentProperties {
 	private boolean autoDeleteMavenArtifacts = true;
 
 	/**
-	 * A map containing environment variables.
-	 */
-	private Map<String, String> env = Collections.emptyMap();
-
-	/**
 	 * The maximum concurrent tasks allowed.
 	 */
 	@Min(1)
@@ -391,13 +386,5 @@ public class CloudFoundryDeploymentProperties {
 
 	public void setAutoDeleteMavenArtifacts(boolean autoDeleteMavenArtifacts) {
 		this.autoDeleteMavenArtifacts = autoDeleteMavenArtifacts;
-	}
-
-	public Map<String, String> getEnv() {
-		return Collections.unmodifiableMap(env);
-	}
-
-	public void setEnv(Map<String, String> env) {
-		this.env = env;
 	}
 }

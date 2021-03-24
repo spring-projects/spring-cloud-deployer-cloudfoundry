@@ -350,12 +350,11 @@ class AbstractCloudFoundryDeployer {
 
 		if (hasCfEnv(request.getResource())) {
 			Map<String, String> env =
-					CfEnvConfigurer.disableJavaBuildPackAutoReconfiguration(deploymentProperties.getEnv());
+					CfEnvConfigurer.disableJavaBuildPackAutoReconfiguration(envVariables);
 			//Only append to existing spring profiles active
 			env.putAll(CfEnvConfigurer.activateCloudProfile(env, null));
-			deploymentProperties.setEnv(env);
+			envVariables.putAll(env);
 		}
-		envVariables.putAll(deploymentProperties.getEnv());
 		return envVariables;
 	}
 
