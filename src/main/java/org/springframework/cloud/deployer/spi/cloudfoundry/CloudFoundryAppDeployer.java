@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import org.cloudfoundry.client.v2.ClientV2Exception;
 import org.cloudfoundry.doppler.LogMessage;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
@@ -44,6 +45,7 @@ import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.Route;
 import org.cloudfoundry.operations.applications.ScaleApplicationRequest;
 import org.cloudfoundry.operations.applications.StartApplicationRequest;
+import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -52,6 +54,7 @@ import reactor.cache.CacheMono;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Signal;
+import reactor.util.retry.Retry;
 
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppScaleRequest;
@@ -404,6 +407,42 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnError(e -> logger.error("Error: {} creating app {}", e.getMessage(), deploymentId));
 	}
 
+	private Mono<Void> requestBind(BindServiceInstanceRequest bindRequest) {
+		// defer so that new reques gets created when retry does re-sub
+		return Mono.defer(() -> this.operations.services().bind(bindRequest))
+			.doOnError(e -> {
+				if (e instanceof ClientV2Exception) {
+					ClientV2Exception ce = (ClientV2Exception) e;
+					if (ce.getCode() == 10001) {
+						logger.warn("Retry service bind due to concurrency error");
+					}
+					else {
+						logger.warn("Received ClientV2Exception error from cf", ce);
+					}
+				}
+				else {
+					logger.warn("Received error from cf", e);
+				}
+			})
+			// check expected code indicating concurrency error, aka
+			// CF-ConcurrencyError(10001): The service broker could not perform this operation in parallel with other running operations
+			// and retry those and let other errors to pass and fail fast
+			.retryWhen(Retry.withThrowable(reactor.retry.Retry.onlyIf(c -> {
+					if (c.exception() instanceof ClientV2Exception) {
+						ClientV2Exception e = (ClientV2Exception) c.exception();
+						if (e.getCode() == 10001) {
+							return true;
+						}
+					}
+					return false;
+				})
+				// for now try 30 seconds and do some jitter to limit concurrency issues
+				.timeout(Duration.ofSeconds(30))
+				.randomBackoff(Duration.ofSeconds(1), Duration.ofSeconds(5))
+				.doOnRetry(c -> logger.debug("Retrying cf call for {}", bindRequest))
+			));
+	}
+
 	private Mono<Void> pushApplicationWithServiceParameters(ApplicationManifest manifest,
 		AppDeploymentRequest request, String deploymentId) {
 
@@ -417,8 +456,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 			.doOnError(e -> logger.error(String.format("Error creating app %s.  Exception Message %s", deploymentId, e.getMessage())))
 
 			.thenMany(Flux.fromStream(bindParameterizedServiceInstanceRequests(request, deploymentId)))
-			.flatMap(bindRequest -> this.operations.services()
-				.bind(bindRequest)
+			.flatMap(bindRequest -> this.requestBind(bindRequest)
 				.doOnSuccess(bv -> logger.info("Done binding service {} for {}", bindRequest.getServiceInstanceName(), deploymentId))
 				.doOnError(e -> logger.error("Error: {} binding service {}", e.getMessage(), bindRequest.getServiceInstanceName())))
 
