@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.compress.utils.Sets;
+import org.cloudfoundry.client.v2.ClientV2Exception;
 import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.ApplicationDetail;
 import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
@@ -311,6 +314,70 @@ public class CloudFoundryAppDeployerTests {
 								SERVICES_PROPERTY_KEY, "'test-service-3 foo:bar'")));
 
 		assertThat(deploymentId, equalTo("test-application-id"));
+	}
+
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deployWithServiceParametersAndBindingError() throws Exception {
+		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
+
+		given(this.applicationNameGenerator.generateAppName("test-application")).willReturn("test-application-id");
+		AtomicInteger count = new AtomicInteger();
+		CountDownLatch okLatch = new CountDownLatch(1);
+		ClientV2Exception e = new ClientV2Exception(500, 10001,
+				"The service broker could not perform this operation in parallel with other running operations",
+				"CF-ConcurrencyError");
+		// fail 2 times
+		given(this.services.bind(any(BindServiceInstanceRequest.class)))
+			.will(x -> {
+				if (count.getAndIncrement() < 2) {
+					return Mono.error(e);
+				}
+				okLatch.countDown();
+				return Mono.empty();
+			});
+		given(this.applications.start(any(StartApplicationRequest.class)))
+				.willReturn(Mono.empty());
+
+		givenRequestGetApplication("test-application-id", Mono.error(new IllegalArgumentException()), Mono.just(
+				ApplicationDetail.builder()
+						.diskQuota(0)
+						.id("test-application-id")
+						.instances(1)
+						.memoryLimit(0)
+						.name("test-application")
+						.requestedState("RUNNING")
+						.runningInstances(0)
+						.stack("test-stack")
+						.build()));
+
+		givenRequestPushApplication(PushApplicationManifestRequest.builder()
+				.manifest(ApplicationManifest.builder()
+						.path(resource.getFile().toPath())
+						.buildpack(deploymentProperties.getBuildpack())
+						.disk(1024)
+						.environmentVariables(defaultEnvironmentVariables())
+						.instances(1)
+						.memory(1024)
+						.name("test-application-id")
+						.service("test-service-2")
+						.service("test-service-1")
+						.build())
+				.stagingTimeout(this.deploymentProperties.getStagingTimeout())
+				.startupTimeout(this.deploymentProperties.getStartupTimeout())
+				.build(), Mono.empty());
+
+		String deploymentId = this.deployer.deploy(
+				new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
+						Collections.singletonMap(
+								SERVICES_PROPERTY_KEY, "'test-service-3 foo:bar'")));
+
+		assertThat(deploymentId, equalTo("test-application-id"));
+		// deploy is actually subscribe and forget so need to wait and
+		// check that we got retries.
+		assertThat(okLatch.await(30, TimeUnit.SECONDS), equalTo(true));
+		assertThat(count.get(), equalTo(3));
 	}
 
 	@SuppressWarnings("unchecked")
