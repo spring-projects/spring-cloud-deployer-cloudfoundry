@@ -109,5 +109,12 @@ local.properties
 .recommenders/
 
 .DS_Store
-.vscode/
 .jfrog/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
