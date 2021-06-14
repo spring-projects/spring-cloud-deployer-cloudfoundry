@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,10 +62,8 @@ import org.cloudfoundry.operations.applications.GetApplicationRequest;
 import org.cloudfoundry.operations.applications.PushApplicationManifestRequest;
 import org.cloudfoundry.operations.applications.StopApplicationRequest;
 import org.cloudfoundry.operations.services.Services;
-import org.hamcrest.CoreMatchers;
-import org.hamcrest.MatcherAssert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -81,10 +79,8 @@ import org.springframework.cloud.deployer.spi.util.ByteSizeUtils;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.collection.IsMapContaining.hasEntry;
-import static org.hamcrest.collection.IsMapContaining.hasKey;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -128,7 +124,7 @@ public class CloudFoundryTaskLauncherTests {
 
 	private Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");;
 
-	@Before
+	@BeforeEach
 	public void setUp() {
 		MockitoAnnotations.initMocks(this);
 		given(this.tasks.list(any())).willReturn(this.runningTasksResponse());
@@ -176,7 +172,7 @@ public class CloudFoundryTaskLauncherTests {
 
 	@Test
 	public void currentExecutionCount() {
-		assertThat(this.launcher.getRunningTaskExecutionCount(), equalTo(this.TASK_EXECUTION_COUNT));
+		assertThat(this.launcher.getRunningTaskExecutionCount()).isEqualTo(this.TASK_EXECUTION_COUNT);
 	}
 
 	@Test
@@ -184,7 +180,7 @@ public class CloudFoundryTaskLauncherTests {
 		setupExistingAppSuccessful();
 		String taskId = this.launcher.launch(defaultRequest());
 
-		assertThat(taskId, equalTo("test-task-id"));
+		assertThat(taskId).isEqualTo("test-task-id");
 	}
 
 	@Test
@@ -192,16 +188,15 @@ public class CloudFoundryTaskLauncherTests {
 		setupExistingAppSuccessful();
 		SummaryApplicationResponse response = this.launcher.stage(defaultRequest());
 
-		assertThat(response.getId(), equalTo("test-application-id"));
-		assertThat(response.getDetectedStartCommand(), equalTo("test-command"));
+		assertThat(response.getId()).isEqualTo("test-application-id");
+		assertThat(response.getDetectedStartCommand()).isEqualTo("test-command");
 	}
 
 	@Test
 	public void launchTaskWithNonExistentApplication() throws IOException {
 		setupTaskWithNonExistentApplication(this.resource);
 		String taskId = this.launcher.launch(defaultRequest());
-
-		assertThat(taskId, equalTo("test-task-id"));
+		assertThat(taskId).isEqualTo("test-task-id");
 	}
 
 	@Test
@@ -209,15 +204,16 @@ public class CloudFoundryTaskLauncherTests {
 		setupExistingAppSuccessful();
 		deploymentProperties.setPushTaskAppsEnabled(false);
 		String taskId = this.launcher.launch(defaultRequest());
-		assertThat(taskId, equalTo("test-task-id"));
+		assertThat(taskId).isEqualTo("test-task-id");
 	}
 
-	@Test(expected = IllegalStateException.class)
+	@Test
 	public void launchNonExistingTaskApplicationWithPushDisabled() throws IOException {
 		setupTaskWithNonExistentApplication(this.resource);
 		deploymentProperties.setPushTaskAppsEnabled(false);
-		String taskId = this.launcher.launch(defaultRequest());
-		assertThat(taskId, equalTo("test-task-id"));
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(IllegalStateException.class);
 	}
 
 	@Test
@@ -225,82 +221,103 @@ public class CloudFoundryTaskLauncherTests {
 		setupTaskWithNonExistentApplication(this.resource);
 
 		SummaryApplicationResponse response = this.launcher.stage(defaultRequest());
-		assertThat(response.getId(), equalTo("test-application-id"));
-		assertThat(response.getDetectedStartCommand(), equalTo("test-command"));
+		assertThat(response.getId()).isEqualTo("test-application-id");
+		assertThat(response.getDetectedStartCommand()).isEqualTo("test-command");
 	}
 
 	@Test
 	public void automaticallyConfigureForCfEnv() throws JsonProcessingException {
 		Resource resource = new FileSystemResource("src/test/resources/log-sink-rabbit-3.0.0.BUILD-SNAPSHOT.jar");
 		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
-					Collections.EMPTY_MAP), resource, Collections.EMPTY_MAP);
+					Collections.emptyMap()), resource, Collections.emptyMap());
 
 		Map<String, String> env =  launcher.mergeEnvironmentVariables("test-application-id", appDeploymentRequest);
-		MatcherAssert.assertThat(env, hasEntry(CfEnvConfigurer.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, CfEnvConfigurer.ENABLED_FALSE));
-		MatcherAssert.assertThat(env, hasKey(CoreMatchers.equalTo("SPRING_APPLICATION_JSON")));
+		// MatcherAssert.assertThat(env, hasEntry(CfEnvConfigurer.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, CfEnvConfigurer.ENABLED_FALSE));
+		// MatcherAssert.assertThat(env, hasKey(CoreMatchers.equalTo("SPRING_APPLICATION_JSON")));
+		// ObjectMapper objectMapper = new ObjectMapper();
+		// Map<String, String> saj = objectMapper.readValue(env.get("SPRING_APPLICATION_JSON"),HashMap.class);
+		// MatcherAssert.assertThat(saj, hasEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, CfEnvConfigurer.CLOUD_PROFILE_NAME));
+		assertThat(env).containsEntry(CfEnvConfigurer.JBP_CONFIG_SPRING_AUTO_RECONFIGURATION, CfEnvConfigurer.ENABLED_FALSE);
+		assertThat(env).containsKeys("SPRING_APPLICATION_JSON");
 		ObjectMapper objectMapper = new ObjectMapper();
-		Map<String, String> saj = objectMapper.readValue(env.get("SPRING_APPLICATION_JSON"),HashMap.class);
-		MatcherAssert.assertThat(saj, hasEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, CfEnvConfigurer.CLOUD_PROFILE_NAME));
+		Map<String, String> saj = objectMapper.readValue(env.get("SPRING_APPLICATION_JSON"), HashMap.class);
+		assertThat(saj).containsEntry(CfEnvConfigurer.SPRING_PROFILES_ACTIVE_FQN, CfEnvConfigurer.CLOUD_PROFILE_NAME);
 	}
 
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void launchTaskWithNonExistentApplicationAndApplicationListingFails() {
 		givenRequestListApplications(Flux.error(new UnsupportedOperationException()));
 
-		this.launcher.launch(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void stageTaskWithNonExistentApplicationAndApplicationListingFails() {
 		givenRequestListApplications(Flux.error(new UnsupportedOperationException()));
 
-		this.launcher.stage(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.stage(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void launchTaskWithNonExistentApplicationAndPushFails() throws IOException {
 		setupFailedPush(this.resource);
 
-		this.launcher.launch(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void stageTaskWithNonExistentApplicationAndPushFails() throws IOException {
 		setupFailedPush(this.resource);
 
-		this.launcher.stage(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.stage(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void launchTaskWithNonExistentApplicationAndRetrievingApplicationSummaryFails() throws IOException {
 		setupTaskWithNonExistentApplicationAndRetrievingApplicationSummaryFails(this.resource);
 
-		this.launcher.launch(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void stageTaskWithNonExistentApplicationAndRetrievingApplicationSummaryFails() throws IOException {
 		setupTaskWithNonExistentApplicationAndRetrievingApplicationSummaryFails(this.resource);
 
-		this.launcher.stage(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.stage(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void launchTaskWithNonExistentApplicationAndStoppingApplicationFails() throws IOException {
 		setupTaskWithNonExistentApplicationAndStoppingApplicationFails(this.resource);
 
-		this.launcher.launch(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void stageTaskWithNonExistentApplicationAndStoppingApplicationFails() throws IOException {
 		setupTaskWithNonExistentApplicationAndStoppingApplicationFails(this.resource);
 
-		this.launcher.stage(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.stage(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void launchTaskWithNonExistentApplicationAndTaskCreationFails() throws IOException {
 		givenRequestListApplications(Flux.empty());
 
@@ -346,7 +363,9 @@ public class CloudFoundryTaskLauncherTests {
 				"test-application",
 				Mono.error(new UnsupportedOperationException()));
 
-		this.launcher.launch(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
 	@Test
@@ -356,7 +375,7 @@ public class CloudFoundryTaskLauncherTests {
 			Collections.singletonMap(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "test-service-instance-2"));
 
 		String taskId = this.launcher.launch(request);
-		assertThat(taskId, equalTo("test-task-id"));
+		assertThat(taskId).isEqualTo("test-task-id");
 	}
 
 	@Test
@@ -366,8 +385,8 @@ public class CloudFoundryTaskLauncherTests {
 				Collections.singletonMap(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "test-service-instance-2"));
 
 		SummaryApplicationResponse response = this.launcher.stage(request);
-		assertThat(response.getId(), equalTo("test-application-id"));
-		assertThat(response.getDetectedStartCommand(), equalTo("test-command"));
+		assertThat(response.getId()).isEqualTo("test-application-id");
+		assertThat(response.getDetectedStartCommand()).isEqualTo("test-command");
 	}
 
 	@Test
@@ -379,7 +398,7 @@ public class CloudFoundryTaskLauncherTests {
 
 		String taskId = this.launcher.launch(request);
 
-		assertThat(taskId, equalTo("test-task-id"));
+		assertThat(taskId).isEqualTo("test-task-id");
 	}
 	@Test
 	public void stageTaskWithNonExistentApplicationBindingThreeServices() throws IOException {
@@ -389,22 +408,26 @@ public class CloudFoundryTaskLauncherTests {
 						"test-service-instance-1,test-service-instance-2,test-service-instance-3"));
 
 		SummaryApplicationResponse response = this.launcher.stage(request);
-		assertThat(response.getId(), equalTo("test-application-id"));
-		assertThat(response.getDetectedStartCommand(), equalTo("test-command"));
+		assertThat(response.getId()).isEqualTo("test-application-id");
+		assertThat(response.getDetectedStartCommand()).isEqualTo("test-command");
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void launchTaskWithNonExistentApplicationRetrievalFails() throws IOException {
 		setupTaskWithNonExistentApplicationRetrievalFails(this.resource);
 
-		this.launcher.launch(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.launch(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
-	@Test(expected = UnsupportedOperationException.class)
+	@Test
 	public void stageTaskWithNonExistentApplicationRetrievalFails() throws IOException {
 		setupTaskWithNonExistentApplicationRetrievalFails(this.resource);
 
-		this.launcher.stage(defaultRequest());
+		assertThatThrownBy(() -> {
+			this.launcher.stage(defaultRequest());
+		}).isInstanceOf(UnsupportedOperationException.class);
 	}
 
 	@Test
@@ -423,7 +446,7 @@ public class CloudFoundryTaskLauncherTests {
 
 		TaskStatus status = this.launcher.status("test-task-id");
 
-		assertThat(status.getState(), equalTo(LaunchState.complete));
+		assertThat(status.getState()).isEqualTo(LaunchState.complete);
 	}
 
 	@Test
@@ -445,7 +468,7 @@ public class CloudFoundryTaskLauncherTests {
 				.state(TaskState.SUCCEEDED)
 				.build())));
 
-		assertThat(this.launcher.status("test-task-id").getState(), equalTo(LaunchState.error));
+		assertThat(this.launcher.status("test-task-id").getState()).isEqualTo(LaunchState.error);
 	}
 
 	@Test
@@ -467,7 +490,7 @@ public class CloudFoundryTaskLauncherTests {
 				.detectedStartCommand("command-val")
 				.build(),
 				request);
-		assertThat(command, equalTo("command-val test-command-arg-1"));
+		assertThat(command).isEqualTo("command-val test-command-arg-1");
 
 		List<String> args = new ArrayList<>();
 		args.add("test-command-arg-1");
@@ -486,7 +509,7 @@ public class CloudFoundryTaskLauncherTests {
 						.detectedStartCommand("command-val")
 						.build(),
 				request);
-		assertThat(command, equalTo("command-val test-command-arg-1 a=b run.id=1 run.id\\\\\\(long\\\\\\)=1 run.id\\\\\\(long=1 run.id\\\\\\)=1"));
+		assertThat(command).isEqualTo("command-val test-command-arg-1 a=b run.id=1 run.id\\\\\\(long\\\\\\)=1 run.id\\\\\\(long=1 run.id\\\\\\)=1");
 	}
 
 	private void givenRequestCancelTask(String taskId, Mono<CancelTaskResponse> response) {
