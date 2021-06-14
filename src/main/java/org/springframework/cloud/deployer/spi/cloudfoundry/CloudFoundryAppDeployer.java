@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-
 import org.cloudfoundry.client.v2.ClientV2Exception;
 import org.cloudfoundry.doppler.LogMessage;
 import org.cloudfoundry.operations.CloudFoundryOperations;
@@ -49,7 +48,6 @@ import org.cloudfoundry.operations.services.BindServiceInstanceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
-
 import reactor.cache.CacheMono;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -64,17 +62,6 @@ import org.springframework.cloud.deployer.spi.app.MultiStateAppDeployer;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
 import org.springframework.cloud.deployer.spi.core.RuntimeEnvironmentInfo;
 import org.springframework.util.StringUtils;
-
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_TIMEOUT_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTES_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PROPERTY;
-
 
 /**
  * A deployer that targets Cloud Foundry using the public API.
@@ -311,8 +298,9 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private String domain(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(DOMAIN_PROPERTY))
-			.orElse(this.deploymentProperties.getDomain());
+		return Optional
+				.ofNullable(request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.DOMAIN_PROPERTY))
+				.orElse(this.deploymentProperties.getDomain());
 	}
 
 
@@ -328,25 +316,30 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private ApplicationHealthCheck healthCheck(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(HEALTHCHECK_PROPERTY_KEY))
-			.map(this::toApplicationHealthCheck)
-			.orElse(this.deploymentProperties.getHealthCheck());
+		return Optional
+				.ofNullable(request.getDeploymentProperties()
+						.get(CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY))
+				.map(this::toApplicationHealthCheck).orElse(this.deploymentProperties.getHealthCheck());
 	}
 
 	private String healthCheckEndpoint(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY))
+		return Optional
+				.ofNullable(request.getDeploymentProperties()
+						.get(CloudFoundryDeploymentProperties.HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY))
 				.orElse(this.deploymentProperties.getHealthCheckHttpEndpoint());
 	}
 
 	private Integer healthCheckTimeout(AppDeploymentRequest request) {
-		String timeoutString = request.getDeploymentProperties()
-				.getOrDefault(HEALTHCHECK_TIMEOUT_PROPERTY_KEY, this.deploymentProperties.getHealthCheckTimeout());
+		String timeoutString = request.getDeploymentProperties().getOrDefault(
+				CloudFoundryDeploymentProperties.HEALTHCHECK_TIMEOUT_PROPERTY_KEY,
+				this.deploymentProperties.getHealthCheckTimeout());
 		return Integer.parseInt(timeoutString);
 	}
 
 	private String host(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(HOST_PROPERTY))
-			.orElse(this.deploymentProperties.getHost());
+		return Optional
+				.ofNullable(request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.HOST_PROPERTY))
+				.orElse(this.deploymentProperties.getHost());
 	}
 
 	private int instances(AppDeploymentRequest request) {
@@ -517,7 +510,7 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private String routePath(AppDeploymentRequest request) {
-		String routePath = request.getDeploymentProperties().get(ROUTE_PATH_PROPERTY);
+		String routePath = request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY);
 		if (StringUtils.hasText(routePath) && !routePath.startsWith("/")) {
 			throw new IllegalArgumentException(
 					"Cloud Foundry routes must start with \"/\". Route passed = [" + routePath + "].");
@@ -526,13 +519,14 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private String route(AppDeploymentRequest request) {
-		return request.getDeploymentProperties().get(ROUTE_PROPERTY);
+		return request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.ROUTE_PROPERTY);
 	}
 
     private Set<String> routes(AppDeploymentRequest request) {
         Set<String> routes = new HashSet<>();
         routes.addAll(this.deploymentProperties.getRoutes());
-        routes.addAll(StringUtils.commaDelimitedListToSet(request.getDeploymentProperties().get(ROUTES_PROPERTY)));
+		routes.addAll(StringUtils.commaDelimitedListToSet(
+				request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.ROUTES_PROPERTY)));
         return routes;
     }
 
@@ -546,8 +540,8 @@ public class CloudFoundryAppDeployer extends AbstractCloudFoundryDeployer implem
 	}
 
 	private Boolean toggleNoRoute(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(NO_ROUTE_PROPERTY))
-			.map(Boolean::valueOf)
-			.orElse(null);
+		return Optional
+				.ofNullable(request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY))
+				.map(Boolean::valueOf).orElse(null);
 	}
 }

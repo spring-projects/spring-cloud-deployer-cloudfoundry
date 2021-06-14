@@ -33,7 +33,6 @@ import org.cloudfoundry.operations.applications.ApplicationHealthCheck;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES;
 
 /**
  * Holds configuration properties for specifying what resources and services an app
@@ -49,37 +48,37 @@ public class CloudFoundryDeploymentProperties {
 
 	private static final Log log = LogFactory.getLog(CloudFoundryDeploymentProperties.class);
 
-	public static final String SERVICES_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".services";
+	public static final String SERVICES_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".services";
 
-	public static final String HEALTHCHECK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check";
+	public static final String HEALTHCHECK_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".health-check";
 
-	public static final String HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES
+	public static final String HEALTHCHECK_HTTP_ENDPOINT_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES
 			+ ".health-check-http-endpoint";
 
-	public static final String HEALTHCHECK_TIMEOUT_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".health-check-timeout";
+	public static final String HEALTHCHECK_TIMEOUT_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".health-check-timeout";
 
-	public static final String ROUTE_PATH_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route-path";
+	public static final String ROUTE_PATH_PROPERTY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".route-path";
 
-	public static final String ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".route";
+	public static final String ROUTE_PROPERTY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".route";
 
-	public static final String ROUTES_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".routes";
+	public static final String ROUTES_PROPERTY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".routes";
 
-	public static final String NO_ROUTE_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".no-route";
+	public static final String NO_ROUTE_PROPERTY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".no-route";
 
-	public static final String HOST_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".host";
+	public static final String HOST_PROPERTY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".host";
 
-	public static final String DOMAIN_PROPERTY = CLOUDFOUNDRY_PROPERTIES + ".domain";
+	public static final String DOMAIN_PROPERTY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".domain";
 
-	public static final String BUILDPACK_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpack";
+	public static final String BUILDPACK_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".buildpack";
 
-	public static final String BUILDPACKS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".buildpacks";
+	public static final String BUILDPACKS_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".buildpacks";
 
-	public static final String JAVA_OPTS_PROPERTY_KEY = CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
+	public static final String JAVA_OPTS_PROPERTY_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".javaOpts";
 
-	public static final String USE_SPRING_APPLICATION_JSON_KEY = CLOUDFOUNDRY_PROPERTIES
+	public static final String USE_SPRING_APPLICATION_JSON_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES
 			+ ".use-spring-application-json";
 
-	public static final String ENV_KEY = CLOUDFOUNDRY_PROPERTIES + ".env";
+	public static final String ENV_KEY = CloudFoundryConnectionProperties.CLOUDFOUNDRY_PROPERTIES + ".env";
 
 	private static final String DEFAULT_BUILDPACK = "https://github.com/cloudfoundry/java-buildpack.git#v4.29.1";
 

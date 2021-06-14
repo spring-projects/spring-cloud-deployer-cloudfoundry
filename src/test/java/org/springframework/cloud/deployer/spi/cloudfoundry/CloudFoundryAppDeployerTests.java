@@ -78,16 +78,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-import static org.springframework.cloud.deployer.spi.app.AppDeployer.COUNT_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.app.AppDeployer.GROUP_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.DOMAIN_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ENV_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.HOST_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
 
 /**
  * Unit tests for the {@link CloudFoundryAppDeployer}.
@@ -100,7 +90,7 @@ import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDe
  */
 public class CloudFoundryAppDeployerTests {
 
-	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();;
+	private final CloudFoundryDeploymentProperties deploymentProperties = new CloudFoundryDeploymentProperties();
 
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private AppNameGenerator applicationNameGenerator;
@@ -307,7 +297,7 @@ public class CloudFoundryAppDeployerTests {
 		String deploymentId = this.deployer.deploy(
 				new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
 						Collections.singletonMap(
-								SERVICES_PROPERTY_KEY, "'test-service-3 foo:bar'")));
+								CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "'test-service-3 foo:bar'")));
 
 		assertThat(deploymentId).isEqualTo("test-application-id");
 	}
@@ -367,7 +357,7 @@ public class CloudFoundryAppDeployerTests {
 		String deploymentId = this.deployer.deploy(
 				new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
 						Collections.singletonMap(
-								SERVICES_PROPERTY_KEY, "'test-service-3 foo:bar'")));
+								CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY, "'test-service-3 foo:bar'")));
 
 		assertThat(deploymentId).isEqualTo("test-application-id");
 		// deploy is actually subscribe and forget so need to wait and
@@ -508,17 +498,17 @@ public class CloudFoundryAppDeployerTests {
 
 		AppDeploymentRequest appDeploymentRequest = new AppDeploymentRequest(new AppDefinition("test-application",
 				Collections.emptyMap()), resource,
-				FluentMap.<String, String>builder().entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
+				FluentMap.<String, String>builder().entry(CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY, "test-buildpack")
 						.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
-						.entry(DOMAIN_PROPERTY, "test-domain")
-						.entry(HEALTHCHECK_PROPERTY_KEY, "none")
-						.entry(HOST_PROPERTY, "test-host")
-						.entry(COUNT_PROPERTY_KEY, "0")
+						.entry(CloudFoundryDeploymentProperties.DOMAIN_PROPERTY, "test-domain")
+						.entry(CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY, "none")
+						.entry(CloudFoundryDeploymentProperties.HOST_PROPERTY, "test-host")
+						.entry(AppDeployer.COUNT_PROPERTY_KEY, "0")
 						.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
-						.entry(NO_ROUTE_PROPERTY, "false")
-						.entry(ROUTE_PATH_PROPERTY, "/test-route-path")
-						.entry(ENV_KEY + ".JBP_CONFIG_SPRING_AUTO_RECONFIGURATION", CfEnvConfigurer.ENABLED_FALSE)
-						.entry(ENV_KEY + ".SPRING_PROFILES_ACTIVE", "cloud,foo")
+						.entry(CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY, "false")
+						.entry(CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY, "/test-route-path")
+						.entry(CloudFoundryDeploymentProperties.ENV_KEY + ".JBP_CONFIG_SPRING_AUTO_RECONFIGURATION", CfEnvConfigurer.ENABLED_FALSE)
+						.entry(CloudFoundryDeploymentProperties.ENV_KEY + ".SPRING_PROFILES_ACTIVE", "cloud,foo")
 						.build());
 
 		String deploymentId = deployer.deploy(appDeploymentRequest);
@@ -594,15 +584,15 @@ public class CloudFoundryAppDeployerTests {
 
 		String deploymentId = this.deployer.deploy(
 				new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
-						FluentMap.<String, String>builder().entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
+						FluentMap.<String, String>builder().entry(CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY, "test-buildpack")
 								.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
-								.entry(DOMAIN_PROPERTY, "test-domain")
-								.entry(HEALTHCHECK_PROPERTY_KEY, "none")
-								.entry(HOST_PROPERTY, "test-host")
-								.entry(COUNT_PROPERTY_KEY, "0")
+								.entry(CloudFoundryDeploymentProperties.DOMAIN_PROPERTY, "test-domain")
+								.entry(CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY, "none")
+								.entry(CloudFoundryDeploymentProperties.HOST_PROPERTY, "test-host")
+								.entry(AppDeployer.COUNT_PROPERTY_KEY, "0")
 								.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
-								.entry(NO_ROUTE_PROPERTY, "false")
-								.entry(ROUTE_PATH_PROPERTY, "/test-route-path")
+								.entry(CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY, "false")
+								.entry(CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY, "/test-route-path")
 								.build()));
 
 		assertThat(deploymentId).isEqualTo("test-application-id");
@@ -654,15 +644,15 @@ public class CloudFoundryAppDeployerTests {
 					new AppDefinition("test-application", Collections.emptyMap()),
 					resource,
 					FluentMap.<String, String>builder()
-							.entry(BUILDPACK_PROPERTY_KEY, "test-buildpack")
+							.entry(CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY, "test-buildpack")
 							.entry(AppDeployer.DISK_PROPERTY_KEY, "0")
-							.entry(DOMAIN_PROPERTY, "test-domain")
-							.entry(HEALTHCHECK_PROPERTY_KEY, "none")
-							.entry(HOST_PROPERTY, "test-host")
-							.entry(COUNT_PROPERTY_KEY, "0")
+							.entry(CloudFoundryDeploymentProperties.DOMAIN_PROPERTY, "test-domain")
+							.entry(CloudFoundryDeploymentProperties.HEALTHCHECK_PROPERTY_KEY, "none")
+							.entry(CloudFoundryDeploymentProperties.HOST_PROPERTY, "test-host")
+							.entry(AppDeployer.COUNT_PROPERTY_KEY, "0")
 							.entry(AppDeployer.MEMORY_PROPERTY_KEY, "0")
-							.entry(NO_ROUTE_PROPERTY, "false")
-							.entry(ROUTE_PATH_PROPERTY, "test-route-path")
+							.entry(CloudFoundryDeploymentProperties.NO_ROUTE_PROPERTY, "false")
+							.entry(CloudFoundryDeploymentProperties.ROUTE_PATH_PROPERTY, "test-route-path")
 							.build()));
 
 			}).isInstanceOf(IllegalArgumentException.class).as("Illegal Argument exception is expected.");
@@ -850,7 +840,7 @@ public class CloudFoundryAppDeployerTests {
 
 		String deploymentId = this.deployer.deploy(
 				new AppDeploymentRequest(new AppDefinition("test-application", Collections.emptyMap()), resource,
-						Collections.singletonMap(GROUP_PROPERTY_KEY, "test-group")));
+						Collections.singletonMap(AppDeployer.GROUP_PROPERTY_KEY, "test-group")));
 
 		assertThat(deploymentId).isEqualTo("test-group-test-application-id");
 	}

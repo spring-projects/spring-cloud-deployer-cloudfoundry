@@ -73,6 +73,7 @@ import org.springframework.cloud.deployer.spi.scheduler.CreateScheduleException;
 import org.springframework.cloud.deployer.spi.scheduler.ScheduleInfo;
 import org.springframework.cloud.deployer.spi.scheduler.ScheduleRequest;
 import org.springframework.cloud.deployer.spi.scheduler.SchedulerException;
+import org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
@@ -80,7 +81,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys.CRON_EXPRESSION;
 
 /**
  * Test the core features of the Spring Cloud Scheduler implementation.
@@ -182,7 +182,7 @@ public class CloudFoundryAppSchedulerTests {
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
 		Map<String, String> badCronMap = new HashMap<>();
-		badCronMap.put(CRON_EXPRESSION, BAD_CRON_EXPRESSION);
+		badCronMap.put(SchedulerPropertyKeys.CRON_EXPRESSION, BAD_CRON_EXPRESSION);
 
 		ScheduleRequest request = new ScheduleRequest(definition, badCronMap, null, "test-schedule", resource);
 
@@ -200,7 +200,7 @@ public class CloudFoundryAppSchedulerTests {
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
 		Map<String, String> cronMap = new HashMap<>();
-		cronMap.put(CRON_EXPRESSION, DEFAULT_CRON_EXPRESSION);
+		cronMap.put(SchedulerPropertyKeys.CRON_EXPRESSION, DEFAULT_CRON_EXPRESSION);
 
 		ScheduleRequest request = new ScheduleRequest(definition, cronMap, null,
 				"j1-scdf-itcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisis" +
@@ -228,7 +228,7 @@ public class CloudFoundryAppSchedulerTests {
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
 		Map<String, String> badCronMap = new HashMap<>();
-		badCronMap.put(CRON_EXPRESSION, CRON_EXPRESSION_FOR_SIX_MIN);
+		badCronMap.put(SchedulerPropertyKeys.CRON_EXPRESSION, CRON_EXPRESSION_FOR_SIX_MIN);
 		ScheduleRequest request = new ScheduleRequest(definition, badCronMap, null, "test-schedule", resource);
 
 		assertThatThrownBy(() -> {
@@ -363,7 +363,7 @@ public class CloudFoundryAppSchedulerTests {
 		assertThat(scheduleInfo.getScheduleName()).isEqualTo(scheduleName);
 		if (expression != null) {
 			assertThat(scheduleInfo.getScheduleProperties().size()).isEqualTo(1);
-			assertThat(scheduleInfo.getScheduleProperties().get(CRON_EXPRESSION)).isEqualTo(expression);
+			assertThat(scheduleInfo.getScheduleProperties().get(SchedulerPropertyKeys.CRON_EXPRESSION)).isEqualTo(expression);
 		}
 		else {
 			assertThat(scheduleInfo.getScheduleProperties().size()).isEqualTo(0);
@@ -596,8 +596,8 @@ public class CloudFoundryAppSchedulerTests {
 	}
 
 	private Map<String, String> getDefaultScheduleProperties() {
-		Map result = new HashMap<String, String>();
-		result.put(CRON_EXPRESSION, DEFAULT_CRON_EXPRESSION);
+		Map<String, String> result = new HashMap<>();
+		result.put(SchedulerPropertyKeys.CRON_EXPRESSION, DEFAULT_CRON_EXPRESSION);
 		return result;
 	}
 

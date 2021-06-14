@@ -122,7 +122,7 @@ public class CloudFoundryTaskLauncherTests {
 	@Mock(answer = Answers.RETURNS_SMART_NULLS)
 	private Tasks tasks;
 
-	private Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");;
+	private Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 	@BeforeEach
 	public void setUp() {

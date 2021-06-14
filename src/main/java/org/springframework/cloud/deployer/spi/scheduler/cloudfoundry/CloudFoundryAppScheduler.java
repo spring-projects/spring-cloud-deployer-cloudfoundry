@@ -62,7 +62,6 @@ import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
-import org.springframework.util.StringUtils;
 
 /**
  * A Cloud Foundry implementation of the Scheduler interface.

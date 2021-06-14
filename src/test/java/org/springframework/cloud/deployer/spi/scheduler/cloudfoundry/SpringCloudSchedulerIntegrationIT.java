@@ -35,20 +35,19 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
-import org.springframework.cloud.deployer.spi.scheduler.test.AbstractSchedulerIntegrationJUnit5Tests;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
 import org.springframework.cloud.deployer.spi.scheduler.Scheduler;
 import org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys;
+import org.springframework.cloud.deployer.spi.scheduler.test.AbstractSchedulerIntegrationJUnit5Tests;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-
-import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE;
 
 /**
  * Integration tests for CloudFoundryAppScheduler.
@@ -56,7 +55,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  * @author Glenn Renfro
  */
 @ExtendWith(SpringExtension.class)
-@SpringBootTest(webEnvironment = NONE)
+@SpringBootTest(webEnvironment = WebEnvironment.NONE)
 @ContextConfiguration(classes = {SpringCloudSchedulerIntegrationIT.Config.class})
 public class SpringCloudSchedulerIntegrationIT extends AbstractSchedulerIntegrationJUnit5Tests {
 

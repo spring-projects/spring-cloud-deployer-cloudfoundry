@@ -57,14 +57,6 @@ import org.springframework.util.FileSystemUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.BUILDPACKS_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.ENV_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY;
-import static org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY;
-import static reactor.util.retry.Retry.withThrowable;
-
 /**
  * Base class dealing with configuration overrides on a per-deployment basis, as well as common code for apps and tasks.
  *
@@ -117,7 +109,7 @@ class AbstractCloudFoundryDeployer {
 			.collect(Collectors.toSet());
 
 		Set<String> requestServices = ServiceParser.splitServiceProperties(request.getDeploymentProperties().get
-			(SERVICES_PROPERTY_KEY))
+			(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY))
 			.stream()
 			.filter(s-> !ServiceParser.getServiceParameters(s).isPresent())
 			.collect(Collectors.toSet());
@@ -127,17 +119,18 @@ class AbstractCloudFoundryDeployer {
 	}
 
 	boolean includesServiceParameters(AppDeploymentRequest request) {
-		return
-			this.deploymentProperties.getServices().stream()
-				.anyMatch(s-> ServiceParser.getServiceParameters(s).isPresent()) ||
-				ServiceParser.splitServiceProperties(request.getDeploymentProperties().get(SERVICES_PROPERTY_KEY)).stream()
-					.anyMatch(s-> ServiceParser.getServiceParameters(s).isPresent());
+		return this.deploymentProperties.getServices().stream()
+				.anyMatch(s -> ServiceParser.getServiceParameters(s).isPresent())
+				|| ServiceParser
+						.splitServiceProperties(request.getDeploymentProperties()
+								.get(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY))
+						.stream().anyMatch(s -> ServiceParser.getServiceParameters(s).isPresent());
 	}
 
 	Stream<BindServiceInstanceRequest> bindParameterizedServiceInstanceRequests(AppDeploymentRequest request,
 		String deploymentId) {
 		return ServiceParser.splitServiceProperties(request.getDeploymentProperties().get
-			(SERVICES_PROPERTY_KEY)).stream()
+			(CloudFoundryDeploymentProperties.SERVICES_PROPERTY_KEY)).stream()
 			.filter(s-> ServiceParser.getServiceParameters(s).isPresent())
 			.map(s->
 				BindServiceInstanceRequest.builder()
@@ -158,8 +151,10 @@ class AbstractCloudFoundryDeployer {
 		// TODO: When 'buildpack' setting gets removed due to deprecation,
 		//       change this logic not ot fallback to it if 'buildpacks'
 		//       is used.
-		String buidpacksValue = request.getDeploymentProperties().get(BUILDPACKS_PROPERTY_KEY);
-		String buidpackValue = request.getDeploymentProperties().get(BUILDPACK_PROPERTY_KEY);
+		String buidpacksValue = request.getDeploymentProperties()
+				.get(CloudFoundryDeploymentProperties.BUILDPACKS_PROPERTY_KEY);
+		String buidpackValue = request.getDeploymentProperties()
+				.get(CloudFoundryDeploymentProperties.BUILDPACK_PROPERTY_KEY);
 		if (buidpacksValue != null) {
 			return StringUtils.commaDelimitedListToSet(buidpacksValue);
 		}
@@ -175,7 +170,9 @@ class AbstractCloudFoundryDeployer {
 	}
 
 	String javaOpts(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(JAVA_OPTS_PROPERTY_KEY))
+		return Optional
+				.ofNullable(
+						request.getDeploymentProperties().get(CloudFoundryDeploymentProperties.JAVA_OPTS_PROPERTY_KEY))
 				.orElse(this.deploymentProperties.getJavaOpts());
 	}
 
@@ -267,7 +264,7 @@ class AbstractCloudFoundryDeployer {
 				}
 			})
 			// let all other than timeout exception to propagate back to caller
-			.retryWhen(withThrowable(Retry.onlyIf(c -> {
+			.retryWhen(reactor.util.retry.Retry.withThrowable(Retry.onlyIf(c -> {
 					logger.debug("RetryContext for id {} iteration {} backoff {}", id,  c.iteration(), c.backoff());
 					if (c.iteration() > 5) {
 						logger.info("Stopping retry for id {} after {} iterations", id, c.iteration());
@@ -365,8 +362,10 @@ class AbstractCloudFoundryDeployer {
 
 	private Map<? extends String,? extends String> getDeclaredEnvironmentVariables(AppDeploymentRequest request) {
 		Map<String, String> env = new LinkedHashMap<>();
-		request.getDeploymentProperties().entrySet().stream().filter(e-> e.getKey().startsWith(ENV_KEY + "."))
-				.forEach(e-> env.put(e.getKey().substring(ENV_KEY.length() + 1), e.getValue()));
+		request.getDeploymentProperties().entrySet().stream()
+				.filter(e -> e.getKey().startsWith(CloudFoundryDeploymentProperties.ENV_KEY + "."))
+				.forEach(e -> env.put(e.getKey().substring(CloudFoundryDeploymentProperties.ENV_KEY.length() + 1),
+						e.getValue()));
 		return env;
 	}
 
@@ -407,9 +406,10 @@ class AbstractCloudFoundryDeployer {
 	}
 
 	private boolean useSpringApplicationJson(AppDeploymentRequest request) {
-		return Optional.ofNullable(request.getDeploymentProperties().get(USE_SPRING_APPLICATION_JSON_KEY))
-				.map(Boolean::valueOf)
-				.orElse(this.deploymentProperties.isUseSpringApplicationJson());
+		return Optional
+				.ofNullable(request.getDeploymentProperties()
+						.get(CloudFoundryDeploymentProperties.USE_SPRING_APPLICATION_JSON_KEY))
+				.map(Boolean::valueOf).orElse(this.deploymentProperties.isUseSpringApplicationJson());
 	}
 
 
