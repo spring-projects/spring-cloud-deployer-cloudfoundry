@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,10 +56,8 @@ import org.cloudfoundry.operations.applications.ApplicationSummary;
 import org.cloudfoundry.operations.applications.Applications;
 import org.cloudfoundry.operations.spaces.SpaceSummary;
 import org.cloudfoundry.operations.spaces.Spaces;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -79,7 +77,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.cloud.deployer.spi.scheduler.SchedulerPropertyKeys.CRON_EXPRESSION;
@@ -91,9 +89,6 @@ import static org.springframework.cloud.deployer.spi.scheduler.SchedulerProperty
  * @author Ilayaperumal Gopinathan
  */
 public class CloudFoundryAppSchedulerTests {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	public static final String DEFAULT_CRON_EXPRESSION = "0/5 * ? * *";
 
@@ -134,7 +129,7 @@ public class CloudFoundryAppSchedulerTests {
 
 	private CloudFoundrySchedulerProperties schedulerProperties = new CloudFoundrySchedulerProperties();
 
-	@Before
+	@BeforeEach
 	public void setUp() {
 		MockitoAnnotations.initMocks(this);
 		given(this.cloudFoundryClient.applicationsV3()).willReturn(this.applicationsV3);
@@ -156,12 +151,14 @@ public class CloudFoundryAppSchedulerTests {
 
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void testEmptySchedulerProperties() {
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 		AppDefinition definition = new AppDefinition("bar", null);
 		ScheduleRequest request = new ScheduleRequest(definition, null, null, "testschedule", resource);
-		this.cloudFoundryAppScheduler.schedule(request);
+		assertThatThrownBy(() -> {
+			this.cloudFoundryAppScheduler.schedule(request);
+		}).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
@@ -180,38 +177,29 @@ public class CloudFoundryAppSchedulerTests {
 
 	@Test
 	public void testInvalidCron() {
-		thrown.expect(CreateScheduleException.class);
-		thrown.expectMessage("Illegal characters for this position: 'FOO'");
-
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
-		Map badCronMap = new HashMap<String, String>();
+		Map<String, String> badCronMap = new HashMap<>();
 		badCronMap.put(CRON_EXPRESSION, BAD_CRON_EXPRESSION);
 
 		ScheduleRequest request = new ScheduleRequest(definition, badCronMap, null, "test-schedule", resource);
 
-		this.cloudFoundryAppScheduler.schedule(request);
-
+		assertThatThrownBy(() -> {
+			this.cloudFoundryAppScheduler.schedule(request);
+		}).isInstanceOf(CreateScheduleException.class).hasMessageContaining(
+				"Illegal characters for this position: 'FOO'");
 		assertThat(((TestJobs) this.client.jobs()).getCreateJobResponse()).isNull();
 	}
 
 	@Test
 	public void testNameTooLong() {
-		thrown.expect(CreateScheduleException.class);
-		thrown.expectMessage("Schedule can not be created because its name " +
-				"'j1-scdf-itcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisis" +
-				"longtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbe" +
-				"saidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-" +
-				"oopsitcouldbesaidthatthisislongtoowaytoo-oops12' has too many characters.  " +
-				"Schedule name length must be 255 characters or less");
-
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
-		Map cronMap = new HashMap<String, String>();
+		Map<String, String> cronMap = new HashMap<>();
 		cronMap.put(CRON_EXPRESSION, DEFAULT_CRON_EXPRESSION);
 
 		ScheduleRequest request = new ScheduleRequest(definition, cronMap, null,
@@ -220,24 +208,32 @@ public class CloudFoundryAppSchedulerTests {
 						"saidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-" +
 						"oopsitcouldbesaidthatthisislongtoowaytoo-oops12", resource);
 
-		this.cloudFoundryAppScheduler.schedule(request);
+		assertThatThrownBy(() -> {
+			this.cloudFoundryAppScheduler.schedule(request);
+		}).isInstanceOf(CreateScheduleException.class).hasMessageContaining(
+			"Schedule can not be created because its name " +
+			"'j1-scdf-itcouldbesaidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisis" +
+			"longtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-oopsitcouldbe" +
+			"saidthatthisislongtoowaytoo-oopsitcouldbesaidthatthisislongtoowaytoo-" +
+			"oopsitcouldbesaidthatthisislongtoowaytoo-oops12' has too many characters.  " +
+			"Schedule name length must be 255 characters or less");
 
 		assertThat(((TestJobs) this.client.jobs()).getCreateJobResponse()).isNull();
 	}
 
 	@Test
 	public void testSuccessJobCreateFailedSchedule() {
-		thrown.expect(CreateScheduleException.class);
-
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
-		Map badCronMap = new HashMap<String, String>();
+		Map<String, String> badCronMap = new HashMap<>();
 		badCronMap.put(CRON_EXPRESSION, CRON_EXPRESSION_FOR_SIX_MIN);
 		ScheduleRequest request = new ScheduleRequest(definition, badCronMap, null, "test-schedule", resource);
 
-		this.cloudFoundryAppScheduler.schedule(request);
+		assertThatThrownBy(() -> {
+			this.cloudFoundryAppScheduler.schedule(request);
+		}).isInstanceOf(CreateScheduleException.class);
 
 		assertThat(((TestJobs) this.client.jobs()).getCreateJobResponse()).isNull();
 	}
@@ -255,7 +251,7 @@ public class CloudFoundryAppSchedulerTests {
 		this.cloudFoundryAppScheduler.schedule(request);
 		ArgumentCaptor<AppDeploymentRequest> argumentCaptor = ArgumentCaptor.forClass(AppDeploymentRequest.class);
 		verify(this.taskLauncher).stage(argumentCaptor.capture());
-		assertEquals("TestArg", argumentCaptor.getValue().getCommandlineArguments().get(0));
+		assertThat(argumentCaptor.getValue().getCommandlineArguments().get(0)).isEqualTo("TestArg");
 	}
 
 	@Test
@@ -328,29 +324,32 @@ public class CloudFoundryAppSchedulerTests {
 
 	@Test
 	public void testNoServiceList() {
-		thrown.expect(SchedulerException.class);
-		thrown.expectMessage("Scheduler Service returned a null response.");
-		this.noServiceCloudFoundryAppScheduler.list();
+		assertThatThrownBy(() -> {
+			this.noServiceCloudFoundryAppScheduler.list();
+		}).isInstanceOf(SchedulerException.class).hasMessageContaining(
+				"Scheduler Service returned a null response.");
 	}
 
 	@Test
 	public void testNoServiceListSchedulesWithAppName() {
-		thrown.expect(SchedulerException.class);
-		thrown.expectMessage("Scheduler Service returned a null response.");
-		this.noServiceCloudFoundryAppScheduler.list("test-application-2");
+		assertThatThrownBy(() -> {
+			this.noServiceCloudFoundryAppScheduler.list("test-application-2");
+		}).isInstanceOf(SchedulerException.class).hasMessageContaining(
+				"Scheduler Service returned a null response.");
 	}
 
 	@Test
 	public void testNoServiceCreate() {
-		thrown.expect(SchedulerException.class);
-		thrown.expectMessage("Scheduler Service returned a null response.");
 		Resource resource = new FileSystemResource("src/test/resources/demo-0.0.1-SNAPSHOT.jar");
 
 		mockAppResultsInAppList();
 		AppDefinition definition = new AppDefinition("test-application-1", null);
 		ScheduleRequest request = new ScheduleRequest(definition, getDefaultScheduleProperties(), null, "test-schedule", resource);
 
-		this.noServiceCloudFoundryAppScheduler.schedule(request);
+		assertThatThrownBy(() -> {
+			this.noServiceCloudFoundryAppScheduler.schedule(request);
+		}).isInstanceOf(SchedulerException.class).hasMessageContaining(
+				"Scheduler Service returned a null response.");
 	}
 
 	private void givenRequestListApplications(Flux<ApplicationSummary> response) {

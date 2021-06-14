@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,14 @@ package org.springframework.cloud.deployer.spi.cloudfoundry;
 import java.util.Collections;
 import java.util.Map;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
-import static org.assertj.core.api.Java6Assertions.assertThat;
 
 /** @author David Turanski */
 public class ServiceParserTests {
-  @Rule public ExpectedException expectedException = ExpectedException.none();
 
   @Test
   public void plainService() {
@@ -97,9 +95,10 @@ public class ServiceParserTests {
 
   @Test
   public void serviceWithInvalidParameters() {
-    expectedException.expect(IllegalArgumentException.class);
-    expectedException.expectMessage("invalid service specification: test-service foo bar");
-    ServiceParser.getServiceParameters("test-service foo bar");
+		assertThatThrownBy(() -> {
+			ServiceParser.getServiceParameters("test-service foo bar");
+		}).isInstanceOf(IllegalArgumentException.class).hasMessageContaining(
+				"invalid service specification: test-service foo bar");
   }
 
   @Test

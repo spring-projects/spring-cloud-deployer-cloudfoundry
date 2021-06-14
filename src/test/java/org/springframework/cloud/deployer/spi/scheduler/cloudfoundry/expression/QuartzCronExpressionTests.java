@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,334 +18,158 @@ package org.springframework.cloud.deployer.spi.scheduler.cloudfoundry.expression
 
 import java.text.ParseException;
 
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 
-import org.springframework.cloud.deployer.spi.scheduler.cloudfoundry.expression.QuartzCronExpression;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class QuartzCronExpressionTests extends TestCase {
+public class QuartzCronExpressionTests {
 
 	/*
 	 * Verifies that storeExpressionVals correctly calculates the month number
 	 */
+	@Test
 	public void testStoreExpressionVal() {
-		try {
-			new QuartzCronExpression("* * * * Foo ? ");
-			fail("Expected ParseException did not fire for non-existent month");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Invalid Month value:"));
-		}
-
-		try {
-			new QuartzCronExpression("* * * * Jan-Foo ? ");
-			fail("Expected ParseException did not fire for non-existent month");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Invalid Month value:"));
-		}
+		assertExpression("* * * * Foo ? ", "Invalid Month value:",
+				"Expected ParseException did not fire for non-existent month");
+		assertExpression("* * * * Jan-Foo ? ", "Invalid Month value:",
+				"Expected ParseException did not fire for non-existent month");
 	}
 
+	@Test
 	public void testWildCard() {
-		try {
-			new QuartzCronExpression("0 0 * * * *");
-			fail("Expected ParseException did not fire for wildcard day-of-month and day-of-week");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Support for specifying both a day-of-week AND a day-of-month parameter is not implemented."));
-		}
-		try {
-			new QuartzCronExpression("0 0 * 4 * *");
-			fail("Expected ParseException did not fire for specified day-of-month and wildcard day-of-week");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Support for specifying both a day-of-week AND a day-of-month parameter is not implemented."));
-		}
-		try {
-			new QuartzCronExpression("0 0 * * * 4");
-			fail("Expected ParseException did not fire for wildcard day-of-month and specified day-of-week");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Support for specifying both a day-of-week AND a day-of-month parameter is not implemented."));
-		}
+		assertExpression("0 0 * * * *",
+				"Support for specifying both a day-of-week AND a day-of-month parameter is not implemented.",
+				"Expected ParseException did not fire for wildcard day-of-month and day-of-week");
+		assertExpression("0 0 * 4 * *",
+				"Support for specifying both a day-of-week AND a day-of-month parameter is not implemented.",
+				"Expected ParseException did not fire for specified day-of-month and wildcard day-of-week");
+		assertExpression("0 0 * * * 4",
+				"Support for specifying both a day-of-week AND a day-of-month parameter is not implemented.",
+				"Expected ParseException did not fire for wildcard day-of-month and specified day-of-week");
 	}
 
+	@Test
 	public void testForInvalidLInCronExpression() {
-		try {
-			new QuartzCronExpression("0 43 9 1,5,29,L * ?");
-			fail("Expected ParseException did not fire for L combined with other days of the month");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Support for specifying 'L' and 'LW' with other days of the month is not implemented"));
-		}
-		try {
-			new QuartzCronExpression("0 43 9 ? * SAT,SUN,L");
-			fail("Expected ParseException did not fire for L combined with other days of the week");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Support for specifying 'L' with other days of the week is not implemented"));
-		}
-		try {
-			new QuartzCronExpression("0 43 9 ? * 6,7,L");
-			fail("Expected ParseException did not fire for L combined with other days of the week");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("Support for specifying 'L' with other days of the week is not implemented"));
-		}
-		try {
+		assertExpression("0 43 9 1,5,29,L * ?",
+				"Support for specifying 'L' and 'LW' with other days of the month is not implemented",
+				"Expected ParseException did not fire for L combined with other days of the month");
+		assertExpression("0 43 9 ? * SAT,SUN,L",
+				"Support for specifying 'L' with other days of the week is not implemented",
+				"Expected ParseException did not fire for L combined with other days of the week");
+		assertExpression("0 43 9 ? * 6,7,L",
+				"Support for specifying 'L' with other days of the week is not implemented",
+				"Expected ParseException did not fire for L combined with other days of the week");
+		assertThatCode(() -> {
 			new QuartzCronExpression("0 43 9 ? * 5L");
-		}
-		catch (ParseException pe) {
-			fail("Unexpected ParseException thrown for supported '5L' expression.");
-		}
+		}).as("Unexpected ParseException thrown for supported '5L' expression.").doesNotThrowAnyException();
 	}
 
-
+	@Test
 	public void testForLargeWVal() {
-		try {
-			new QuartzCronExpression("0/5 * * 32W 1 ?");
-			fail("Expected ParseException did not fire for W with value larger than 31");
-		}
-		catch (ParseException pe) {
-			assertTrue("Incorrect ParseException thrown",
-					pe.getMessage().startsWith("The 'W' option does not make sense with values larger than"));
-		}
+		assertExpression("0/5 * * 32W 1 ?", "The 'W' option does not make sense with values larger than",
+				"Expected ParseException did not fire for W with value larger than 31");
 	}
 
+	@Test
 	public void testSecRangeIntervalAfterSlash() {
 		// Test case 1
-		try {
-			new QuartzCronExpression("/120 0 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 60 : 120");
-		}
-
+		assertExpression("/120 0 8-18 ? * 2-6", "Increment > 60 : 120",
+				"Cron did not validate bad range interval in '_blank/xxx' form");
 		// Test case 2
-		try {
-			new QuartzCronExpression("0/120 0 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in in '0/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 60 : 120");
-		}
-
+		assertExpression("0/120 0 8-18 ? * 2-6", "Increment > 60 : 120",
+				"Cron did not validate bad range interval in in '0/xxx' form");
 		// Test case 3
-		try {
-			new QuartzCronExpression("/ 0 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
-
+		assertExpression("/ 0 8-18 ? * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '_blank/_blank'");
 		// Test case 4
-		try {
-			new QuartzCronExpression("0/ 0 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in '0/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
+		assertExpression("0/ 0 8-18 ? * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '0/_blank'");
 	}
 
+	@Test
 	public void testMinRangeIntervalAfterSlash() {
 		// Test case 1
-		try {
-			new QuartzCronExpression("0 /120 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 60 : 120");
-		}
-
+		assertExpression("0 /120 8-18 ? * 2-6", "Increment > 60 : 120",
+				"Cron did not validate bad range interval in '_blank/xxx' form");
 		// Test case 2
-		try {
-			new QuartzCronExpression("0 0/120 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in in '0/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 60 : 120");
-		}
-
+		assertExpression("0 0/120 8-18 ? * 2-6", "Increment > 60 : 120",
+				"Cron did not validate bad range interval in in '0/xxx' form");
 		// Test case 3
-		try {
-			new QuartzCronExpression("0 / 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
-
+		assertExpression("0 / 8-18 ? * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '_blank/_blank'");
 		// Test case 4
-		try {
-			new QuartzCronExpression("0 0/ 8-18 ? * 2-6");
-			fail("Cron did not validate bad range interval in '0/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
+		assertExpression("0 0/ 8-18 ? * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '0/_blank'");
 	}
 
+	@Test
 	public void testHourRangeIntervalAfterSlash() {
 		// Test case 1
-		try {
-			new QuartzCronExpression("0 0 /120 ? * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 24 : 120");
-		}
-
+		assertExpression("0 0 /120 ? * 2-6", "Increment > 24 : 120",
+				"Cron did not validate bad range interval in '_blank/xxx' form");
 		// Test case 2
-		try {
-			new QuartzCronExpression("0 0 0/120 ? * 2-6");
-			fail("Cron did not validate bad range interval in in '0/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 24 : 120");
-		}
-
+		assertExpression("0 0 0/120 ? * 2-6", "Increment > 24 : 120",
+				"Cron did not validate bad range interval in in '0/xxx' form");
 		// Test case 3
-		try {
-			new QuartzCronExpression("0 0 / ? * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
-
+		assertExpression("0 0 / ? * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '_blank/_blank'");
 		// Test case 4
-		try {
-			new QuartzCronExpression("0 0 0/ ? * 2-6");
-			fail("Cron did not validate bad range interval in '0/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
+		assertExpression("0 0 0/ ? * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '0/_blank'");
 	}
 
+	@Test
 	public void testDayOfMonthRangeIntervalAfterSlash() {
 		// Test case 1
-		try {
-			new QuartzCronExpression("0 0 0 /120 * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 31 : 120");
-		}
-
+		assertExpression("0 0 0 /120 * 2-6", "Increment > 31 : 120",
+				"Cron did not validate bad range interval in '_blank/xxx' form");
 		// Test case 2
-		try {
-			new QuartzCronExpression("0 0 0 0/120 * 2-6");
-			fail("Cron did not validate bad range interval in in '0/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 31 : 120");
-		}
-
+		assertExpression("0 0 0 0/120 * 2-6", "Increment > 31 : 120",
+				"Cron did not validate bad range interval in in '0/xxx' form");
 		// Test case 3
-		try {
-			new QuartzCronExpression("0 0 0 / * 2-6");
-			fail("Cron did not validate bad range interval in '_blank/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
-
+		assertExpression("0 0 0 / * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '_blank/_blank'");
 		// Test case 4
-		try {
-			new QuartzCronExpression("0 0 0 0/ * 2-6");
-			fail("Cron did not validate bad range interval in '0/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
+		assertExpression("0 0 0 0/ * 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '0/_blank'");
 	}
 
+	@Test
 	public void testMonthRangeIntervalAfterSlash() {
 		// Test case 1
-		try {
-			new QuartzCronExpression("0 0 0 ? /120 2-6");
-			fail("Cron did not validate bad range interval in '_blank/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 12 : 120");
-		}
-
+		assertExpression("0 0 0 ? /120 2-6", "Increment > 12 : 120",
+				"Cron did not validate bad range interval in '_blank/xxx' form");
 		// Test case 2
-		try {
-			new QuartzCronExpression("0 0 0 ? 0/120 2-6");
-			fail("Cron did not validate bad range interval in in '0/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 12 : 120");
-		}
-
+		assertExpression("0 0 0 ? 0/120 2-6", "Increment > 12 : 120",
+				"Cron did not validate bad range interval in in '0/xxx' form");
 		// Test case 3
-		try {
-			new QuartzCronExpression("0 0 0 ? / 2-6");
-			fail("Cron did not validate bad range interval in '_blank/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
-
+		assertExpression("0 0 0 ? / 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '_blank/_blank'");
 		// Test case 4
-		try {
-			new QuartzCronExpression("0 0 0 ? 0/ 2-6");
-			fail("Cron did not validate bad range interval in '0/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
+		assertExpression("0 0 0 ? 0/ 2-6", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '0/_blank'");
 	}
 
-
+	@Test
 	public void testDayOfWeekRangeIntervalAfterSlash() {
 		// Test case 1
-		try {
-			new QuartzCronExpression("0 0 0 ? * /120");
-			fail("Cron did not validate bad range interval in '_blank/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 7 : 120");
-		}
-
+		assertExpression("0 0 0 ? * /120", "Increment > 7 : 120",
+				"Cron did not validate bad range interval in '_blank/xxx' form");
 		// Test case 2
-		try {
-			new QuartzCronExpression("0 0 0 ? * 0/120");
-			fail("Cron did not validate bad range interval in in '0/xxx' form");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "Increment > 7 : 120");
-		}
-
+		assertExpression("0 0 0 ? * 0/120", "Increment > 7 : 120",
+				"Cron did not validate bad range interval in in '0/xxx' form");
 		// Test case 3
-		try {
-			new QuartzCronExpression("0 0 0 ? * /");
-			fail("Cron did not validate bad range interval in '_blank/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
-
+		assertExpression("0 0 0 ? * /", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '_blank/_blank'");
 		// Test case 4
-		try {
-			new QuartzCronExpression("0 0 0 ? * 0/");
-			fail("Cron did not validate bad range interval in '0/_blank'");
-		}
-		catch (ParseException e) {
-			assertEquals(e.getMessage(), "'/' must be followed by an integer.");
-		}
+		assertExpression("0 0 0 ? * 0/", "'/' must be followed by an integer.",
+				"Cron did not validate bad range interval in '0/_blank'");
 	}
 
+	private static void assertExpression(String expression, String messageContains, String as) {
+		assertThatThrownBy(() -> {
+			new QuartzCronExpression(expression);
+		}).isInstanceOf(ParseException.class).hasMessageContaining(messageContains).as(as);
+	}
 }

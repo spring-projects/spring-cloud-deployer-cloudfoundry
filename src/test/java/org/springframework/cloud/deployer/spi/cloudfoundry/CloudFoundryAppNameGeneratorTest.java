@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,10 @@
  */
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import org.junit.jupiter.api.Test;
 
-import org.hamcrest.Description;
-import org.hamcrest.DiagnosingMatcher;
-import org.hamcrest.Matcher;
-import org.junit.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 /**
  * @author Soby Chacko
@@ -38,7 +35,7 @@ public class CloudFoundryAppNameGeneratorTest {
 				new CloudFoundryAppNameGenerator(properties);
 		deploymentCustomizer.afterPropertiesSet();
 
-		assertThat(deploymentCustomizer.generateAppName("foo"), is("dataflow-foo"));
+		assertThat(deploymentCustomizer.generateAppName("foo")).isEqualTo("dataflow-foo");
 	}
 
 	@Test
@@ -51,11 +48,11 @@ public class CloudFoundryAppNameGeneratorTest {
 		deploymentCustomizer.afterPropertiesSet();
 
 		String deploymentIdWithUniquePrefix = deploymentCustomizer.generateAppName("foo");
-		assertThat(deploymentIdWithUniquePrefix, matchesPattern("dataflow-longername-\\w+-foo"));
+		assertThat(deploymentIdWithUniquePrefix).matches("dataflow-longername-\\w+-foo");
 
 		String deploymentIdWithUniquePrefixAgain = deploymentCustomizer.generateAppName("foo");
 
-		assertThat(deploymentIdWithUniquePrefix, is(deploymentIdWithUniquePrefixAgain));
+		assertThat(deploymentIdWithUniquePrefix).isEqualTo(deploymentIdWithUniquePrefixAgain);
 	}
 
 	@Test
@@ -68,7 +65,7 @@ public class CloudFoundryAppNameGeneratorTest {
 		deploymentCustomizer.afterPropertiesSet();
 
 		String deploymentIdWithUniquePrefix = deploymentCustomizer.generateAppName("foo");
-		assertThat(deploymentIdWithUniquePrefix, matchesPattern("\\w+-foo"));
+		assertThat(deploymentIdWithUniquePrefix).matches("\\w+-foo");
 	}
 
 	@Test
@@ -80,24 +77,6 @@ public class CloudFoundryAppNameGeneratorTest {
 				new CloudFoundryAppNameGenerator(properties);
 		deploymentCustomizer.afterPropertiesSet();
 
-		assertThat(deploymentCustomizer.generateAppName("foo"), is("foo"));
+		assertThat(deploymentCustomizer.generateAppName("foo")).isEqualTo("foo");
 	}
-
-	private Matcher<String> matchesPattern(final String pattern) {
-		return new DiagnosingMatcher<String>() {
-			@Override
-			protected boolean matches(Object item, Description mismatchDescription) {
-				if (!((String) item).matches(pattern)) {
-					mismatchDescription.appendValue(item).appendText(" did not match regex ").appendValue(pattern);
-				}
-				return ((String) item).matches(pattern);
-			}
-
-			@Override
-			public void describeTo(Description description) {
-				description.appendText("a string matching regex ").appendValue(pattern);
-			}
-		};
-	}
-
 }

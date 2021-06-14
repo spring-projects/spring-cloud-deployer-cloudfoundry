@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,15 @@
 
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Ignore;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.deployer.CloudFoundryTestSupport;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
-import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationTests;
+import org.springframework.cloud.deployer.spi.test.AbstractAppDeployerIntegrationJUnit5Tests;
 import org.springframework.cloud.deployer.spi.test.Timeout;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
@@ -41,11 +39,8 @@ import org.springframework.test.context.ContextConfiguration;
 
 @SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.NONE,
 	properties = {"spring.cloud.deployer.cloudfoundry.enableRandomAppNamePrefix=false"})
-@ContextConfiguration(classes = CloudFoundryAppDeployerIntegrationTests.Config.class)
-public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployerIntegrationTests {
-
-	@ClassRule
-	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+@ContextConfiguration(classes = CloudFoundryAppDeployerIntegrationIT.Config.class)
+public class CloudFoundryAppDeployerIntegrationIT extends AbstractAppDeployerIntegrationJUnit5Tests {
 
 	@Autowired
 	private AppDeployer appDeployer;
@@ -63,7 +58,7 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 
 	protected int maxRetries = 60;
 
-	@Before
+	@BeforeEach
 	public void init() {
 		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
 		if (multiplier != null) {
@@ -72,7 +67,7 @@ public class CloudFoundryAppDeployerIntegrationTests extends AbstractAppDeployer
 	}
 
 	@Override
-	@Ignore("Need to look into args escaping better. Disabling for the time being")
+	@Disabled("Need to look into args escaping better. Disabling for the time being")
 	public void testCommandLineArgumentsPassing() {
 	}
 

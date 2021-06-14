@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,9 +25,8 @@ import org.cloudfoundry.operations.CloudFoundryOperations;
 import org.cloudfoundry.operations.applications.DeleteApplicationRequest;
 import org.cloudfoundry.reactor.ConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
-import org.junit.After;
-import org.junit.ClassRule;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Mono;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,9 +35,8 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.deployer.CloudFoundryTestSupport;
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
-import org.springframework.cloud.deployer.spi.scheduler.test.AbstractSchedulerIntegrationTests;
+import org.springframework.cloud.deployer.spi.scheduler.test.AbstractSchedulerIntegrationJUnit5Tests;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryConnectionProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryDeploymentProperties;
 import org.springframework.cloud.deployer.spi.cloudfoundry.CloudFoundryTaskLauncher;
@@ -48,7 +46,7 @@ import org.springframework.cloud.deployer.spi.task.TaskLauncher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE;
 
@@ -57,12 +55,10 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  *
  * @author Glenn Renfro
  */
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = NONE)
-@ContextConfiguration(classes = {SpringCloudSchedulerIntegrationTests.Config.class})
-public class SpringCloudSchedulerIntegrationTests extends AbstractSchedulerIntegrationTests {
-	@ClassRule
-	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+@ContextConfiguration(classes = {SpringCloudSchedulerIntegrationIT.Config.class})
+public class SpringCloudSchedulerIntegrationIT extends AbstractSchedulerIntegrationJUnit5Tests {
 
 	@Autowired
 	protected MavenProperties mavenProperties;
@@ -104,7 +100,7 @@ public class SpringCloudSchedulerIntegrationTests extends AbstractSchedulerInteg
 	/**
 	 * Remove all pushed apps.  This in turn removes the associated schedules.
 	 */
-	@After
+	@AfterEach
 	public void tearDown() {
 		try {
 			operations.applications().list().flatMap(applicationSummary -> {

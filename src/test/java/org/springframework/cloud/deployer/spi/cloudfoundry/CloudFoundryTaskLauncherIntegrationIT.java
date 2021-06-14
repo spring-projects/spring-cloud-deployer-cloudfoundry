@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,17 @@
 package org.springframework.cloud.deployer.spi.cloudfoundry;
 
 import com.github.zafarkhaja.semver.Version;
-import org.junit.After;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cloud.deployer.CloudFoundryTestSupport;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.cloud.deployer.spi.test.AbstractTaskLauncherIntegrationTests;
+import org.springframework.cloud.deployer.spi.test.AbstractTaskLauncherIntegrationJUnit5Tests;
 import org.springframework.cloud.deployer.spi.test.Timeout;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
@@ -45,11 +43,8 @@ import org.springframework.test.context.ContextConfiguration;
  * @author Michael Minella
  * @author Ben Hale
  */
-@ContextConfiguration(classes=CloudFoundryTaskLauncherIntegrationTests.Config.class)
-public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLauncherIntegrationTests {
-
-	@ClassRule
-	public static CloudFoundryTestSupport cfAvailable = new CloudFoundryTestSupport();
+@ContextConfiguration(classes=CloudFoundryTaskLauncherIntegrationIT.Config.class)
+public class CloudFoundryTaskLauncherIntegrationIT extends AbstractTaskLauncherIntegrationJUnit5Tests {
 
 	@Autowired
 	private TaskLauncher taskLauncher;
@@ -65,10 +60,10 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 
 	protected int maxRetries = 60;
 
-	@Before
+	@BeforeEach
 	public void init() {
-		Assume.assumeTrue("Skipping TaskLauncher ITs on PCF<1.9 (2.65.0). Actual API version is " + cloudControllerAPIVersion,
-			cloudControllerAPIVersion.greaterThanOrEqualTo(Version.forIntegers(2, 65, 0)));
+		Assumptions.assumeTrue(cloudControllerAPIVersion.greaterThanOrEqualTo(Version.forIntegers(2, 65, 0)),
+				"Skipping TaskLauncher ITs on PCF<1.9 (2.65.0). Actual API version is " + cloudControllerAPIVersion);
 
 		String multiplier = System.getenv("CF_DEPLOYER_TIMEOUT_MULTIPLIER");
 		if (multiplier != null) {
@@ -85,14 +80,14 @@ public class CloudFoundryTaskLauncherIntegrationTests extends AbstractTaskLaunch
 	 * Allow for a small pause so that each each TL.destroy() at the end of tests actually completes,
 	 * as this is asynchronous.
 	 */
-	@After
+	@AfterEach
 	public void pause() throws InterruptedException {
 		Thread.sleep(500);
 	}
 
 	@Test
 	@Override
-	@Ignore("CF Deployer incorrectly reports status as failed instead of canceled")
+	@Disabled("CF Deployer incorrectly reports status as failed instead of canceled")
 	public void testSimpleCancel() throws InterruptedException {
 		super.testSimpleCancel();
 	}
